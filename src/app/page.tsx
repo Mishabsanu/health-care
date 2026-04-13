@@ -116,11 +116,9 @@ export default function Dashboard() {
              <SummaryCard title="Revenue (Paid)" value={`₹${(statsData?.totalRevenue || 0).toLocaleString()}`} icon={IndianRupee} color="#10b981" />
              <SummaryCard title="Pending Amount" value={`₹${(statsData?.totalPending || 0).toLocaleString()}`} icon={ActivityIcon} color="#f59e0b" />
           </div>
+  {/* Module 3: Clinical Traffic / Appointments */}
+          <AppointmentsWidget filterParams={filterParams} />
 
-          <div style={{ marginTop: '1rem' }}>
-            {/* Module 1: Financial & Network Intelligence */}
-            <FinancialWidget filterParams={filterParams} />
-          </div>
 
           {/* Module 2: Staff & Inventory Operations */}
           <div className="visualization-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
@@ -128,8 +126,10 @@ export default function Dashboard() {
               <InventoryWidget />
           </div>
 
-          {/* Module 3: Clinical Traffic / Appointments */}
-          <AppointmentsWidget filterParams={filterParams} />
+                  <div style={{ marginTop: '1rem' }}>
+            {/* Module 1: Financial & Network Intelligence */}
+            <FinancialWidget filterParams={filterParams} />
+          </div>
       </div>
 
     </div>

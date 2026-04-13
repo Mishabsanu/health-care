@@ -1,12 +1,12 @@
 'use client'
 import DataTable from '@/components/DataTable';
-import api from '@/services/api';
-import { usePCMSStore } from '@/store/useStore';
-import { MessageSquare, Receipt, CheckCircle2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import HasPermission from '@/components/HasPermission';
 import { usePermission } from '@/hooks/usePermission';
+import api from '@/services/api';
+import { usePCMSStore } from '@/store/useStore';
+import { Clock, MessageSquare, Receipt } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 interface Appointment {
   _id: string;
@@ -16,8 +16,10 @@ interface Appointment {
   doctorName: string;
   date: string;
   time: string;
-  type: string;
+  type?: string;
   status: 'Scheduled' | 'Confirmed' | 'Completed' | 'Cancelled';
+  isBilled?: boolean;
+  billId?: string;
 }
 
 export default function AppointmentsPage() {
@@ -36,30 +38,45 @@ export default function AppointmentsPage() {
   const [pageSize, setPageSize] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
+  const [activeTimeframe, setActiveTimeframe] = useState<'today' | 'upcoming' | 'history'>('today');
 
   const fetchAppointments = async () => {
     setLocalLoading(true);
     try {
+      const localDate = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD format
       const params = new URLSearchParams({
         page: currentPage.toString(),
-        limit: pageSize.toString()
+        limit: pageSize.toString(),
+        timeframe: activeTimeframe,
+        localDate: localDate
       });
       if (searchQuery) params.append('search', searchQuery);
-      
+
       Object.entries(activeFilters).forEach(([key, values]) => {
         if (values && values.length > 0) {
-            params.append(key, values[0]);
+          let value = values[0];
+          // 🔄 Clinical Mapping | Match Friendly UI Labels to Backend Enum Values
+          if (key === 'status') {
+            const statusMap: Record<string, string> = {
+              'Queued': 'Scheduled',
+              'Patient In': 'Confirmed',
+              'Session Done': 'Completed',
+              'Cancelled': 'Cancelled'
+            };
+            value = statusMap[value] || value;
+          }
+          params.append(key, value);
         }
       });
 
       const res = await api.get(`/appointments?${params.toString()}`);
-      
+
       if (res.data && typeof res.data.total !== 'undefined') {
-          setAppointments(Array.isArray(res.data) ? res.data : (res.data?.data || []));
-          setTotalRecords(res.data.total);
+        setAppointments(Array.isArray(res.data) ? res.data : (res.data?.data || []));
+        setTotalRecords(res.data.total);
       } else {
-          setAppointments(Array.isArray(res.data) ? res.data : (res.data?.data || []));
-          setTotalRecords(res.data.length);
+        setAppointments(Array.isArray(res.data) ? res.data : (res.data?.data || []));
+        setTotalRecords(res.data.length);
       }
     } catch (err) {
       console.error('🚫 Registry Error | Failed to fetch appointments:', err);
@@ -71,7 +88,7 @@ export default function AppointmentsPage() {
 
   useEffect(() => {
     fetchAppointments();
-  }, [currentPage, pageSize, searchQuery, activeFilters]);
+  }, [currentPage, pageSize, searchQuery, activeFilters, activeTimeframe]);
 
   const handleDeleteAppointment = (appointment: Appointment) => {
     showConfirm(
@@ -98,11 +115,16 @@ export default function AppointmentsPage() {
     try {
       await api.put(`/appointments/${id}`, { status: newStatus });
       setAppointments(prev => prev.map(a => a._id === id ? { ...a, status: newStatus as any } : a));
-      showToast(`Booking marked as ${newStatus}.`, 'success');
+      showToast(`Appointment status synchronized to ${newStatus}.`, 'success');
     } catch (err) {
       console.error('🚫 Registry Error | Failed to update clinical status:', err);
       showToast('Status update failed.', 'error');
     }
+  };
+
+  const handleSetTodayFilter = () => {
+    setActiveTimeframe('today');
+    showToast('📅 Switched to Today\'s Schedule.', 'success');
   };
 
   const handleSendReminder = async (id: string) => {
@@ -116,8 +138,19 @@ export default function AppointmentsPage() {
   };
 
   const columns = [
-    { 
-      header: 'PATIENT NAME', 
+    {
+      header: 'CREATED DATE',
+      style: { minWidth: '140px' },
+      key: (a: any) => (
+        <div>
+          <p style={{ fontWeight: 600 }}>{a.createdAt ? new Date(a.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}</p>
+          <p style={{ fontSize: '0.75rem', opacity: 0.6 }}>{a.createdAt ? new Date(a.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : 'N/A'}</p>
+        </div>
+      )
+    },
+    {
+      header: 'PATIENT NAME',
+      style: { minWidth: '150px' },
       key: (a: any) => (
         <div>
           {/* 🔗 Clickable patient name → redirects to patient detail view */}
@@ -144,40 +177,74 @@ export default function AppointmentsPage() {
         </div>
       )
     },
-    { 
-      header: 'CONTACT', 
+    {
+      header: 'CONTACT',
+      style: { minWidth: '140px' },
       key: (a: any) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{a.patientId?.phone || 'N/A'}</span>
-          {/* 💬 WhatsApp direct message button */}
-          {a.patientId?.phone && (
-            <a 
-              href={`https://wa.me/${a.patientId.phone.replace(/\D/g, '')}`} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              title={`WhatsApp ${a.patientId.name}`}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '28px',
-                height: '28px',
-                borderRadius: '50%',
-                background: 'rgba(37, 211, 102, 0.1)',
-                color: '#25D366',
-                flexShrink: 0,
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <MessageSquare size={14} fill="#25D366" />
-            </a>
-          )}
+
+          <div style={{ display: 'flex', gap: '0.4rem' }}>
+            {/* 💬 Direct WhatsApp Chat */}
+            {a.patientId?.phone && (
+              <a
+                href={`https://wa.me/${a.patientId.phone.replace(/\D/g, '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                title={`WhatsApp Chat: ${a.patientId.name}`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '50%',
+                  background: 'rgba(37, 211, 102, 0.1)',
+                  color: '#25D366',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <MessageSquare size={14} fill="#25D366" />
+              </a>
+            )}
+
+            {/* 🔔 Automated Clinical Reminder */}
+            {a.status === 'Scheduled' && (
+              <HasPermission anyOf={['appointments:edit', 'appointments:remind']}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (canOperate(a)) {
+                      handleSendReminder(a._id);
+                    } else {
+                      showToast('🚫 Access Denied | You can only send reminders for your own appointments.', 'error');
+                    }
+                  }}
+                  title="Trigger Automated Reminder"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '50%',
+                    background: 'rgba(15, 118, 110, 0.1)',
+                    color: 'var(--primary)',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <Clock size={14} />
+                </button>
+              </HasPermission>
+            )}
+          </div>
         </div>
       )
     },
-    { 
-      header: 'SPECIALIST', 
+    {
+      header: 'SPECIALIST',
+      style: { minWidth: '150px' },
       key: (a: Appointment) => (
         <div>
           <p style={{ fontWeight: 600 }}>{a.doctorId?.name || a.doctorName || 'Deleted'}</p>
@@ -185,8 +252,10 @@ export default function AppointmentsPage() {
         </div>
       )
     },
-    { 
-      header: 'SCHEDULE', 
+
+    {
+      header: 'SCHEDULE DATE',
+      style: { minWidth: '140px' },
       key: (a: Appointment) => (
         <div>
           <p style={{ fontWeight: 700 }}>{new Date(a.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</p>
@@ -194,23 +263,53 @@ export default function AppointmentsPage() {
         </div>
       )
     },
-    { 
-      header: 'STATUS', 
-      key: (a: Appointment) => (
-        <span style={{ 
-          background: a.status === 'Confirmed' ? '#dcfce7' : a.status === 'Scheduled' ? '#f1f5f9' : a.status === 'Completed' ? '#dbeafe' : '#fee2e2',
-          color: a.status === 'Confirmed' ? '#166534' : a.status === 'Scheduled' ? '#64748b' : a.status === 'Completed' ? '#1d4ed8' : '#b91c1c',
-          padding: '0.35rem 0.85rem', 
-          borderRadius: '1rem', 
-          fontSize: '0.7rem', 
-          fontWeight: 800 
-        }}>
-          {a.status?.toUpperCase()}
-        </span>
-      ) 
+    {
+      header: 'STATUS',
+      style: { minWidth: '140px' },
+      key: (a: Appointment) => {
+        const getStatusTheme = (status: string) => {
+          switch (status) {
+            case 'Confirmed': return { color: '#059669', glow: '#34d399', label: 'Patient In' };
+            case 'Completed': return { color: '#4f46e5', glow: '#818cf8', label: 'Session Done' };
+            case 'Cancelled': return { color: '#dc2626', glow: '#f87171', label: 'Cancelled' };
+            default: return { color: '#64748b', glow: '#94a3b8', label: 'Queued' };
+          }
+        };
+        const { color, glow, label } = getStatusTheme(a.status);
+
+        return (
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            padding: '0.5rem 1.25rem',
+            borderRadius: '2rem',
+            background: 'rgba(255, 255, 255, 0.4)',
+            backdropFilter: 'blur(10px)',
+            border: `1.5px solid ${color}20`,
+            color: color,
+            fontSize: '0.65rem',
+            fontWeight: 800,
+            fontFamily: 'var(--font-heading)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+            boxShadow: `0 4px 15px -5px ${color}30`
+          }}>
+            <div className={a.status === 'Confirmed' ? 'pulse-site' : ''} style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              background: glow,
+              boxShadow: `0 0 12px ${glow}`
+            }} />
+            <span>{label}</span>
+          </div>
+        );
+      }
     },
     {
-      header: 'REGISTRY BY',
+      header: 'CREATED BY',
+      style: { minWidth: '140px' },
       key: (a: any) => (
         <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)', opacity: 0.8 }}>
           {(a as any).createdBy?.name?.toUpperCase() || 'SYSTEM'}
@@ -218,47 +317,44 @@ export default function AppointmentsPage() {
       )
     },
     {
-      header: 'CLINICAL ACTIONS',
+      header: 'ACTIONS',
+      style: { minWidth: '220px' },
       key: (a: any) => (
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* 🔔 WhatsApp Reminder (for Scheduled appointments) */}
+          {/* 📍 Mark Confirmed (Arrival) — for Scheduled only */}
           {a.status === 'Scheduled' && (
-            <HasPermission anyOf={['appointments:edit', 'appointments:remind']}>
-              <button 
-                onClick={(e) => { 
-                  e.stopPropagation(); 
+            <HasPermission permission="appointments:edit">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
                   if (canOperate(a)) {
-                    handleSendReminder(a._id);
+                    handleStatusUpdate(a._id, 'Confirmed');
                   } else {
-                    showToast('🚫 Access Denied | You can only send reminders for your own appointments.', 'error');
+                    showToast('🚫 Access Denied | You can only confirm your own appointments.', 'error');
                   }
                 }}
-                title="Send WhatsApp Reminder"
+                title="Mark Patient as Arrived (Confirm)"
                 style={{
-                  padding: '0.35rem 0.75rem',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1.5px solid #25D366',
-                  color: '#25D366',
-                  fontSize: '0.65rem',
+                  padding: '0.4rem 0.8rem',
+                  borderRadius: '6px',
+                  border: '1.5px solid var(--primary)',
+                  color: 'var(--primary)',
+                  fontSize: '0.7rem',
                   fontWeight: 900,
                   textTransform: 'uppercase',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.3rem',
-                  background: 'rgba(37, 211, 102, 0.05)'
+                  background: 'rgba(15, 118, 110, 0.05)'
                 }}
-              >
-                <MessageSquare size={11} /> Remind
+              >Confirm
               </button>
             </HasPermission>
           )}
 
-          {/* ✅ Mark Completed — for Scheduled/Confirmed */}
-          {(a.status === 'Booked' || a.status === 'Confirmed') && (
+          {/* ✅ Mark Completed — for Confirmed (and Scheduled for flexibility) */}
+          {(a.status === 'Scheduled' || a.status === 'Confirmed') && (
             <HasPermission permission="appointments:edit">
-              <button 
-                onClick={(e) => { 
-                  e.stopPropagation(); 
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
                   if (canOperate(a)) {
                     handleStatusUpdate(a._id, 'Completed');
                   } else {
@@ -267,61 +363,91 @@ export default function AppointmentsPage() {
                 }}
                 title="Mark Treatment as Completed"
                 style={{
-                  padding: '0.35rem 0.75rem',
-                  borderRadius: 'var(--radius-sm)',
+                  padding: '0.4rem 0.8rem',
+                  borderRadius: '6px',
                   border: '1.5px solid #10b981',
                   color: '#10b981',
-                  fontSize: '0.65rem',
+                  fontSize: '0.7rem',
                   fontWeight: 900,
                   textTransform: 'uppercase',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.3rem',
                   background: 'rgba(16, 185, 129, 0.05)'
                 }}
               >
-                <CheckCircle2 size={11} /> Mark Done
+                Completed
               </button>
             </HasPermission>
           )}
 
-          {/* 🧾 Pay Bill — ONLY available for Completed status */}
+          {/* ❌ Cancel — for Scheduled/Confirmed */}
+          {(a.status === 'Scheduled' || a.status === 'Confirmed') && (
+            <HasPermission permission="appointments:edit">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (canOperate(a)) {
+                    handleStatusUpdate(a._id, 'Cancelled');
+                  } else {
+                    showToast('🚫 Access Denied | You can only cancel your own appointments.', 'error');
+                  }
+                }}
+                title="Cancel Appointment"
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  borderRadius: '6px',
+                  border: '1.5px solid #ef4444',
+                  color: '#ef4444',
+                  fontSize: '0.7rem',
+                  fontWeight: 900,
+                  textTransform: 'uppercase',
+                  background: 'rgba(239, 68, 68, 0.05)'
+                }}
+              >
+                Cancel
+              </button>
+            </HasPermission>
+          )}
+
+          {/* 🧾 Pay Bill / View Bill — ONLY available for Completed status */}
           {a.status === 'Completed' && (
             <HasPermission permission="billing:create">
-              <button 
-                onClick={(e) => { 
+              <button
+                onClick={(e) => {
                   e.stopPropagation();
-                  router.push(`/billing/generate?appointmentId=${a._id}&patientId=${a.patientId?._id || ''}`);
+                  if (a.isBilled && a.billId) {
+                    router.push(`/billing/${a.billId}`);
+                  } else {
+                    router.push(`/billing/generate?appointmentId=${a._id}&patientId=${a.patientId?._id || ''}`);
+                  }
                 }}
-                title="Create Invoice for this Appointment"
-                style={{ 
-                  padding: '0.35rem 0.75rem', 
-                  borderRadius: 'var(--radius-sm)', 
-                  background: a.status === 'Completed' 
-                    ? 'linear-gradient(135deg, #f59e0b, #d97706)'
-                    : 'linear-gradient(135deg, #6366f1, #4f46e5)',
-                  color: 'white', 
-                  fontSize: '0.65rem', 
-                  fontWeight: 950, 
+                title={a.isBilled ? "View Existing Bill" : "Create Bill for this Appointment"}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: 'var(--radius-sm)',
+                  background: a.isBilled 
+                    ? 'linear-gradient(135deg, #10b981, #059669)' // Green for already billed
+                    : 'linear-gradient(135deg, #f59e0b, #d97706)', // Amber for needs billing
+                  color: 'white',
+                  fontSize: '0.65rem',
+                  fontWeight: 950,
                   textTransform: 'uppercase',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.3rem',
                   border: 'none',
                   cursor: 'pointer',
-                  boxShadow: a.status === 'Completed'
-                    ? '0 4px 12px rgba(245, 158, 11, 0.3)'
-                    : '0 4px 12px rgba(99, 102, 241, 0.3)'
+                  boxShadow: a.isBilled
+                    ? '0 4px 12px rgba(16, 185, 129, 0.3)'
+                    : '0 4px 12px rgba(245, 158, 11, 0.3)'
                 }}
               >
-                <Receipt size={11} /> {a.status === 'Completed' ? 'Pay Bill' : 'Bill Now'}
+                <Receipt size={11} /> {a.isBilled ? 'View Bill' : 'Pay Bill'}
               </button>
             </HasPermission>
           )}
 
           {a.status === 'Cancelled' && (
             <span style={{ fontSize: '0.7rem', fontWeight: 900, color: '#ef4444', textTransform: 'uppercase' }}>
-              Purged
+              Cleared
             </span>
           )}
         </div>
@@ -336,47 +462,102 @@ export default function AppointmentsPage() {
           <h1 style={{ fontSize: '1.8rem', letterSpacing: '-0.01em' }}>Clinical <span className="gradient-text">Scheduler</span></h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Coordinate medical sessions and specialist availability.</p>
         </div>
-        <HasPermission permission="appointments:create">
-          <button 
-            onClick={() => router.push('/appointments/add')}
-            style={{ background: 'var(--primary)', color: 'white', padding: '0.8rem 1.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600 }}
-          >
-            Book Appointment
-          </button>
-        </HasPermission>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          {/* 📑 Clinical Tab Bar */}
+          <div style={{
+            display: 'flex',
+            background: 'rgba(255, 255, 255, 0.4)',
+            backdropFilter: 'blur(10px)',
+            padding: '0.3rem',
+            borderRadius: 'var(--radius-md)',
+            border: '1.5px solid var(--border-subtle)',
+            boxShadow: 'var(--shadow-sm)'
+          }}>
+            {[
+              { id: 'today', label: 'TODAY' },
+              { id: 'upcoming', label: 'UPCOMING' },
+              { id: 'history', label: 'HISTORY' }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTimeframe(tab.id as any);
+                  setCurrentPage(1);
+                }}
+                style={{
+                  padding: '0.6rem 1.25rem',
+                  borderRadius: 'calc(var(--radius-md) - 2px)',
+                  fontSize: '0.75rem',
+                  fontWeight: 900,
+                  transition: 'all 0.2s ease',
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: activeTimeframe === tab.id ? 'var(--primary)' : 'transparent',
+                  color: activeTimeframe === tab.id ? 'white' : 'var(--text-muted)',
+                  boxShadow: activeTimeframe === tab.id ? '0 4px 12px rgba(15, 118, 110, 0.2)' : 'none'
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <HasPermission permission="appointments:create">
+            <button
+              onClick={() => router.push('/appointments/add')}
+              style={{ background: 'var(--primary)', color: 'white', padding: '0.8rem 1.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600 }}
+            >
+              Book Appointment
+            </button>
+          </HasPermission>
+        </div>
       </div>
 
-        <DataTable 
-          data={appointments.map(a => ({ ...a, id: a._id }))}
-          columns={columns}
-          searchPlaceholder="Search scheduler names..."
-          onView={(a) => router.push(`/appointments/${a._id}`)}
-          onEdit={hasPermission('appointments:edit') ? ((a) => {
-            if (canOperate(a)) {
-              router.push(`/appointments/${a._id}/edit`);
-            } else {
-              showToast('🚫 Access Denied | You can only modify your own appointments.', 'error');
-            }
-          }) : undefined}
-          onDelete={hasPermission('appointments:delete') ? ((a) => {
-            if (canOperate(a)) {
-              handleDeleteAppointment(a);
-            } else {
-              showToast('🚫 Access Denied | You can only cancel your own appointments.', 'error');
-            }
-          }) : undefined}
-          filterableFields={[
-            { label: 'Status', key: 'status' as keyof Appointment, options: ['Scheduled', 'Confirmed', 'Completed', 'Cancelled'] }
-          ]}
-          serverPagination={{
-            totalRecords,
-            currentPage,
-            pageSize,
-            onPageChange: setCurrentPage,
-            onSearchChange: (s) => { setSearchQuery(s); setCurrentPage(1); },
-            onFilterChange: (f) => { setActiveFilters(f); setCurrentPage(1); }
-          }}
-        />
+      <DataTable
+        data={appointments.map(a => ({ ...a, id: a._id }))}
+        columns={columns}
+        searchPlaceholder="Search scheduler names..."
+        onView={(a) => router.push(`/appointments/${a._id}`)}
+        onEdit={hasPermission('appointments:edit') ? ((a) => {
+          if (canOperate(a)) {
+            router.push(`/appointments/${a._id}/edit`);
+          } else {
+            showToast('🚫 Access Denied | You can only modify your own appointments.', 'error');
+          }
+        }) : undefined}
+        onDelete={hasPermission('appointments:delete') ? ((a) => {
+          if (canOperate(a)) {
+            handleDeleteAppointment(a);
+          } else {
+            showToast('🚫 Access Denied | You can only cancel your own appointments.', 'error');
+          }
+        }) : undefined}
+        filterableFields={[
+          { label: 'Status', key: 'status' as keyof Appointment, options: ['Queued', 'Patient In', 'Session Done', 'Cancelled'] },
+          { label: 'Date', key: 'date' as keyof Appointment, options: [] }
+        ]}
+        serverPagination={{
+          totalRecords,
+          currentPage,
+          pageSize,
+          onPageChange: setCurrentPage,
+          onSearchChange: (s) => { setSearchQuery(s); setCurrentPage(1); },
+          onFilterChange: (f) => { setActiveFilters(f); setCurrentPage(1); },
+          externalFilters: activeFilters,
+          externalSearch: searchQuery
+        }}
+        getRowStyle={(a: any) => {
+          const today = new Date().toISOString().split('T')[0];
+          const isToday = a.date === today;
+          if (isToday && activeTimeframe !== 'today') {
+            return {
+              background: 'rgba(15, 118, 110, 0.03)',
+              boxShadow: 'inset 4px 0 0 var(--primary)'
+            };
+          }
+          return {};
+        }}
+      />
     </div>
   );
 }

@@ -1,51 +1,83 @@
 'use client'
-import React, { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { 
-  ArrowLeft, User, Phone, Mail, MapPin, 
-  Activity, Briefcase, Stethoscope, Scale, 
-  Ruler, UserCircle, Smartphone, CheckCircle2,
-  ChevronRight, ClipboardList, Building2
-} from 'lucide-react';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
+import { useFormik } from 'formik';
+import {
+  ArrowLeft,
+  Briefcase,
+  CheckCircle2,
+  ClipboardList,
+  Mail, MapPin,
+  Ruler,
+  Scale,
+  Smartphone,
+  Stethoscope,
+  User,
+  UserCircle
+} from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import * as Yup from 'yup';
+
+const validationSchema = Yup.object().shape({
+  name: Yup.string().required('Patient name is required'),
+  phone: Yup.string()
+    .required('Contact number is required')
+    .matches(/^[0-9+\-\s()]*$/, 'Invalid phone format'),
+  age: Yup.number()
+    .required('Age is required')
+    .positive('Age must be positive')
+    .integer('Age must be a whole number'),
+  address: Yup.string().required('Residential address is required'),
+  email: Yup.string().email('Invalid email address'),
+});
 
 export default function EditPatientPage() {
   const router = useRouter();
   const { id } = useParams();
-  const { user, setIsSyncing, showToast } = usePCMSStore();
+  const { setIsSyncing, showToast } = usePCMSStore();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    age: '',
-    gender: '',
-    address: '',
-    status: '',
-    referredBy: '',
-    occupation: '',
-    habits: '',
-    reasonForVisit: '',
-    weight: '',
-    height: '',
-    bmi: 0,
-    remarks: ''
-  });
-
   const [bmi, setBmi] = useState<string | number>(0);
 
-  useEffect(() => {
-    if (formData.weight && formData.height) {
-      const heightInMeters = Number(formData.height) / 100;
-      const calcBmi = (Number(formData.weight) / (heightInMeters * heightInMeters)).toFixed(2);
-      setBmi(calcBmi);
-    } else {
-      setBmi(0);
-    }
-  }, [formData.weight, formData.height]);
+  const formik = useFormik({
+    initialValues: {
+      name: '',
+      phone: '',
+      email: '',
+      age: '',
+      gender: '',
+      address: '',
+      referredBy: '',
+      occupation: '',
+      habits: [] as string[],
+      reasonForVisit: '',
+      weight: '',
+      height: '',
+      remarks: ''
+    },
+    validationSchema,
+    enableReinitialize: true,
+    onSubmit: async (values) => {
+      setSaving(true);
+      setIsSyncing(true);
+      try {
+        const payload = {
+          ...values,
+          bmi: Number(bmi)
+        };
+        await api.put(`/patients/${id}`, payload);
+        showToast('Medical record updated successfully.', 'success');
+        router.push('/patients');
+      } catch (err) {
+        console.error('🚫 Registry Error | Failed to update clinical record:', err);
+        showToast('Update failed. Please check medical data consistency.', 'error');
+      } finally {
+        setSaving(false);
+        setIsSyncing(false);
+      }
+    },
+  });
 
   // -------------------------------------------------------------------
   // SYNC | Fetch Clinical Patient Data & Options
@@ -55,24 +87,21 @@ export default function EditPatientPage() {
       setIsSyncing(true);
       try {
         const patientRes = await api.get(`/patients/${id}`);
-        
         const patient = patientRes.data;
         if (patient) {
-          setFormData({
+          formik.setValues({
             name: patient.name || '',
             phone: patient.phone || '',
             email: patient.email || '',
             age: patient.age ? patient.age.toString() : '',
             gender: patient.gender || '',
             address: patient.address || '',
-            status: patient.status || '',
             referredBy: patient.referredBy || '',
             occupation: patient.occupation || '',
-            habits: Array.isArray(patient.habits) ? patient.habits.join(', ') : (patient.habits || ''),
+            habits: Array.isArray(patient.habits) ? patient.habits : [],
             reasonForVisit: patient.reasonForVisit || '',
             weight: patient.weight ? patient.weight.toString() : '',
             height: patient.height ? patient.height.toString() : '',
-            bmi: patient.bmi || 0,
             remarks: patient.remarks || ''
           });
           if (patient.bmi) setBmi(patient.bmi);
@@ -88,27 +117,39 @@ export default function EditPatientPage() {
     fetchData();
   }, [id, setIsSyncing, showToast]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setIsSyncing(true);
-    try {
-      const payload = {
-        ...formData,
-        bmi: Number(bmi),
-        habits: formData.habits.split(',').map(s => s.trim()).filter(s => s)
-      };
-      await api.put(`/patients/${id}`, payload);
-      showToast('Medical record updated successfully.', 'success');
-      router.push('/patients');
-    } catch (err) {
-      console.error('🚫 Registry Error | Failed to update clinical record:', err);
-      showToast('Update failed. Please check medical data consistency.', 'error');
-    } finally {
-      setSaving(false);
-      setIsSyncing(false);
+  useEffect(() => {
+    if (formik.values.weight && formik.values.height) {
+      const heightInMeters = Number(formik.values.height) / 100;
+      const calcBmi = (Number(formik.values.weight) / (heightInMeters * heightInMeters)).toFixed(2);
+      setBmi(calcBmi);
+    } else {
+      setBmi(0);
     }
+  }, [formik.values.weight, formik.values.height]);
+  
+  const habitOptions = [
+    'Smoking', 'Alcohol',  
+    'Exercise', 'Poor Sleep', 'Caffeine', 'Healthy', 'Sedentary'
+  ];
+
+  const toggleHabit = (habit: string) => {
+    const currentHabits = formik.values.habits;
+    const nextHabits = currentHabits.includes(habit)
+      ? currentHabits.filter(h => h !== habit)
+      : [...currentHabits, habit];
+    formik.setFieldValue('habits', nextHabits);
   };
+
+  const isError = (field: keyof typeof formik.values) => 
+    formik.touched[field] && formik.errors[field];
+
+  const ErrorMsg = ({ name }: { name: keyof typeof formik.values }) => (
+    formik.touched[name] && formik.errors[name] ? (
+      <div style={{ color: '#ef4444', fontSize: '0.7rem', fontWeight: 700, marginTop: '0.4rem', marginLeft: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+        <span>⚠️ {formik.errors[name] as string}</span>
+      </div>
+    ) : null
+  );
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
@@ -132,7 +173,7 @@ export default function EditPatientPage() {
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Update medical identity, contact vectors, and clinical status profiles.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="clinical-form-card" style={{ opacity: saving ? 0.7 : 1 }}>
+      <form onSubmit={formik.handleSubmit} className="clinical-form-card" style={{ opacity: saving ? 0.7 : 1 }}>
         <div className="clinical-form-grid">
           
           {/* Section 1: Clinical Identity */}
@@ -155,32 +196,81 @@ export default function EditPatientPage() {
           <div className="col-8">
             <label className="label-premium">Patient Full Name <span style={{ color: '#ef4444' }}>*</span></label>
             <div style={{ position: 'relative' }}>
-              <User size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-              <input required disabled={saving} type="text" className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Full legal name..." />
+              <User size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('name') ? '#ef4444' : 'var(--text-muted)', opacity: isError('name') ? 0.8 : 0.5 }} />
+              <input 
+                name="name"
+                disabled={saving} 
+                type="text" 
+                className={`input-premium ${isError('name') ? 'input-error' : ''}`}
+                style={{ paddingLeft: '2.75rem', borderColor: isError('name') ? '#ef4444' : '' }} 
+                value={formik.values.name} 
+                onChange={formik.handleChange} 
+                onBlur={formik.handleBlur}
+                placeholder="Full legal name..." 
+              />
             </div>
+            <ErrorMsg name="name" />
           </div>
           <div className="col-4">
             <label className="label-premium">Primary Contact <span style={{ color: '#ef4444' }}>*</span></label>
             <div style={{ position: 'relative' }}>
-              <Smartphone size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-              <input required disabled={saving} type="text" className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="9876543210" />
+              <Smartphone size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('phone') ? '#ef4444' : 'var(--text-muted)', opacity: isError('phone') ? 0.8 : 0.5 }} />
+              <input 
+                name="phone"
+                disabled={saving} 
+                type="text" 
+                className={`input-premium ${isError('phone') ? 'input-error' : ''}`}
+                style={{ paddingLeft: '2.75rem', borderColor: isError('phone') ? '#ef4444' : '' }} 
+                value={formik.values.phone} 
+                onChange={formik.handleChange} 
+                onBlur={formik.handleBlur}
+                placeholder="9876543210" 
+              />
             </div>
+            <ErrorMsg name="phone" />
           </div>
 
           <div className="col-6">
             <label className="label-premium">Email Address (Optional)</label>
             <div style={{ position: 'relative' }}>
-              <Mail size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-              <input disabled={saving} type="email" className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="patient@example.com" />
+              <Mail size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('email') ? '#ef4444' : 'var(--text-muted)', opacity: 0.5 }} />
+              <input 
+                name="email"
+                disabled={saving} 
+                type="email" 
+                className={`input-premium ${isError('email') ? 'input-error' : ''}`}
+                style={{ paddingLeft: '2.75rem' }} 
+                value={formik.values.email} 
+                onChange={formik.handleChange} 
+                onBlur={formik.handleBlur}
+                placeholder="patient@example.com" 
+              />
             </div>
+            <ErrorMsg name="email" />
           </div>
           <div className="col-3">
             <label className="label-premium">Age <span style={{ color: '#ef4444' }}>*</span></label>
-            <input required disabled={saving} type="number" className="input-premium" value={formData.age} onChange={(e) => setFormData({...formData, age: e.target.value})} placeholder="0" />
+            <input 
+              name="age"
+              disabled={saving} 
+              type="number" 
+              className={`input-premium ${isError('age') ? 'input-error' : ''}`}
+              style={{ borderColor: isError('age') ? '#ef4444' : '' }}
+              value={formik.values.age} 
+              onChange={formik.handleChange} 
+              onBlur={formik.handleBlur}
+              placeholder="0" 
+            />
+            <ErrorMsg name="age" />
           </div>
           <div className="col-3">
             <label className="label-premium">Gender</label>
-            <select className="input-premium" value={formData.gender} onChange={(e) => setFormData({...formData, gender: e.target.value})}>
+            <select 
+              name="gender"
+              className="input-premium" 
+              value={formik.values.gender} 
+              onChange={formik.handleChange}
+            >
               <option value="" disabled>Select Gender</option>
               <option value="Male">Male</option>
               <option value="Female">Female</option>
@@ -188,25 +278,23 @@ export default function EditPatientPage() {
             </select>
           </div>
           
-          <div className="col-12" style={{ marginBottom: '1.5rem' }}>
-            <label className="label-premium">Current Clinical Condition</label>
-            <div style={{ position: 'relative' }}>
-              <Activity size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-              <select className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})}>
-                <option value="New Case">New Case</option>
-                <option value="Stable">Stable</option>
-                <option value="Recovering">Recovering</option>
-                <option value="Critical">Critical</option>
-              </select>
-            </div>
-          </div>
-
           <div className="col-12">
             <label className="label-premium">Residential Address <span style={{ color: '#ef4444' }}>*</span></label>
             <div style={{ position: 'relative' }}>
-              <MapPin size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-              <input required disabled={saving} type="text" className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} placeholder="Complete physical address..." />
+              <MapPin size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('address') ? '#ef4444' : 'var(--text-muted)', opacity: isError('address') ? 0.8 : 0.5 }} />
+              <input 
+                name="address"
+                disabled={saving} 
+                type="text" 
+                className={`input-premium ${isError('address') ? 'input-error' : ''}`}
+                style={{ paddingLeft: '2.75rem', borderColor: isError('address') ? '#ef4444' : '' }} 
+                value={formik.values.address} 
+                onChange={formik.handleChange} 
+                onBlur={formik.handleBlur}
+                placeholder="Complete physical address..." 
+              />
             </div>
+            <ErrorMsg name="address" />
           </div>
           {/* Section 2: Clinical Profiling */}
           <div className="col-12" style={{ 
@@ -229,27 +317,78 @@ export default function EditPatientPage() {
             <label className="label-premium">Referred By</label>
             <div style={{ position: 'relative' }}>
               <Stethoscope size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-              <input disabled={saving} type="text" className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.referredBy} onChange={(e) => setFormData({ ...formData, referredBy: e.target.value })} placeholder="Physician / Source" />
+              <input 
+                name="referredBy"
+                disabled={saving} 
+                type="text" 
+                className="input-premium" 
+                style={{ paddingLeft: '2.75rem' }} 
+                value={formik.values.referredBy} 
+                onChange={formik.handleChange} 
+                placeholder="Physician / Source" 
+              />
             </div>
           </div>
           <div className="col-4">
             <label className="label-premium">Occupation</label>
             <div style={{ position: 'relative' }}>
               <Briefcase size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-              <input disabled={saving} type="text" className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.occupation} onChange={(e) => setFormData({ ...formData, occupation: e.target.value })} placeholder="Profession" />
+              <input 
+                name="occupation"
+                disabled={saving} 
+                type="text" 
+                className="input-premium" 
+                style={{ paddingLeft: '2.75rem' }} 
+                value={formik.values.occupation} 
+                onChange={formik.handleChange} 
+                placeholder="Profession" 
+              />
             </div>
           </div>
-          <div className="col-4">
-            <label className="label-premium">Lifestyle Habits</label>
-            <div style={{ position: 'relative' }}>
-              <Activity size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-              <input disabled={saving} type="text" className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.habits} onChange={(e) => setFormData({ ...formData, habits: e.target.value })} placeholder="Smoking, Alcohol, etc." />
+          <div className="col-12" style={{ marginBottom: '1.5rem' }}>
+            <label className="label-premium">Lifestyle Habits & Assessment</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.5rem' }}>
+              {habitOptions.map(h => {
+                const isSelected = formik.values.habits.includes(h);
+                return (
+                  <button
+                    key={h}
+                    type="button"
+                    onClick={() => toggleHabit(h)}
+                    style={{
+                      padding: '0.6rem 1.25rem',
+                      borderRadius: '2rem',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      border: '1px solid',
+                      borderColor: isSelected ? 'var(--primary)' : 'var(--border-subtle)',
+                      background: isSelected ? 'rgba(13, 148, 136, 0.1)' : 'white',
+                      color: isSelected ? 'var(--primary)' : 'var(--text-muted)',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}
+                  >
+                    {isSelected && <CheckCircle2 size={14} />}
+                    {h}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           <div className="col-12">
             <label className="label-premium">Medical Complaint Summary</label>
-            <textarea disabled={saving} className="textarea-premium" style={{ height: '80px' }} value={formData.reasonForVisit} onChange={(e) => setFormData({ ...formData, reasonForVisit: e.target.value })} placeholder="Primary reason for seeking clinical help..." />
+            <textarea 
+              name="reasonForVisit"
+              disabled={saving} 
+              className="textarea-premium" 
+              style={{ height: '80px' }} 
+              value={formik.values.reasonForVisit} 
+              onChange={formik.handleChange} 
+              placeholder="Primary reason for seeking clinical help..." 
+            />
           </div>
 
           {/* Clinical Vitals Section */}
@@ -278,14 +417,32 @@ export default function EditPatientPage() {
                 <label className="label-premium" style={{ fontSize: '0.65rem' }}>Weight (KG)</label>
                 <div style={{ position: 'relative' }}>
                   <Scale size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-                  <input disabled={saving} type="number" className="input-premium" style={{ paddingLeft: '2.25rem' }} value={formData.weight} onChange={(e) => setFormData({ ...formData, weight: e.target.value })} placeholder="0" />
+                  <input 
+                    name="weight"
+                    disabled={saving} 
+                    type="number" 
+                    className="input-premium" 
+                    style={{ paddingLeft: '2.25rem' }} 
+                    value={formik.values.weight} 
+                    onChange={formik.handleChange} 
+                    placeholder="0" 
+                  />
                 </div>
               </div>
               <div className="col-4">
                 <label className="label-premium" style={{ fontSize: '0.65rem' }}>Height (CM)</label>
                 <div style={{ position: 'relative' }}>
                   <Ruler size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-                  <input disabled={saving} type="number" className="input-premium" style={{ paddingLeft: '2.25rem' }} value={formData.height} onChange={(e) => setFormData({ ...formData, height: e.target.value })} placeholder="0" />
+                  <input 
+                    name="height"
+                    disabled={saving} 
+                    type="number" 
+                    className="input-premium" 
+                    style={{ paddingLeft: '2.25rem' }} 
+                    value={formik.values.height} 
+                    onChange={formik.handleChange} 
+                    placeholder="0" 
+                  />
                 </div>
               </div>
               <div className="col-4">
@@ -316,11 +473,12 @@ export default function EditPatientPage() {
           <div className="col-12" style={{ marginBottom: '2rem' }}>
             <label className="label-premium">Clinical Trajectory & Assessment</label>
             <textarea
+              name="remarks"
               className="textarea-premium"
               style={{ height: '120px' }}
               placeholder="Add final clinical context, long-term goals, or administrative notes for this patient file..."
-              value={formData.remarks}
-              onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+              value={formik.values.remarks}
+              onChange={formik.handleChange}
             />
           </div>
         </div>

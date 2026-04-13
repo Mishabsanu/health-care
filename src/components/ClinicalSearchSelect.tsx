@@ -13,6 +13,7 @@ interface ClinicalSearchSelectProps {
     displayValue?: string;
     onClear?: () => void;
     renderOption?: (option: any) => React.ReactNode;
+    error?: boolean;
 }
 
 /**
@@ -29,7 +30,8 @@ export default function ClinicalSearchSelect({
     value,
     displayValue,
     onClear,
-    renderOption
+    renderOption,
+    error
 }: ClinicalSearchSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -66,7 +68,7 @@ export default function ClinicalSearchSelect({
 
             {/* Selection Trigger */}
             <div
-                className={`input-premium ${isOpen ? 'focused' : ''}`}
+                className={`input-premium ${isOpen ? 'focused' : ''} ${error ? 'input-error' : ''}`}
                 style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -76,7 +78,8 @@ export default function ClinicalSearchSelect({
                     height: '52px',
                     position: 'relative',
                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    background: 'white'
+                    background: 'white',
+                    borderColor: error ? '#ef4444' : undefined
                 }}
                 onClick={() => setIsOpen(!isOpen)}
             >

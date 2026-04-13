@@ -1,32 +1,65 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, User, Calendar, Clock, Stethoscope, CheckCircle2, Building, MessageCircle, ClipboardList, Activity } from 'lucide-react';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
+import { ArrowLeft, User, Calendar, Clock, Stethoscope, CheckCircle2, MessageCircle, Activity } from 'lucide-react';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
+
+const validationSchema = Yup.object().shape({
+  patientId: Yup.string().required('Patient must be selected'),
+  doctorId: Yup.string().required('Specialist must be assigned'),
+  date: Yup.date().required('Appointment date is required'),
+  status: Yup.string().oneOf(['Scheduled', 'Confirmed', 'Completed', 'Cancelled']).required('Status is required'),
+});
 
 export default function EditAppointmentPage() {
   const router = useRouter();
   const { id } = useParams();
-  const { user, setIsSyncing, showToast } = usePCMSStore();
+  const { setIsSyncing, showToast } = usePCMSStore();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [patients, setPatients] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
 
-  const [formData, setFormData] = useState({
-    patientId: '',
-    doctorId: '',
-    date: '',
-    time: '',
-    type: '',
-    status: '',
-    description: ''
+  const formik = useFormik({
+    initialValues: {
+      patientId: '',
+      doctorId: '',
+      date: '',
+      time: '',
+      status: 'Scheduled',
+      description: ''
+    },
+    validationSchema,
+    enableReinitialize: true,
+    onSubmit: async (values) => {
+      setSaving(true);
+      setIsSyncing(true);
+      try {
+        const selectedPatient = patients.find(p => p._id === values.patientId);
+        const selectedDoctor = doctors.find(d => d._id === values.doctorId);
+
+        const payload = {
+          ...values,
+          patientName: selectedPatient?.name || 'Unknown Patient',
+          doctorName: selectedDoctor?.name || 'Unknown Specialist'
+        };
+
+        await api.put(`/appointments/${id}`, payload);
+        showToast('Clinical booking updated successfully.', 'success');
+        router.push('/appointments');
+      } catch (err) {
+        console.error('🚫 Scheduling Error | Failed to update clinical booking:', err);
+        showToast('Update failed. Please check medical scheduling data.', 'error');
+      } finally {
+        setSaving(false);
+        setIsSyncing(false);
+      }
+    },
   });
 
-  // -------------------------------------------------------------------
-  // SYNC | Fetch Clinical Record & Registry Data
-  // -------------------------------------------------------------------
   useEffect(() => {
     const fetchData = async () => {
       setIsSyncing(true);
@@ -39,7 +72,6 @@ export default function EditAppointmentPage() {
 
         const appointment = appRes.data;
         if (appointment) {
-          // Robust ID Resolution for selectors
           const resolvedPatientId =
             (typeof appointment.patientId === 'object' && appointment.patientId !== null)
               ? (appointment.patientId._id || appointment.patientId.id)
@@ -50,16 +82,12 @@ export default function EditAppointmentPage() {
               ? (appointment.doctorId._id || appointment.doctorId.id)
               : appointment.doctorId;
 
-
-
-          setFormData({
+          formik.setValues({
             patientId: resolvedPatientId || '',
             doctorId: resolvedDoctorId || '',
             date: appointment.date ? new Date(appointment.date).toISOString().split('T')[0] : '',
             time: appointment.time || '',
-            type: appointment.type || 'Consultation',
-
-            status: appointment.status || 'Booked',
+            status: appointment.status || 'Scheduled',
             description: appointment.description || ''
           });
         }
@@ -78,33 +106,18 @@ export default function EditAppointmentPage() {
     fetchData();
   }, [id, setIsSyncing, showToast]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setIsSyncing(true);
-    try {
-      const selectedPatient = patients.find(p => p._id === formData.patientId);
-      const selectedDoctor = doctors.find(d => d._id === formData.doctorId);
+  const selectedPatient = patients.find(p => p._id === formik.values.patientId);
 
-      const payload = {
-        ...formData,
-        patientName: selectedPatient?.name || 'Unknown Patient',
-        doctorName: selectedDoctor?.name || 'Unknown Specialist'
-      };
+  const isError = (field: keyof typeof formik.values) => 
+    formik.touched[field] && !!formik.errors[field];
 
-      await api.put(`/appointments/${id}`, payload);
-      showToast('Clinical booking updated successfully.', 'success');
-      router.push('/appointments');
-    } catch (err) {
-      console.error('🚫 Scheduling Error | Failed to update clinical booking:', err);
-      showToast('Update failed. Please check medical scheduling data.', 'error');
-    } finally {
-      setSaving(false);
-      setIsSyncing(false);
-    }
-  };
-
-  const selectedPatient = patients.find(p => p._id === formData.patientId);
+  const ErrorMsg = ({ name }: { name: keyof typeof formik.values }) => (
+    formik.touched[name] && formik.errors[name] ? (
+      <div style={{ color: '#ef4444', fontSize: '0.7rem', fontWeight: 700, marginTop: '0.4rem', marginLeft: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+        <span>⚠️ {formik.errors[name] as string}</span>
+      </div>
+    ) : null
+  );
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
@@ -115,8 +128,6 @@ export default function EditAppointmentPage() {
 
   return (
     <div className="edit-appointment-container animate-fade-in clinical-form-wide" style={{ paddingBottom: '7rem' }}>
-
-      {/* 🏥 CLINICAL HEADER */}
       <div style={{ marginBottom: '3rem' }}>
         <button
           onClick={() => router.back()}
@@ -128,9 +139,8 @@ export default function EditAppointmentPage() {
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Update medical session details, specialist assignment, or clinical status.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="clinical-form-card" style={{ opacity: saving ? 0.7 : 1 }}>
+      <form onSubmit={formik.handleSubmit} className="clinical-form-card" style={{ opacity: saving ? 0.7 : 1 }}>
         <div className="clinical-form-grid">
-
           {/* Section 1: Patient Linkage */}
           <div className="col-12" style={{
             marginBottom: '1.5rem',
@@ -190,67 +200,52 @@ export default function EditAppointmentPage() {
             </h3>
           </div>
 
-          <div className="col-4">
-            <label className="label-premium">Clinical Category</label>
-            <div style={{ position: 'relative' }}>
-              <ClipboardList size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-              <select className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })}>
-                <option value="Consultation">Clinical Consultation</option>
-                <option value="Therapy Session">Manual Therapy Session</option>
-                <option value="Follow-up">Diagnostic Follow-up</option>
-                <option value="Rehabilitation">Post-Op Rehabilitation</option>
-              </select>
-            </div>
-          </div>
-          <div className="col-4">
+          <div className="col-6">
             <label className="label-premium">Medical Specialist <span style={{ color: '#ef4444' }}>*</span></label>
             <div style={{ position: 'relative' }}>
-              <Stethoscope size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-              <select required className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.doctorId} onChange={(e) => setFormData({ ...formData, doctorId: e.target.value })}>
+              <Stethoscope size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('doctorId') ? '#ef4444' : 'var(--text-muted)', opacity: 0.5 }} />
+              <select name="doctorId" className={`input-premium ${isError('doctorId') ? 'input-error' : ''}`} style={{ paddingLeft: '2.75rem' }} value={formik.values.doctorId} onChange={formik.handleChange}>
                 <option value="" disabled>Select Specialist</option>
                 {doctors.map(d => <option key={d._id} value={d._id}>{d.name} ({d.specialization})</option>)}
               </select>
             </div>
+            <ErrorMsg name="doctorId" />
           </div>
 
-          <div className="col-6">
-            <label className="label-premium">Scheduled Date <span style={{ color: '#ef4444' }}>*</span></label>
-            <div style={{ position: 'relative' }}>
-              <Calendar size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-              <input required type="date" className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
+          <div className="col-12" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1.5rem' }}>
+            <div>
+              <label className="label-premium">Scheduled Date <span style={{ color: '#ef4444' }}>*</span></label>
+              <div style={{ position: 'relative' }}>
+                <Calendar size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('date') ? '#ef4444' : 'var(--text-muted)', opacity: 0.5 }} />
+                <input name="date" type="date" className={`input-premium ${isError('date') ? 'input-error' : ''}`} style={{ paddingLeft: '2.75rem' }} value={formik.values.date} onChange={formik.handleChange} onBlur={formik.handleBlur} />
+              </div>
+              <ErrorMsg name="date" />
             </div>
-          </div>
-          <div className="col-6">
-            <label className="label-premium">Scheduled Time (Optional)</label>
-            <div style={{ position: 'relative' }}>
-              <Clock size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5, pointerEvents: 'none' }} />
-              <input type="time" className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.time} onChange={(e) => setFormData({ ...formData, time: e.target.value })} />
+            <div>
+              <label className="label-premium">Scheduled Time (Optional)</label>
+              <div style={{ position: 'relative' }}>
+                <Clock size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('time') ? '#ef4444' : 'var(--text-muted)', opacity: 0.5 }} />
+                <input name="time" type="time" className={`input-premium ${isError('time') ? 'input-error' : ''}`} style={{ paddingLeft: '2.75rem' }} value={formik.values.time} onChange={formik.handleChange} onBlur={formik.handleBlur} />
+              </div>
+              <ErrorMsg name="time" />
             </div>
           </div>
 
-          <div className="col-12">
+          <div className="col-12" style={{ marginTop: '1.5rem' }}>
             <label className="label-premium">Booking Status</label>
             <div style={{ position: 'relative' }}>
               <Activity size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-              <select className="input-premium" style={{ paddingLeft: '2.75rem', fontWeight: 800, color: 'var(--primary)' }} value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}>
-                <option value="Booked">Booked</option>
+              <select name="status" className="input-premium" style={{ paddingLeft: '2.75rem', fontWeight: 800, color: 'var(--primary)' }} value={formik.values.status} onChange={formik.handleChange}>
+                <option value="Scheduled">Scheduled</option>
+                <option value="Confirmed">Confirmed</option>
                 <option value="Completed">Completed</option>
                 <option value="Cancelled">Cancelled</option>
               </select>
             </div>
+            <ErrorMsg name="status" />
           </div>
 
-          {/* Section 3: Clinical Remarks */}
-          <div className="col-12" style={{
-            margin: '3rem 0 1.5rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '1rem',
-            background: 'linear-gradient(90deg, rgba(15, 118, 110, 0.05) 0%, transparent 100%)',
-            padding: '0.75rem 1rem',
-            borderRadius: 'var(--radius-sm)',
-            borderLeft: '4px solid var(--primary)'
-          }}>
+          <div className="col-12" style={{ margin: '3rem 0 1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', background: 'linear-gradient(90deg, rgba(15, 118, 110, 0.05) 0%, transparent 100%)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', borderLeft: '4px solid var(--primary)' }}>
             <MessageCircle size={20} style={{ color: 'var(--primary)' }} />
             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
               Clinical <span className="gradient-text">Remarks</span>
@@ -259,41 +254,15 @@ export default function EditAppointmentPage() {
 
           <div className="col-12">
             <label className="label-premium">Conclusions / Session Notes</label>
-            <textarea
-              className="textarea-premium"
-              style={{ height: '120px' }}
-              placeholder="Add clinical trajectory summaries or file-specific directives for this session..."
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
+            <textarea name="description" className="textarea-premium" style={{ height: '120px' }} placeholder="Add clinical notes..." value={formik.values.description} onChange={formik.handleChange} />
           </div>
         </div>
 
-        {/* Action Row */}
         <div style={{ display: 'flex', gap: '1.25rem', justifyContent: 'flex-end', marginTop: '4rem' }}>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => router.back()}
-            style={{ padding: '0.85rem 2.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', fontWeight: 700, background: 'white', color: 'var(--text-muted)' }}
-          >
+          <button type="button" disabled={saving} onClick={() => router.back()} style={{ padding: '0.85rem 2.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', fontWeight: 700, background: 'white', color: 'var(--text-muted)' }}>
             CANCEL
           </button>
-          <button
-            type="submit"
-            disabled={saving}
-            style={{
-              padding: '0.85rem 3.5rem',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--primary)',
-              color: 'white',
-              fontWeight: 900,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              boxShadow: '0 10px 20px -5px rgba(13, 148, 136, 0.4)'
-            }}
-          >
+          <button type="submit" disabled={saving} style={{ padding: '0.85rem 3.5rem', borderRadius: 'var(--radius-md)', background: 'var(--primary)', color: 'white', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.75rem', boxShadow: '0 10px 20px -5px rgba(13, 148, 136, 0.4)' }}>
             {saving ? 'AUTHORIZING...' : <><CheckCircle2 size={18} /> AUTHORIZE UPDATE</>}
           </button>
         </div>

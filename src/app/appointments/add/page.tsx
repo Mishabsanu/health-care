@@ -1,44 +1,70 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
 import {
   ArrowLeft,
   User,
   Calendar,
   Clock,
-  Building,
   Search,
-  UserCheck,
-  AlertCircle,
-  ChevronRight,
-  MessageCircle,
   Stethoscope,
-  Info,
-  ClipboardList
+  MessageCircle,
 } from 'lucide-react';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
 import ClinicalSearchSelect from '@/components/ClinicalSearchSelect';
+
+const validationSchema = Yup.object().shape({
+  patientId: Yup.string().required('Please select a patient'),
+  doctorId: Yup.string().required('Please select a specialist'),
+  date: Yup.date().required('Appointment date is required').min(
+    new Date(new Date().setHours(0, 0, 0, 0)),
+    'Cannot book appointments in the past'
+  ),
+});
 
 export default function BookAppointmentPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [patients, setPatients] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
-
   const { showToast } = usePCMSStore();
-  const [formData, setFormData] = useState({
-    patientId: '',
-    doctorId: '',
-    date: new Date().toISOString().split('T')[0],
-    time: '',
-    type: 'Consultation',
-    status: 'Booked',
-    description: ''
-  });
 
-  const selectedPatient = patients.find(p => p._id === formData.patientId);
-  const selectedDoctor = doctors.find(d => d._id === formData.doctorId);
+  const formik = useFormik({
+    initialValues: {
+      patientId: '',
+      doctorId: '',
+      date: new Date().toISOString().split('T')[0],
+      time: '',
+      status: 'Scheduled',
+      description: ''
+    },
+    validationSchema,
+    onSubmit: async (values) => {
+      setLoading(true);
+      try {
+        const selectedPatient = patients.find(p => p._id === values.patientId);
+        const selectedDoctor = doctors.find(d => d._id === values.doctorId);
+
+        const payload = {
+          ...values,
+          patientName: selectedPatient?.name || 'Unknown Patient',
+          doctorName: selectedDoctor?.name || 'Unknown Specialist'
+        };
+
+        await api.post('/appointments', payload);
+        showToast('Clinical session successfully authorized.', 'success');
+        router.push('/appointments');
+      } catch (err) {
+        console.error('🚫 Scheduling Error | Failed to authorize appointment:', err);
+        showToast('Booking failed. Please check medical scheduling data.', 'error');
+      } finally {
+        setLoading(false);
+      }
+    },
+  });
 
   // -------------------------------------------------------------------
   // SYNC | Fetch Clinical Registry Data for Dropdowns
@@ -59,28 +85,18 @@ export default function BookAppointmentPage() {
     fetchData();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const payload = {
-        ...formData,
-        patientName: selectedPatient?.name || 'Unknown Patient',
-        doctorName: selectedDoctor?.name || 'Unknown Specialist'
-      };
+  const selectedPatient = patients.find(p => p._id === formik.values.patientId);
 
-      await api.post('/appointments', payload);
-      showToast('Clinical session successfully authorized.', 'success');
-      router.push('/appointments');
-    } catch (err) {
-      console.error('🚫 Scheduling Error | Failed to authorize appointment:', err);
-      showToast('Booking failed. Please check medical scheduling data.', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const isError = (field: keyof typeof formik.values) => 
+    formik.touched[field] && !!formik.errors[field];
 
-  const isFormValid = formData.patientId && formData.date;
+  const ErrorMsg = ({ name }: { name: keyof typeof formik.values }) => (
+    formik.touched[name] && formik.errors[name] ? (
+      <div style={{ color: '#ef4444', fontSize: '0.7rem', fontWeight: 700, marginTop: '0.4rem', marginLeft: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+        <span>⚠️ {formik.errors[name] as string}</span>
+      </div>
+    ) : null
+  );
 
   return (
     <div className="book-appointment-container animate-fade-in clinical-form-wide" style={{ paddingBottom: '9rem' }}>
@@ -97,10 +113,10 @@ export default function BookAppointmentPage() {
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Orchestrate a medical session between a specialist and patient.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="clinical-form-card" style={{ opacity: loading ? 0.7 : 1 }}>
+      <form onSubmit={formik.handleSubmit} className="clinical-form-card" style={{ opacity: loading ? 0.7 : 1 }}>
         <div className="clinical-form-grid">
 
-          {/* Section 1: Patient Identification (Simplified UX) */}
+          {/* Section 1: Patient Identification */}
           <div className="col-12" style={{ 
               marginBottom: '1.5rem', 
               display: 'flex', 
@@ -115,16 +131,19 @@ export default function BookAppointmentPage() {
             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
               Patient <span className="gradient-text">Selection</span>
             </h3>
-                   <div className="col-12" style={{ marginBottom: '2rem' }}>
+          </div>
+
+          <div className="col-12" style={{ marginBottom: '2rem' }}>
             <ClinicalSearchSelect 
               label="Search Clinical Registry *"
               options={patients}
-              value={formData.patientId}
+              value={formik.values.patientId}
               placeholder="Search File (Name / Phone / Patient ID)..."
               searchFields={['name', 'phone', 'patientId']}
-              onSelect={(p) => setFormData({ ...formData, patientId: p._id })}
-              onClear={() => setFormData({ ...formData, patientId: '' })}
+              onSelect={(p) => formik.setFieldValue('patientId', p._id)}
+              onClear={() => formik.setFieldValue('patientId', '')}
               icon={<Search size={18} />}
+              error={isError('patientId')}
               renderOption={(p) => (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -140,8 +159,9 @@ export default function BookAppointmentPage() {
                 </div>
               )}
             />
+            <ErrorMsg name="patientId" />
 
-            {formData.patientId && (
+            {formik.values.patientId && selectedPatient && (
               <div className="animate-fade-in" style={{
                 marginTop: '1.5rem',
                 display: 'flex',
@@ -155,22 +175,21 @@ export default function BookAppointmentPage() {
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
                   <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.25rem', boxShadow: '0 6px 12px rgba(15, 118, 110, 0.2)' }}>
-                    {selectedPatient?.name?.[0]}
+                    {selectedPatient.name?.[0]}
                   </div>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.1rem' }}>
-                       <p style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '1.25rem', letterSpacing: '-0.01em' }}>{selectedPatient?.name}</p>
+                       <p style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '1.25rem', letterSpacing: '-0.01em' }}>{selectedPatient.name}</p>
                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 800, background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '2rem' }}>VERIFIED FILE</span>
                     </div>
-                    <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Selected Record: {selectedPatient?.phone} • [#{selectedPatient?.patientId || 'N/A'}]</p>
+                    <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Selected Record: {selectedPatient.phone} • [#{selectedPatient.patientId || 'N/A'}]</p>
                   </div>
                 </div>
               </div>
             )}
           </div>
-      </div>
 
-          {/* Section 2: Clinical Details */}
+          {/* Section 2: Clinical Logistics */}
           <div className="col-12" style={{ 
               margin: '2rem 0 1.5rem', 
               display: 'flex', 
@@ -187,28 +206,17 @@ export default function BookAppointmentPage() {
             </h3>
           </div>
 
-          <div className="col-6">
-            <label className="label-premium">Clinical Category</label>
-            <div style={{ position: 'relative' }}>
-              <ClipboardList size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-              <select className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })}>
-                <option value="Consultation">Clinical Consultation</option>
-                <option value="Therapy Session">Manual Therapy Session</option>
-                <option value="Follow-up">Diagnostic Follow-up</option>
-                <option value="Rehabilitation">Post-Op Rehabilitation</option>
-              </select>
-            </div>
-          </div>
-          <div className="col-6">
+          <div className="col-12" style={{ marginBottom: '1.5rem' }}>
             <ClinicalSearchSelect 
-              label="Medical Specialist"
+              label="Medical Specialist *"
               options={doctors}
-              value={formData.doctorId}
+              value={formik.values.doctorId}
               placeholder="Search Specialist..."
               searchFields={['name', 'specialization']}
-              onSelect={(d) => setFormData({ ...formData, doctorId: d._id })}
-              onClear={() => setFormData({ ...formData, doctorId: '' })}
+              onSelect={(d) => formik.setFieldValue('doctorId', d._id)}
+              onClear={() => formik.setFieldValue('doctorId', '')}
               icon={<Stethoscope size={16} />}
+              error={isError('doctorId')}
               renderOption={(d) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(15, 118, 110, 0.1)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.7rem' }}>
@@ -221,21 +229,40 @@ export default function BookAppointmentPage() {
                 </div>
               )}
             />
+            <ErrorMsg name="doctorId" />
           </div>
 
           <div className="col-6">
             <label className="label-premium">Scheduled Date <span style={{ color: '#ef4444' }}>*</span></label>
             <div style={{ position: 'relative' }}>
-              <Calendar size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-              <input required type="date" className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
+              <Calendar size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('date') ? '#ef4444' : 'var(--text-muted)', opacity: 0.5 }} />
+              <input 
+                name="date"
+                type="date" 
+                className={`input-premium ${isError('date') ? 'input-error' : ''}`}
+                style={{ paddingLeft: '2.75rem' }} 
+                value={formik.values.date} 
+                onChange={formik.handleChange} 
+                onBlur={formik.handleBlur}
+              />
             </div>
+            <ErrorMsg name="date" />
           </div>
           <div className="col-6">
             <label className="label-premium">Scheduled Time (Optional)</label>
             <div style={{ position: 'relative' }}>
-              <Clock size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-              <input type="time" className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.time} onChange={(e) => setFormData({ ...formData, time: e.target.value })} />
+              <Clock size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('time') ? '#ef4444' : 'var(--text-muted)', opacity: 0.5 }} />
+              <input 
+                name="time"
+                type="time" 
+                className={`input-premium ${isError('time') ? 'input-error' : ''}`}
+                style={{ paddingLeft: '2.75rem' }} 
+                value={formik.values.time} 
+                onChange={formik.handleChange} 
+                onBlur={formik.handleBlur}
+              />
             </div>
+            <ErrorMsg name="time" />
           </div>
 
           {/* Section 3: Conclusion / Remarks */}
@@ -258,10 +285,11 @@ export default function BookAppointmentPage() {
           <div className="col-12">
             <label className="label-premium">Conclusions / Clinical Notes</label>
             <textarea
+              name="description"
               className="textarea-premium"
-              placeholder="Add final clinical notes..."
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Add clinical notes..."
+              value={formik.values.description}
+              onChange={formik.handleChange}
             />
           </div>
 
@@ -277,15 +305,14 @@ export default function BookAppointmentPage() {
             </button>
             <button
               type="submit"
-              disabled={!isFormValid || loading}
+              disabled={loading}
               style={{
                 padding: '0.85rem 3.5rem',
                 borderRadius: 'var(--radius-md)',
                 background: 'var(--primary)',
                 color: 'white',
                 fontWeight: 700,
-                boxShadow: 'var(--shadow-sm)',
-                opacity: !isFormValid ? 0.5 : 1
+                boxShadow: 'var(--shadow-sm)'
               }}
             >
               {loading ? 'AUTHORIZING...' : 'AUTHORIZE BOOKING'}

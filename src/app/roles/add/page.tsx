@@ -1,60 +1,60 @@
 'use client'
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import api from '@/services/api';
 import PermissionMatrix from '@/components/PermissionMatrix';
+import api from '@/services/api';
+import { usePCMSStore } from '@/store/useStore';
+import { useFormik } from 'formik';
+import { ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import * as Yup from 'yup';
 
-/**
- * 🛡️ AddRolePage | Dynamic Role Architect
- * Modern UI for defining clinical authorization matrices.
- */
+const validationSchema = Yup.object().shape({
+  name: Yup.string().trim().required('Role name is required'),
+  description: Yup.string(),
+});
+
 export default function AddRolePage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const { showToast } = usePCMSStore();
   const [availablePermissions, setAvailablePermissions] = useState<any>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    permissions: [] as string[],
-    allAccess: false
-  });
+  const [permissions, setPermissions] = useState<string[]>([]);
+  const [allAccess, setAllAccess] = useState(false);
 
-  // -------------------------------------------------------------------
-  // SYNC | Fetch Master Permission Registry
-  // -------------------------------------------------------------------
   useEffect(() => {
-    const fetchPerms = async () => {
-      try {
-        const res = await api.get('/roles/permissions');
-        // Handle both object (Registry) and array (Legacy) formats
-        const data = res.data;
-        setAvailablePermissions(data);
-      } catch (err) {
-        console.error('🚫 Registry Error | Failed to fetch clinical permissions:', err);
-      }
-    };
-    fetchPerms();
+    api.get('/roles/permissions')
+      .then(res => setAvailablePermissions(res.data))
+      .catch(err => console.error('🚫 Failed to fetch permissions:', err));
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const formik = useFormik({
+    initialValues: {
+      name: '',
+      description: '',
+    },
+    validationSchema,
+    onSubmit: async (values) => {
+      if (!allAccess && permissions.length === 0) {
+        showToast('⚠️ Please select at least one permission or enable Full Access.', 'error');
+        return;
+      }
+      try {
+        await api.post('/roles', {
+          name: values.name,
+          description: values.description,
+          permissions,
+          allAccess,
+        });
+        showToast('Role created successfully.', 'success');
+        router.push('/roles');
+      } catch (err) {
+        console.error('🚫 Registry Error | Failed to register clinical role:', err);
+        showToast('Role registration failed. Please check data.', 'error');
+      }
+    },
+  });
 
-    if (!formData.allAccess && formData.permissions.length === 0) {
-      alert('⚠️ Security Warning | Please select at least one permission or enable Full Access.');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await api.post('/roles', formData);
-      router.push('/roles');
-    } catch (err) {
-      console.error('🚫 Registry Error | Failed to register clinical role:', err);
-      alert('Role registration failed. Please check medical data.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const isErr = (field: keyof typeof formik.values) =>
+    formik.touched[field] && formik.errors[field];
 
   return (
     <div className="add-role-container animate-fade-in clinical-form-wide" style={{ paddingBottom: '5rem' }}>
@@ -62,92 +62,90 @@ export default function AddRolePage() {
         <div>
           <button
             onClick={() => router.back()}
-            style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', cursor: 'pointer' }}
+            style={{ marginBottom: '1rem', color: 'var(--primary)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, background: 'rgba(15,118,110,0.08)', padding: '0.5rem 1rem', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer' }}
           >
-            ← Back to Registry
+            <ArrowLeft size={16} /> Back to Registry
           </button>
           <h1 style={{ fontSize: '2.25rem', letterSpacing: '-0.03em', fontWeight: 800 }}>
             Architect <span className="gradient-text">Clinical Role</span>
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: '0.5rem' }}>
-            Define a custom authorization matrix for medical staff and administrators.
+            Define a custom authorization matrix. Fields marked <span style={{ color: '#ef4444' }}>*</span> are required.
           </p>
         </div>
 
+        {/* Super Admin Toggle */}
         <div style={{ background: 'white', padding: '1rem 1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Super Admin Mode</div>
-            <div style={{ fontSize: '0.85rem', color: formData.allAccess ? 'var(--primary)' : 'var(--text-muted)' }}>{formData.allAccess ? 'Absolute Access Enabled' : 'Modular Access Only'}</div>
+            <div style={{ fontSize: '0.85rem', color: allAccess ? 'var(--primary)' : 'var(--text-muted)' }}>
+              {allAccess ? 'Absolute Access Enabled' : 'Modular Access Only'}
+            </div>
           </div>
           <div
-            onClick={() => setFormData({ ...formData, allAccess: !formData.allAccess })}
-            style={{
-              width: '50px',
-              height: '26px',
-              background: formData.allAccess ? 'var(--primary)' : '#cbd5e1',
-              borderRadius: '20px',
-              position: 'relative',
-              cursor: 'pointer',
-              transition: 'var(--transition-smooth)'
-            }}
+            onClick={() => setAllAccess(v => !v)}
+            style={{ width: '50px', height: '26px', background: allAccess ? 'var(--primary)' : '#cbd5e1', borderRadius: '20px', position: 'relative', cursor: 'pointer', transition: 'var(--transition-smooth)' }}
           >
-            <div style={{
-              width: '20px',
-              height: '20px',
-              background: 'white',
-              borderRadius: '50%',
-              position: 'absolute',
-              top: '3px',
-              left: formData.allAccess ? '27px' : '3px',
-              transition: 'var(--transition-smooth)',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-            }}></div>
+            <div style={{ width: '20px', height: '20px', background: 'white', borderRadius: '50%', position: 'absolute', top: '3px', left: allAccess ? '27px' : '3px', transition: 'var(--transition-smooth)', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }} />
           </div>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ opacity: loading ? 0.7 : 1 }}>
+      <form onSubmit={formik.handleSubmit} style={{ opacity: formik.isSubmitting ? 0.7 : 1 }}>
         {/* Core Identity Card */}
         <div className="clinical-form-card" style={{ marginBottom: '2.5rem' }}>
           <div className="clinical-form-grid">
             <div className="col-4">
-              <label className="label-premium">Role Identity Name</label>
+              <label className="label-premium">
+                Role Identity Name <span style={{ color: '#ef4444' }}>*</span>
+              </label>
               <input
-                required
-                disabled={loading}
+                name="name"
                 type="text"
-                className="input-premium"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className={`input-premium ${isErr('name') ? 'input-error' : ''}`}
+                style={{ borderColor: isErr('name') ? '#ef4444' : '' }}
+                value={formik.values.name}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
                 placeholder="e.g. Senior Physiotherapist"
+                disabled={formik.isSubmitting}
               />
+              {formik.touched.name && formik.errors.name && (
+                <div style={{ color: '#ef4444', fontSize: '0.72rem', fontWeight: 700, marginTop: '0.35rem' }}>
+                  ⚠️ {formik.errors.name}
+                </div>
+              )}
             </div>
+
             <div className="col-8">
-              <label className="label-premium">Clinical Scope / Description</label>
+              <label className="label-premium">
+                Clinical Scope / Description <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 500 }}>(Optional)</span>
+              </label>
               <textarea
-                disabled={loading}
+                name="description"
                 rows={1}
                 className="input-premium"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                value={formik.values.description}
+                onChange={formik.handleChange}
                 placeholder="Define the scope of clinical responsibilities..."
                 style={{ height: '48px', resize: 'none' }}
+                disabled={formik.isSubmitting}
               />
             </div>
           </div>
         </div>
 
-        {/* Permission Matrix Section */}
+        {/* Permission Matrix */}
         <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <h2 style={{ fontSize: '1.35rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
             Authorization <span className="gradient-text">Matrix</span>
           </h2>
           <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.85rem' }}>
             <span style={{ color: 'var(--text-muted)' }}>
-              <strong style={{ color: 'var(--text-main)' }}>{formData.permissions.length}</strong> Modules Active
+              <strong style={{ color: 'var(--text-main)' }}>{permissions.length}</strong> Modules Active
             </span>
-            <span style={{ color: formData.allAccess ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 700 }}>
-              {formData.allAccess ? '⚠️ FULL BYPASS ACTIVE' : '✓ CONTROLLED ACCESS'}
+            <span style={{ color: allAccess ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 700 }}>
+              {allAccess ? '⚠️ FULL BYPASS ACTIVE' : '✓ CONTROLLED ACCESS'}
             </span>
           </div>
         </div>
@@ -155,9 +153,9 @@ export default function AddRolePage() {
         {availablePermissions ? (
           <PermissionMatrix
             availablePermissions={availablePermissions}
-            selectedPermissions={formData.permissions}
-            onChange={(perms) => setFormData({ ...formData, permissions: perms })}
-            disabled={formData.allAccess}
+            selectedPermissions={permissions}
+            onChange={setPermissions}
+            disabled={allAccess}
           />
         ) : (
           <div className="card" style={{ textAlign: 'center', padding: '5rem', color: 'var(--text-muted)', background: 'white' }}>
@@ -166,11 +164,11 @@ export default function AddRolePage() {
           </div>
         )}
 
-        {/* Global Controls */}
+        {/* Actions */}
         <div style={{ display: 'flex', gap: '1.5rem', justifyContent: 'flex-end', marginTop: '3rem', marginBottom: '5rem' }}>
           <button
             type="button"
-            disabled={loading}
+            disabled={formik.isSubmitting}
             onClick={() => router.back()}
             style={{ padding: '0.85rem 2.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', fontWeight: 600, background: 'white' }}
           >
@@ -178,10 +176,10 @@ export default function AddRolePage() {
           </button>
           <button
             type="submit"
-            disabled={loading}
-            style={{ padding: '0.85rem 3.5rem', borderRadius: 'var(--radius-md)', background: 'var(--primary)', color: 'white', fontWeight: 700, boxShadow: 'var(--shadow-sm)' }}
+            disabled={formik.isSubmitting}
+            style={{ padding: '0.85rem 3.5rem', borderRadius: 'var(--radius-md)', background: 'var(--primary)', color: 'white', fontWeight: 700, boxShadow: 'var(--shadow-sm)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}
           >
-            {loading ? 'Initializing Dynamic Role...' : 'SAVE CLINICAL ROLE'}
+            {formik.isSubmitting ? 'Initializing...' : <><CheckCircle2 size={18} /> SAVE CLINICAL ROLE</>}
           </button>
         </div>
       </form>

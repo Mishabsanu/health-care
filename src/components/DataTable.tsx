@@ -45,7 +45,10 @@ interface DataTableProps<T> {
     onPageChange: (page: number) => void;
     onSearchChange: (search: string) => void;
     onFilterChange: (filters: Record<string, string[]>) => void;
+    externalFilters?: Record<string, string[]>;
+    externalSearch?: string;
   };
+  getRowStyle?: (item: T) => React.CSSProperties;
 }
 
 export default function DataTable<T extends { id: string }>({ 
@@ -58,7 +61,8 @@ export default function DataTable<T extends { id: string }>({
   searchPlaceholder = "Search clinical records...",
   defaultPageSize = 10,
   filterableFields = [],
-  serverPagination
+  serverPagination,
+  getRowStyle
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(serverPagination?.currentPage || 1);
@@ -103,6 +107,23 @@ export default function DataTable<T extends { id: string }>({
       serverPagination.onPageChange(currentPage);
     }
   }, [currentPage, serverPagination]);
+
+  // 🔄 Sync from External (Parent) -> Internal
+  useEffect(() => {
+    if (serverPagination?.externalFilters) {
+      const current = JSON.stringify(activeFilters);
+      const incoming = JSON.stringify(serverPagination.externalFilters);
+      if (current !== incoming) {
+        setActiveFilters(serverPagination.externalFilters);
+      }
+    }
+  }, [serverPagination?.externalFilters, activeFilters]);
+
+  useEffect(() => {
+    if (serverPagination?.externalSearch !== undefined && serverPagination.externalSearch !== searchTerm) {
+      setSearchTerm(serverPagination.externalSearch);
+    }
+  }, [serverPagination?.externalSearch, searchTerm]);
 
   // -------------------------------------------------------------------
   // LOGIC | Data Processing Center
@@ -415,7 +436,15 @@ export default function DataTable<T extends { id: string }>({
             </thead>
             <tbody>
               {currentData.map((item) => (
-                <tr key={item.id} className="table-row-hover" style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'var(--transition-smooth)' }}>
+                <tr 
+                  key={item.id} 
+                  className="table-row-hover" 
+                  style={{ 
+                    borderBottom: '1px solid var(--border-subtle)', 
+                    transition: 'var(--transition-smooth)',
+                    ...getRowStyle?.(item)
+                  }}
+                >
                   {columns.map((col, idx) => {
                     const value = typeof col.key === 'function' ? col.key(item) : String(pathResolve(item, col.key as string) || '');
                     

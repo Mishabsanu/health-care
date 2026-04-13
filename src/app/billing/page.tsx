@@ -5,7 +5,7 @@ import DataTable from '@/components/DataTable';
 import { usePCMSStore } from '@/store/useStore';
 import api from '@/services/api';
 import { generateInvoicePDF } from '@/utils/pdfGenerator';
-import { Download, CheckCircle2 } from 'lucide-react';
+import { Download, CheckCircle2, Printer } from 'lucide-react';
 import HasPermission from '@/components/HasPermission';
 import { usePermission } from '@/hooks/usePermission';
 
@@ -83,9 +83,9 @@ export default function BillingPage() {
         discount: i.discount || 0,
         tax: i.tax || 0,
         amount: i.amount,
-        clinicName: 'Main Clinic',
-        clinicAddress: '123 Health St, Clinical City',
-        clinicPhone: '+1 (555) 123-4567'
+        clinicName: 'Physio 4',
+        clinicAddress: 'Edavanna Central, Kerala',
+        clinicPhone: '976441'
     });
   };
 
@@ -122,7 +122,7 @@ export default function BillingPage() {
 
   const columns = [
     { 
-      header: 'INVOICE #', 
+      header: 'BILL NO', 
       key: 'id' as keyof Invoice,
       style: { fontWeight: 700, color: 'var(--primary)', letterSpacing: '0.02em', fontFamily: 'monospace', fontSize: '0.85rem' } 
     },
@@ -180,13 +180,13 @@ export default function BillingPage() {
             onClick={() => router.push('/billing/generate')}
             style={{ background: 'var(--primary)', color: 'white', padding: '0.8rem 1.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600 }}
           >
-            Generate Invoice
+            Generate Bill
           </button>
         </HasPermission>
       </div>
 
         <DataTable 
-          data={invoices.map(i => ({ ...i, id: i._id }))}
+          data={invoices}
           columns={columns}
           searchPlaceholder="Search by patient or invoice #..."
           onView={(i) => router.push(`/billing/${i._id}`)}
@@ -203,12 +203,44 @@ export default function BillingPage() {
             const inv = invoices.find(i => i._id === item._id) || item as Invoice;
             return (
               <>
-                {/* 📥 Download PDF */}
+                {/* 🖨️ Print Bill */}
                 <HasPermission permission="billing:view">
                   <button
                     onClick={(e) => { e.stopPropagation(); handleDownloadPDF(inv); }}
+                    title="Print Clinical Bill"
                     className="glass-interactive"
-                    title="Download Invoice PDF"
+                    style={{
+                      height: '40px',
+                      padding: '0 1rem',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      border: '1.5px solid var(--primary)',
+                      background: 'rgba(15, 118, 110, 0.05)',
+                      color: 'var(--primary)',
+                      fontSize: '0.7rem',
+                      fontWeight: 900,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    <Printer size={15} /> PRINT
+                  </button>
+                </HasPermission>
+
+                {/* 💬 WhatsApp Notification */}
+                {inv.patientId?.phone && (
+                  <button
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      const msg = `Hello ${inv.patientId.name}, your clinical bill (${inv.id}) for INR ${inv.amount.toLocaleString()} has been generated.`;
+                      if (inv.patientId.phone) {
+                        window.open(`https://wa.me/${inv.patientId.phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+                      }
+                    }}
+                    className="glass-interactive"
+                    title="Send via WhatsApp"
                     style={{
                       width: '40px',
                       height: '40px',
@@ -216,15 +248,17 @@ export default function BillingPage() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      border: '1.5px solid var(--border-subtle)',
+                      border: '1.5px solid #25D366',
                       background: 'white',
-                      color: '#6366f1',
+                      color: '#25D366',
                       cursor: 'pointer'
                     }}
                   >
-                    <Download size={17} />
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.246 2.248 3.484 5.232 3.484 8.412-.003 6.557-5.338 11.892-11.893 11.892-1.997-.001-3.951-.5-5.688-1.448l-6.309 1.656zm6.29-4.143c1.559.925 3.51 1.413 5.599 1.412 5.485 0 9.948-4.463 9.951-9.95.002-2.66-1.033-5.159-2.91-7.038-1.878-1.879-4.379-2.914-7.037-2.914-5.484 0-9.946 4.462-9.95 9.949-.001 2.052.502 4.053 1.455 5.86l-1.014 3.7 3.793-.993.104.064z"/>
+                    </svg>
                   </button>
-                </HasPermission>
+                )}
 
                 {/* ✅ Mark Paid — only for unpaid/partial invoices */}
                 {inv.status !== 'Paid' && (

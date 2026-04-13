@@ -16,7 +16,7 @@ interface Patient {
   age: number;
   gender: string;
   occupation: string;
-  status: 'Critical' | 'Stable' | 'Recovering' | 'New Case';
+  createdAt: string;
   lastVisit: string;
   createdBy?: { name: string };
 }
@@ -142,34 +142,13 @@ export default function PatientsPage() {
       )
     },
     {
-      header: 'CONDITION',
-      sortKey: 'status' as keyof Patient,
-      key: (p: Patient) => {
-        const statuses: Record<string, { bg: string, color: string }> = {
-          'Critical': { bg: '#fee2e2', color: '#991b1b' },
-          'Stable': { bg: '#dcfce7', color: '#166534' },
-          'Recovering': { bg: '#e0f2fe', color: '#0369a1' },
-          'New Case': { bg: '#f1f5f9', color: '#64748b' }
-        };
-        const config = statuses[p.status] || statuses['New Case'];
-        return (
-          <span style={{
-            background: config.bg,
-            color: config.color,
-            padding: '0.4rem 0.8rem',
-            borderRadius: 'var(--radius-sm)',
-            fontSize: '0.65rem',
-            fontWeight: 900,
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-            display: 'inline-block',
-            textAlign: 'center',
-            border: `1px solid ${config.color}20`
-          }}>
-            {p.status || 'New Case'}
-          </span>
-        );
-      }
+      header: 'CREATED DATE',
+      sortKey: 'createdAt' as keyof Patient,
+      key: (p: Patient) => (
+        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+          {new Date(p.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+        </span>
+      )
     },
     {
       header: 'CREATED BY',
@@ -182,11 +161,6 @@ export default function PatientsPage() {
   ];
 
   const filterableFields = [
-    {
-      label: 'Condition',
-      key: 'status' as keyof Patient,
-      options: ['Critical', 'Stable', 'Recovering', 'New Case']
-    },
     {
       label: 'Gender',
       key: 'gender' as keyof Patient,

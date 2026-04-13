@@ -1,186 +1,246 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
-import { Banknote } from 'lucide-react';
+import { ArrowLeft, User, Mail, Lock, Calendar, CreditCard, Banknote, ShieldCheck, CheckCircle2 } from 'lucide-react';
+
+const validationSchema = Yup.object().shape({
+  name: Yup.string().trim().required('Full name is required'),
+  email: Yup.string().email('Invalid email').required('Email is required'),
+  password: Yup.string().required('Password is required').min(6, 'Minimum 6 characters'),
+  roleId: Yup.string().required('Role is required'),
+  joinDate: Yup.string().required('Joining date is required'),
+  panCard: Yup.string(),
+  adharCard: Yup.string(),
+  bankName: Yup.string(),
+  accountNumber: Yup.string(),
+  ifscCode: Yup.string(),
+  basicSalary: Yup.number().typeError('Must be a number').min(0, 'Cannot be negative'),
+  allowance: Yup.number().typeError('Must be a number').min(0, 'Cannot be negative'),
+  deduction: Yup.number().typeError('Must be a number').min(0, 'Cannot be negative'),
+});
 
 export default function OnboardUserPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const { showToast } = usePCMSStore();
   const [roles, setRoles] = useState<any[]>([]);
 
-  const { showToast } = usePCMSStore();
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    roleId: '',
-    status: 'Active',
-    // 💼 KYC & Compensation
-    panCard: '',
-    adharCard: '',
-    accountNumber: '',
-    ifscCode: '',
-    bankName: '',
-    joinDate: new Date().toISOString().split('T')[0],
-    salaryDetails: {
-      basicSalary: 0,
-      allowance: 0,
-      deduction: 0
-    }
-  });
-
-  // -------------------------------------------------------------------
-  // SYNC | Fetch Clinical Registry Data for Dropdowns
-  // -------------------------------------------------------------------
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const rolesRes = await api.get('/roles');
-        setRoles(Array.isArray(rolesRes.data) ? rolesRes.data : (rolesRes.data?.data || []));
-      } catch (err) {
-        console.error('🚫 Registry Error | Failed to fetch clinical options:', err);
-      }
-    };
-    fetchData();
+    api.get('/roles')
+      .then(res => setRoles(Array.isArray(res.data) ? res.data : (res.data?.data || [])))
+      .catch(err => console.error('🚫 Failed to fetch roles:', err));
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const formik = useFormik({
+    initialValues: {
+      name: '',
+      email: '',
+      password: '',
+      roleId: '',
+      status: 'Active',
+      joinDate: new Date().toISOString().split('T')[0],
+      panCard: '',
+      adharCard: '',
+      bankName: '',
+      accountNumber: '',
+      ifscCode: '',
+      basicSalary: '',
+      allowance: '',
+      deduction: '',
+    },
+    validationSchema,
+    onSubmit: async (values) => {
+      try {
+        const payload = {
+          name: values.name,
+          email: values.email,
+          password: values.password,
+          roleId: values.roleId,
+          status: values.status,
+          panCard: values.panCard,
+          adharCard: values.adharCard,
+          bankName: values.bankName,
+          accountNumber: values.accountNumber,
+          ifscCode: values.ifscCode,
+          joinDate: values.joinDate,
+          salaryDetails: {
+            basicSalary: Number(values.basicSalary) || 0,
+            allowance: Number(values.allowance) || 0,
+            deduction: Number(values.deduction) || 0,
+          },
+        };
+        await api.post('/auth/register', payload);
+        showToast('Staff account created successfully.', 'success');
+        router.push('/users');
+      } catch (err) {
+        console.error('🚫 Registry Error | Failed to onboard staff:', err);
+        showToast('User registration failed. Please check personnel data.', 'error');
+      }
+    },
+  });
 
-    setLoading(true);
-    try {
-      await api.post('/auth/register', formData);
-      router.push('/users');
-    } catch (err) {
-      console.error('🚫 Registry Error | Failed to onboard clinical user:', err);
-      showToast('User registration failed. Please check personnel data.', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const isErr = (field: keyof typeof formik.values) =>
+    formik.touched[field] && formik.errors[field];
+
+  const ErrMsg = ({ name }: { name: keyof typeof formik.values }) =>
+    formik.touched[name] && formik.errors[name] ? (
+      <div style={{ color: '#ef4444', fontSize: '0.72rem', fontWeight: 700, marginTop: '0.35rem' }}>
+        ⚠️ {formik.errors[name] as string}
+      </div>
+    ) : null;
+
+  const basic = Number(formik.values.basicSalary) || 0;
+  const allowance = Number(formik.values.allowance) || 0;
+  const deduction = Number(formik.values.deduction) || 0;
+  const takeHome = basic + allowance - deduction;
 
   return (
     <div className="onboard-user-container animate-fade-in clinical-form-wide" style={{ paddingBottom: '5rem' }}>
       <div style={{ marginBottom: '2.5rem' }}>
-        <button
-          onClick={() => router.back()}
-          style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          ← Back to Personnel
+        <button onClick={() => router.back()} style={{ marginBottom: '1rem', color: 'var(--primary)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, background: 'rgba(15,118,110,0.08)', padding: '0.5rem 1rem', borderRadius: 'var(--radius-sm)' }}>
+          <ArrowLeft size={16} /> Back to Personnel
         </button>
         <h1 style={{ fontSize: '2.25rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Onboard <span className="gradient-text">Clinical Staff</span></h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: '0.5rem' }}>Initialize a new clinical personnel account with role-based access.</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: '0.5rem' }}>
+          Fields marked <span style={{ color: '#ef4444' }}>*</span> are required.
+        </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="clinical-form-card" style={{ opacity: loading ? 0.7 : 1 }} autoComplete="off">
+      <form onSubmit={formik.handleSubmit} className="clinical-form-card" style={{ opacity: formik.isSubmitting ? 0.7 : 1 }} autoComplete="off">
         <div className="clinical-form-grid">
-          {/* Section 1: Identity */}
+
+          {/* ── Section 1: Identity ── */}
+          <div className="col-12" style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: 'linear-gradient(90deg,rgba(15,118,110,0.05) 0%,transparent 100%)', borderRadius: 'var(--radius-sm)', borderLeft: '4px solid var(--primary)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <User size={18} style={{ color: 'var(--primary)' }} />
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 800 }}>Staff <span className="gradient-text">Identity</span></h3>
+          </div>
+
           <div className="col-12">
-            <label className="label-premium">Specialist Full Name</label>
-            <input required disabled={loading} type="text" className="input-premium" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Dr. Jane Smith" />
+            <label className="label-premium">Full Name <span style={{ color: '#ef4444' }}>*</span></label>
+            <div style={{ position: 'relative' }}>
+              <User size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isErr('name') ? '#ef4444' : 'var(--text-muted)', opacity: 0.6 }} />
+              <input name="name" type="text" className={`input-premium ${isErr('name') ? 'input-error' : ''}`} style={{ paddingLeft: '2.75rem', borderColor: isErr('name') ? '#ef4444' : '' }} value={formik.values.name} onChange={formik.handleChange} onBlur={formik.handleBlur} placeholder="e.g. Dr. Jane Smith" />
+            </div>
+            <ErrMsg name="name" />
           </div>
 
           <div className="col-6">
-            <label className="label-premium">Clinical Email (Username)</label>
-            <input required disabled={loading} type="email" className="input-premium" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="jane.smith@physio.com" autoComplete="none" />
+            <label className="label-premium">Clinical Email <span style={{ color: '#ef4444' }}>*</span></label>
+            <div style={{ position: 'relative' }}>
+              <Mail size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isErr('email') ? '#ef4444' : 'var(--text-muted)', opacity: 0.6 }} />
+              <input name="email" type="email" className={`input-premium ${isErr('email') ? 'input-error' : ''}`} style={{ paddingLeft: '2.75rem', borderColor: isErr('email') ? '#ef4444' : '' }} value={formik.values.email} onChange={formik.handleChange} onBlur={formik.handleBlur} placeholder="jane.smith@physio.com" autoComplete="none" />
+            </div>
+            <ErrMsg name="email" />
+          </div>
+
+          <div className="col-6">
+            <label className="label-premium">Password <span style={{ color: '#ef4444' }}>*</span></label>
+            <div style={{ position: 'relative' }}>
+              <Lock size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isErr('password') ? '#ef4444' : 'var(--text-muted)', opacity: 0.6 }} />
+              <input name="password" type="password" className={`input-premium ${isErr('password') ? 'input-error' : ''}`} style={{ paddingLeft: '2.75rem', borderColor: isErr('password') ? '#ef4444' : '' }} value={formik.values.password} onChange={formik.handleChange} onBlur={formik.handleBlur} placeholder="••••••••" autoComplete="new-password" />
+            </div>
+            <ErrMsg name="password" />
+          </div>
+
+          <div className="col-6">
+            <label className="label-premium">Primary Clinical Role <span style={{ color: '#ef4444' }}>*</span></label>
+            <div style={{ position: 'relative' }}>
+              <ShieldCheck size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isErr('roleId') ? '#ef4444' : 'var(--text-muted)', opacity: 0.6 }} />
+              <select name="roleId" className={`input-premium ${isErr('roleId') ? 'input-error' : ''}`} style={{ paddingLeft: '2.75rem', borderColor: isErr('roleId') ? '#ef4444' : '' }} value={formik.values.roleId} onChange={formik.handleChange} onBlur={formik.handleBlur}>
+                <option value="">— Select Role —</option>
+                {roles.map(r => <option key={r._id} value={r._id}>{r.name}</option>)}
+              </select>
+            </div>
+            <ErrMsg name="roleId" />
+          </div>
+
+          <div className="col-6">
+            <label className="label-premium">Joining Date <span style={{ color: '#ef4444' }}>*</span></label>
+            <div style={{ position: 'relative' }}>
+              <Calendar size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.6 }} />
+              <input name="joinDate" type="date" className={`input-premium ${isErr('joinDate') ? 'input-error' : ''}`} style={{ paddingLeft: '2.75rem' }} value={formik.values.joinDate} onChange={formik.handleChange} onBlur={formik.handleBlur} />
+            </div>
+            <ErrMsg name="joinDate" />
+          </div>
+
+          {/* ── Section 2: KYC ── */}
+          <div className="col-12" style={{ margin: '1.5rem 0 1rem', padding: '0.75rem 1rem', background: 'linear-gradient(90deg,rgba(15,118,110,0.05) 0%,transparent 100%)', borderRadius: 'var(--radius-sm)', borderLeft: '4px solid var(--primary)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <ShieldCheck size={18} style={{ color: 'var(--primary)' }} />
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 800 }}>KYC <span className="gradient-text">&amp; Identity</span> <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>(Optional)</span></h3>
+          </div>
+
+          <div className="col-6">
+            <label className="label-premium">PAN Card</label>
+            <input name="panCard" type="text" className="input-premium" value={formik.values.panCard} onChange={(e) => formik.setFieldValue('panCard', e.target.value.toUpperCase())} placeholder="ABCDE1234F" />
           </div>
           <div className="col-6">
-            <label className="label-premium">Secure Vault Password</label>
-            <input required disabled={loading} type="password" className="input-premium" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} placeholder="••••••••" autoComplete="new-password" />
+            <label className="label-premium">Aadhaar Card</label>
+            <input name="adharCard" type="text" className="input-premium" value={formik.values.adharCard} onChange={formik.handleChange} placeholder="1234 5678 9012" />
           </div>
 
-          <div className="col-12" style={{ height: '1rem' }} />
-
-          {/* Section 2: Authorization */}
-          <div className="col-12">
-            <label className="label-premium">Primary Clinical Role</label>
-            <select required disabled={loading} className="input-premium" value={formData.roleId} onChange={(e) => setFormData({ ...formData, roleId: e.target.value })}>
-              <option value="">Select Role Registry</option>
-              {roles.map(r => <option key={r._id} value={r._id}>{r.name}</option>)}
-            </select>
-          </div>
-
-          <div className="col-12" style={{ height: '2rem', borderBottom: '1px solid var(--border-subtle)', margin: '1rem 0' }} />
-
-          {/* Section 3: KYC & Identity */}
-          <div className="col-12">
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 900, marginBottom: '1.5rem', color: 'var(--primary)' }}>Personnel KYC & Identity</h3>
-          </div>
-          
-          <div className="col-6">
-            <label className="label-premium">PAN Card Number</label>
-            <input disabled={loading} type="text" className="input-premium" value={formData.panCard} onChange={(e) => setFormData({ ...formData, panCard: e.target.value.toUpperCase() })} placeholder="ABCDE1234F" />
-          </div>
-          <div className="col-6">
-            <label className="label-premium">Aadhaar Card Number</label>
-            <input disabled={loading} type="text" className="input-premium" value={formData.adharCard} onChange={(e) => setFormData({ ...formData, adharCard: e.target.value })} placeholder="1234 5678 9012" />
-          </div>
-          <div className="col-6">
-            <label className="label-premium">Joining Date</label>
-            <input required disabled={loading} type="date" className="input-premium" value={formData.joinDate} onChange={(e) => setFormData({ ...formData, joinDate: e.target.value })} />
-          </div>
-
-          <div className="col-12" style={{ height: '1.5rem' }} />
-
-          {/* Section 4: Banking & Compensation */}
-          <div className="col-12">
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 900, marginBottom: '1.5rem', color: '#10b981' }}>Banking & Salary Structure</h3>
+          {/* ── Section 3: Banking & Salary ── */}
+          <div className="col-12" style={{ margin: '1.5rem 0 1rem', padding: '0.75rem 1rem', background: 'linear-gradient(90deg,rgba(16,185,129,0.05) 0%,transparent 100%)', borderRadius: 'var(--radius-sm)', borderLeft: '4px solid #10b981', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <Banknote size={18} style={{ color: '#10b981' }} />
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 800 }}>Banking &amp; <span style={{ color: '#10b981' }}>Salary</span> <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>(Optional)</span></h3>
           </div>
 
           <div className="col-4">
             <label className="label-premium">Bank Name</label>
-            <input disabled={loading} type="text" className="input-premium" value={formData.bankName} onChange={(e) => setFormData({ ...formData, bankName: e.target.value })} placeholder="State Bank of India" />
+            <input name="bankName" type="text" className="input-premium" value={formik.values.bankName} onChange={formik.handleChange} placeholder="State Bank of India" />
           </div>
           <div className="col-4">
             <label className="label-premium">Account Number</label>
-            <input disabled={loading} type="text" className="input-premium" value={formData.accountNumber} onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })} placeholder="00000000000" />
+            <input name="accountNumber" type="text" className="input-premium" value={formik.values.accountNumber} onChange={formik.handleChange} placeholder="00000000000" />
           </div>
           <div className="col-4">
             <label className="label-premium">IFSC Code</label>
-            <input disabled={loading} type="text" className="input-premium" value={formData.ifscCode} onChange={(e) => setFormData({ ...formData, ifscCode: e.target.value.toUpperCase() })} placeholder="SBIN0001234" />
+            <input name="ifscCode" type="text" className="input-premium" value={formik.values.ifscCode} onChange={(e) => formik.setFieldValue('ifscCode', e.target.value.toUpperCase())} placeholder="SBIN0001234" />
           </div>
 
           <div className="col-4">
             <label className="label-premium">Basic Salary (₹)</label>
-            <input required disabled={loading} type="number" className="input-premium" style={{ fontWeight: 800, color: 'var(--primary)' }} value={formData.salaryDetails.basicSalary} onChange={(e) => setFormData({ ...formData, salaryDetails: { ...formData.salaryDetails, basicSalary: parseFloat(e.target.value) || 0 } })} />
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 800, color: 'var(--primary)', opacity: 0.6 }}>₹</span>
+              <input name="basicSalary" type="number" className="input-premium" style={{ paddingLeft: '2.25rem', fontWeight: 800, color: 'var(--primary)' }} value={formik.values.basicSalary} onChange={formik.handleChange} placeholder="Enter basic salary" min="0" />
+            </div>
+            <ErrMsg name="basicSalary" />
           </div>
           <div className="col-4">
             <label className="label-premium">Allowances (₹)</label>
-            <input disabled={loading} type="number" className="input-premium" style={{ fontWeight: 800, color: '#10b981' }} value={formData.salaryDetails.allowance} onChange={(e) => setFormData({ ...formData, salaryDetails: { ...formData.salaryDetails, allowance: parseFloat(e.target.value) || 0 } })} />
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 800, color: '#10b981', opacity: 0.6 }}>₹</span>
+              <input name="allowance" type="number" className="input-premium" style={{ paddingLeft: '2.25rem', fontWeight: 800, color: '#10b981' }} value={formik.values.allowance} onChange={formik.handleChange} placeholder="0" min="0" />
+            </div>
+            <ErrMsg name="allowance" />
           </div>
           <div className="col-4">
             <label className="label-premium">Deductions (₹)</label>
-            <input disabled={loading} type="number" className="input-premium" style={{ fontWeight: 800, color: '#ef4444' }} value={formData.salaryDetails.deduction} onChange={(e) => setFormData({ ...formData, salaryDetails: { ...formData.salaryDetails, deduction: parseFloat(e.target.value) || 0 } })} />
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 800, color: '#ef4444', opacity: 0.6 }}>₹</span>
+              <input name="deduction" type="number" className="input-premium" style={{ paddingLeft: '2.25rem', fontWeight: 800, color: '#ef4444' }} value={formik.values.deduction} onChange={formik.handleChange} placeholder="0" min="0" />
+            </div>
+            <ErrMsg name="deduction" />
           </div>
 
+          {/* Take-home calculator */}
           <div className="col-12" style={{ marginTop: '1.5rem' }}>
-             <div style={{ 
-                 background: 'var(--primary)', 
-                 padding: '1.5rem', 
-                 borderRadius: 'var(--radius-md)', 
-                 color: 'white',
-                 display: 'flex',
-                 justifyContent: 'space-between',
-                 alignItems: 'center',
-                 boxShadow: '0 10px 20px -5px rgba(13, 148, 136, 0.4)'
-             }}>
-                <div>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700, opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Calculated Monthly Take-Home</div>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 950 }}>₹{((formData.salaryDetails.basicSalary || 0) + (formData.salaryDetails.allowance || 0) - (formData.salaryDetails.deduction || 0)).toLocaleString()}</div>
-                </div>
-                <div style={{ opacity: 0.2 }}>
-                    <Banknote size={48} />
-                </div>
-             </div>
+            <div style={{ background: 'var(--primary)', padding: '1.5rem', borderRadius: 'var(--radius-md)', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 10px 20px -5px rgba(13,148,136,0.4)' }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Calculated Monthly Take-Home</div>
+                <div style={{ fontSize: '1.8rem', fontWeight: 800 }}>₹{takeHome.toLocaleString()}</div>
+              </div>
+              <div style={{ opacity: 0.2 }}><Banknote size={48} /></div>
+            </div>
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: '1.25rem', justifyContent: 'flex-end', marginTop: '3.5rem' }}>
-          <button type="button" disabled={loading} onClick={() => router.back()} style={{ padding: '0.85rem 2.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', fontWeight: 600 }}>Cancel</button>
-          <button type="submit" disabled={loading} style={{ padding: '0.85rem 3.5rem', borderRadius: 'var(--radius-md)', background: 'var(--primary)', color: 'white', fontWeight: 700, boxShadow: 'var(--shadow-sm)' }}>
-            {loading ? 'Initializing Onboarding...' : 'AUTHORIZE STAFF ACCOUNT'}
+          <button type="button" onClick={() => router.back()} style={{ padding: '0.85rem 2.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', fontWeight: 600 }}>Cancel</button>
+          <button type="submit" disabled={formik.isSubmitting} style={{ padding: '0.85rem 3.5rem', borderRadius: 'var(--radius-md)', background: 'var(--primary)', color: 'white', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.75rem', boxShadow: 'var(--shadow-sm)' }}>
+            {formik.isSubmitting ? 'Initializing...' : <><CheckCircle2 size={18} /> AUTHORIZE STAFF ACCOUNT</>}
           </button>
         </div>
       </form>

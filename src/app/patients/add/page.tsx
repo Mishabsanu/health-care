@@ -1,6 +1,8 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
 import { 
@@ -10,78 +12,101 @@ import {
   ChevronRight, ClipboardList, Building2
 } from 'lucide-react';
 
+const validationSchema = Yup.object().shape({
+  name: Yup.string().required('Patient name is required'),
+  phone: Yup.string()
+    .required('Contact number is required')
+    .matches(/^[0-9+\-\s()]*$/, 'Invalid phone format'),
+  age: Yup.number()
+    .required('Age is required')
+    .positive('Age must be positive')
+    .integer('Age must be a whole number'),
+  address: Yup.string().required('Residential address is required'),
+  email: Yup.string().email('Invalid email address'),
+});
+
 export default function RegisterPatientPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-
   const { showToast } = usePCMSStore();
-  const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    age: '',
-    gender: 'Male',
-    address: '',
-    referredBy: '',
-    reasonForVisit: '',
-    weight: '',
-    height: '',
-    occupation: '',
-    habits: [] as string[],
-    initialTreatment: '',
-    remarks: ''
-  });
-
   const [bmi, setBmi] = useState<string | number>(0);
 
+  const formik = useFormik({
+    initialValues: {
+      name: '',
+      phone: '',
+      email: '',
+      age: '',
+      gender: 'Male',
+      address: '',
+      referredBy: '',
+      reasonForVisit: '',
+      weight: '',
+      height: '',
+      occupation: '',
+      habits: [] as string[],
+      initialTreatment: '',
+      remarks: ''
+    },
+    validationSchema,
+    onSubmit: async (values) => {
+      setLoading(true);
+      try {
+        const payload = {
+          ...values,
+          bmi: Number(bmi),
+          treatments: values.initialTreatment ? [{
+            notes: values.initialTreatment,
+            date: new Date()
+          }] : []
+        };
+        await api.post('/patients', payload);
+        showToast('Patient record initialized successfully.', 'success');
+        router.push('/patients');
+      } catch (err) {
+        console.error('🚫 Registry Error | Failed to onboard clinical patient:', err);
+        showToast('Patient registration failed. Please check medical data.', 'error');
+      } finally {
+        setLoading(false);
+      }
+    },
+  });
+
   useEffect(() => {
-    if (formData.weight && formData.height) {
-      const heightInMeters = Number(formData.height) / 100;
-      const weight = Number(formData.weight);
+    if (formik.values.weight && formik.values.height) {
+      const heightInMeters = Number(formik.values.height) / 100;
+      const weight = Number(formik.values.weight);
       if (heightInMeters > 0) {
         setBmi((weight / (heightInMeters * heightInMeters)).toFixed(2));
-      } else setBmi(0);
+      } else setBmi('');
     } else {
-      setBmi(0);
+      setBmi('');
     }
-  }, [formData.weight, formData.height]);
+  }, [formik.values.weight, formik.values.height]);
 
   const habitOptions = [
-    'Smoking', 'Alcohol Consumption', 'Tobacco Use', 
-    'Regular Exercise', 'Poor Sleep', 'High Caffeine Intake', 
-    'Drug Use', 'Healthy Lifestyle', 'Sedentary Lifestyle'
+    'Smoking', 'Alcohol', 
+    'Exercise', 'Poor Sleep', 'Caffeine', 'Healthy', 'Sedentary'
   ];
 
   const toggleHabit = (habit: string) => {
-    setFormData(prev => ({
-      ...prev,
-      habits: prev.habits.includes(habit) 
-        ? prev.habits.filter(h => h !== habit)
-        : [...prev.habits, habit]
-    }));
+    const currentHabits = formik.values.habits;
+    const nextHabits = currentHabits.includes(habit)
+      ? currentHabits.filter(h => h !== habit)
+      : [...currentHabits, habit];
+    formik.setFieldValue('habits', nextHabits);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const payload = {
-        ...formData,
-        bmi: Number(bmi),
-        treatments: formData.initialTreatment ? [{
-          notes: formData.initialTreatment,
-          date: new Date()
-        }] : []
-      };
-      await api.post('/patients', payload);
-      router.push('/patients');
-    } catch (err) {
-      console.error('🚫 Registry Error | Failed to onboard clinical patient:', err);
-      showToast('Patient registration failed. Please check medical data.', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const isError = (field: keyof typeof formik.values) => 
+    formik.touched[field] && formik.errors[field];
+
+  const ErrorMsg = ({ name }: { name: keyof typeof formik.values }) => (
+    formik.touched[name] && formik.errors[name] ? (
+      <div style={{ color: '#ef4444', fontSize: '0.7rem', fontWeight: 700, marginTop: '0.4rem', marginLeft: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+        <span>⚠️ {formik.errors[name] as string}</span>
+      </div>
+    ) : null
+  );
 
   return (
     <div className="register-patient-container animate-fade-in clinical-form-wide" style={{ paddingBottom: '7rem' }}>
@@ -96,7 +121,7 @@ export default function RegisterPatientPage() {
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Initialize a new medical record with standard clinical profiling and vitals.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="clinical-form-card" style={{ opacity: loading ? 0.7 : 1 }}>
+      <form onSubmit={formik.handleSubmit} className="clinical-form-card" style={{ opacity: loading ? 0.7 : 1 }}>
         <div className="clinical-form-grid">
           {/* Section 1: Identity & Contact */}
           <div className="col-12" style={{ 
@@ -118,42 +143,100 @@ export default function RegisterPatientPage() {
           <div className="col-8">
             <label className="label-premium">Patient Full Name <span style={{ color: '#ef4444' }}>*</span></label>
             <div style={{ position: 'relative' }}>
-              <User size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-              <input required disabled={loading} type="text" className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Full legal name..." />
+              <User size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('name') ? '#ef4444' : 'var(--text-muted)', opacity: isError('name') ? 0.8 : 0.5 }} />
+              <input 
+                name="name"
+                disabled={loading} 
+                type="text" 
+                className={`input-premium ${isError('name') ? 'input-error' : ''}`}
+                style={{ paddingLeft: '2.75rem', borderColor: isError('name') ? '#ef4444' : '' }} 
+                value={formik.values.name} 
+                onChange={formik.handleChange} 
+                onBlur={formik.handleBlur}
+                placeholder="Full legal name..." 
+              />
             </div>
+            <ErrorMsg name="name" />
           </div>
           <div className="col-4">
             <label className="label-premium">Primary Contact <span style={{ color: '#ef4444' }}>*</span></label>
             <div style={{ position: 'relative' }}>
-              <Smartphone size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-              <input required disabled={loading} type="text" className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="9876543210" />
+              <Smartphone size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('phone') ? '#ef4444' : 'var(--text-muted)', opacity: isError('phone') ? 0.8 : 0.5 }} />
+              <input 
+                name="phone"
+                disabled={loading} 
+                type="text" 
+                className={`input-premium ${isError('phone') ? 'input-error' : ''}`}
+                style={{ paddingLeft: '2.75rem', borderColor: isError('phone') ? '#ef4444' : '' }} 
+                value={formik.values.phone} 
+                onChange={formik.handleChange} 
+                onBlur={formik.handleBlur}
+                placeholder="9876543210" 
+              />
             </div>
+            <ErrorMsg name="phone" />
           </div>
 
           <div className="col-12" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
             <div>
                <label className="label-premium">Email Address (Optional)</label>
                <div style={{ position: 'relative' }}>
-                 <Mail size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-                 <input disabled={loading} type="email" className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="patient@example.com" />
+                 <Mail size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('email') ? '#ef4444' : 'var(--text-muted)', opacity: 0.5 }} />
+                 <input 
+                   name="email"
+                   disabled={loading} 
+                   type="email" 
+                   className={`input-premium ${isError('email') ? 'input-error' : ''}`}
+                   style={{ paddingLeft: '2.75rem' }} 
+                   value={formik.values.email} 
+                   onChange={formik.handleChange} 
+                   onBlur={formik.handleBlur}
+                   placeholder="patient@example.com" 
+                 />
                </div>
+               <ErrorMsg name="email" />
             </div>
             <div>
                <label className="label-premium">Occupation</label>
                <div style={{ position: 'relative' }}>
                  <Briefcase size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-                 <input disabled={loading} type="text" className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.occupation} onChange={(e) => setFormData({ ...formData, occupation: e.target.value })} placeholder="e.g. Software Engineer, Teacher" />
+                 <input 
+                   name="occupation"
+                   disabled={loading} 
+                   type="text" 
+                   className="input-premium" 
+                   style={{ paddingLeft: '2.75rem' }} 
+                   value={formik.values.occupation} 
+                   onChange={formik.handleChange} 
+                   placeholder="e.g. Software Engineer, Teacher" 
+                 />
                </div>
             </div>
           </div>
 
           <div className="col-4">
             <label className="label-premium">Age <span style={{ color: '#ef4444' }}>*</span></label>
-            <input required disabled={loading} type="number" className="input-premium" value={formData.age} onChange={(e) => setFormData({ ...formData, age: e.target.value })} placeholder="Enter age" />
+            <input 
+              name="age"
+              disabled={loading} 
+              type="number" 
+              className={`input-premium ${isError('age') ? 'input-error' : ''}`}
+              style={{ borderColor: isError('age') ? '#ef4444' : '' }}
+              value={formik.values.age} 
+              onChange={formik.handleChange} 
+              onBlur={formik.handleBlur}
+              placeholder="Enter age" 
+            />
+            <ErrorMsg name="age" />
           </div>
           <div className="col-4">
             <label className="label-premium">Gender</label>
-            <select className="input-premium" value={formData.gender} onChange={(e) => setFormData({ ...formData, gender: e.target.value })}>
+            <select 
+              name="gender"
+              className="input-premium" 
+              value={formik.values.gender} 
+              onChange={formik.handleChange}
+            >
               <option value="Male">Male</option>
               <option value="Female">Female</option>
               <option value="Other">Other</option>
@@ -163,9 +246,20 @@ export default function RegisterPatientPage() {
           <div className="col-12">
             <label className="label-premium">Residential Address <span style={{ color: '#ef4444' }}>*</span></label>
             <div style={{ position: 'relative' }}>
-              <MapPin size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-              <input required disabled={loading} type="text" className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="Full physical address..." />
+              <MapPin size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('address') ? '#ef4444' : 'var(--text-muted)', opacity: isError('address') ? 0.8 : 0.5 }} />
+              <input 
+                name="address"
+                disabled={loading} 
+                type="text" 
+                className={`input-premium ${isError('address') ? 'input-error' : ''}`}
+                style={{ paddingLeft: '2.75rem', borderColor: isError('address') ? '#ef4444' : '' }} 
+                value={formik.values.address} 
+                onChange={formik.handleChange} 
+                onBlur={formik.handleBlur}
+                placeholder="Full physical address..." 
+              />
             </div>
+            <ErrorMsg name="address" />
           </div>
 
           {/* Section 2: Clinical Profiling */}
@@ -188,14 +282,23 @@ export default function RegisterPatientPage() {
             <label className="label-premium">Referred By</label>
             <div style={{ position: 'relative' }}>
               <Stethoscope size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-              <input disabled={loading} type="text" className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.referredBy} onChange={(e) => setFormData({ ...formData, referredBy: e.target.value })} placeholder="Physician / Source" />
+              <input 
+                name="referredBy"
+                disabled={loading} 
+                type="text" 
+                className="input-premium" 
+                style={{ paddingLeft: '2.75rem' }} 
+                value={formik.values.referredBy} 
+                onChange={formik.handleChange} 
+                placeholder="Physician / Source" 
+              />
             </div>
           </div>
           <div className="col-12">
             <label className="label-premium">Lifestyle Habits & Assessment</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.5rem' }}>
               {habitOptions.map(h => {
-                const isSelected = formData.habits.includes(h);
+                const isSelected = formik.values.habits.includes(h);
                 return (
                   <button
                     key={h}
@@ -226,7 +329,15 @@ export default function RegisterPatientPage() {
 
           <div className="col-12">
             <label className="label-premium">Medical Complaint</label>
-            <textarea disabled={loading} className="textarea-premium" style={{ height: '80px' }} value={formData.reasonForVisit} onChange={(e) => setFormData({ ...formData, reasonForVisit: e.target.value })} placeholder="Primary reason for seeking clinical help..." />
+            <textarea 
+              name="reasonForVisit"
+              disabled={loading} 
+              className="textarea-premium" 
+              style={{ height: '80px' }} 
+              value={formik.values.reasonForVisit} 
+              onChange={formik.handleChange} 
+              placeholder="Primary reason for seeking clinical help..." 
+            />
           </div>
 
           {/* Clinical Vitals Section */}
@@ -255,20 +366,38 @@ export default function RegisterPatientPage() {
                 <label className="label-premium" style={{ fontSize: '0.65rem' }}>Weight (KG)</label>
                 <div style={{ position: 'relative' }}>
                   <Scale size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-                  <input disabled={loading} type="number" className="input-premium" style={{ paddingLeft: '2.25rem' }} value={formData.weight} onChange={(e) => setFormData({ ...formData, weight: e.target.value })} placeholder="Enter weight" />
+                  <input 
+                    name="weight"
+                    disabled={loading} 
+                    type="number" 
+                    className="input-premium" 
+                    style={{ paddingLeft: '2.25rem' }} 
+                    value={formik.values.weight} 
+                    onChange={formik.handleChange} 
+                    placeholder="Enter weight" 
+                  />
                 </div>
               </div>
               <div className="col-4">
                 <label className="label-premium" style={{ fontSize: '0.65rem' }}>Height (CM)</label>
                 <div style={{ position: 'relative' }}>
                   <Ruler size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-                  <input disabled={loading} type="number" className="input-premium" style={{ paddingLeft: '2.25rem' }} value={formData.height} onChange={(e) => setFormData({ ...formData, height: e.target.value })} placeholder="Enter height" />
+                  <input 
+                    name="height"
+                    disabled={loading} 
+                    type="number" 
+                    className="input-premium" 
+                    style={{ paddingLeft: '2.25rem' }} 
+                    value={formik.values.height} 
+                    onChange={formik.handleChange} 
+                    placeholder="Enter height" 
+                  />
                 </div>
               </div>
               <div className="col-4">
                 <label className="label-premium" style={{ fontSize: '0.65rem' }}>BMI (Calculated)</label>
                 <div style={{ padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', background: '#fff', fontWeight: 800, color: 'var(--primary)', fontSize: '0.9rem', textAlign: 'center', boxShadow: 'var(--shadow-sm)' }}>
-                  {bmi || '0.00'}
+                  {bmi || '--'}
                 </div>
               </div>
             </div>
@@ -276,7 +405,15 @@ export default function RegisterPatientPage() {
 
           <div className="col-12">
             <label className="label-premium">Initial Assessment Notes</label>
-            <textarea disabled={loading} className="textarea-premium" style={{ height: '100px' }} value={formData.initialTreatment} onChange={(e) => setFormData({ ...formData, initialTreatment: e.target.value })} placeholder="Detailed clinical history and initial findings..." />
+            <textarea 
+              name="initialTreatment"
+              disabled={loading} 
+              className="textarea-premium" 
+              style={{ height: '100px' }} 
+              value={formik.values.initialTreatment} 
+              onChange={formik.handleChange} 
+              placeholder="Detailed clinical history and initial findings..." 
+            />
           </div>
 
           {/* Section 4: Conclusion / Remarks */}
@@ -298,10 +435,11 @@ export default function RegisterPatientPage() {
           <div className="col-12">
             <label className="label-premium">Final Registry Remarks</label>
             <textarea
+              name="remarks"
               className="textarea-premium"
               placeholder="Add final clinical context..."
-              value={formData.remarks}
-              onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+              value={formik.values.remarks}
+              onChange={formik.handleChange}
             />
           </div>
 
@@ -338,3 +476,4 @@ export default function RegisterPatientPage() {
     </div>
   );
 }
+

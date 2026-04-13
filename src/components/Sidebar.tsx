@@ -1,23 +1,23 @@
 'use client'
-import React from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import Image from 'next/image';
 import { usePCMSStore } from '@/store/useStore';
-import { 
-  LayoutDashboard, 
-  Users, 
-  Calendar, 
-  Stethoscope, 
-  Activity, 
-  BriefcaseMedical, 
-  ReceiptIndianRupee, 
-  Wallet,
-  Package,
-  ShieldCheck, 
+import {
+  Activity,
+  BriefcaseMedical,
+  Calendar,
+  ChevronRight,
+  LayoutDashboard,
   Lock,
   LogOut,
-  ChevronRight
+  Package,
+  ReceiptIndianRupee,
+  ShieldCheck,
+  Stethoscope,
+  Users,
+  Wallet
 } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 interface NavItem {
   label: string;
@@ -73,26 +73,21 @@ export default function Sidebar() {
 
   return (
     <aside className="sidebar animate-fade-in">
-      <div className="sidebar-logo" style={{ marginBottom: '3rem' }}>
+      <div className="sidebar-logo" style={{ marginBottom: '2.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ 
-            width: '32px', 
-            height: '32px', 
-            background: 'linear-gradient(135deg, var(--primary), var(--secondary))', 
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontWeight: 800,
-            fontSize: '1rem'
-          }}>P</div>
+          <Image
+            src="/logo.png"
+            alt="AKOD TECH Logo"
+            width={100}
+            height={100}
+            style={{ borderRadius: '10px', objectFit: 'cover' }}
+          />
           <div>
-            <h1 style={{ fontSize: '1.25rem', letterSpacing: '-0.02em', fontWeight: 800, margin: 0 }}>
-              Physio<span className="gradient-text">4</span>
+            <h1 style={{ fontSize: '1.15rem', letterSpacing: '-0.02em', fontWeight: 800, margin: 0, color: 'white' }}>
+              Physio<span className="gradient-text"> 4</span>
             </h1>
-            <p style={{ fontSize: '0.6rem', opacity: 0.4, letterSpacing: '0.1em', fontWeight: 700, textTransform: 'uppercase' }}>
-              Clinical systems v1.4
+            <p style={{ fontSize: '0.6rem', opacity: 0.4, letterSpacing: '0.1em', fontWeight: 700, textTransform: 'uppercase', margin: 0 }}>
+              Clinical Systems v1.4
             </p>
           </div>
         </div>

@@ -1,25 +1,20 @@
 'use client'
-import React, { useState } from 'react';
 import { usePCMSStore } from '@/store/useStore';
-import { 
-  Search, 
-  Bell, 
-  Command, 
-  ChevronDown, 
-  Globe, 
-  Building2, 
-  X,
-  Plus,
-  Users,
-  Calendar,
-  Stethoscope,
+import {
+  Bell,
   BriefcaseMedical,
-  ReceiptIndianRupee,
-  Wallet,
+  Calendar,
+  Command,
+  Lock,
   Package,
-  Lock
+  ReceiptIndianRupee,
+  Search,
+  Stethoscope,
+  Users,
+  Wallet
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 const ALL_MODULES = [
   { label: 'Patients Registry', href: '/patients', icon: Users, color: '#0ea5e9' },
