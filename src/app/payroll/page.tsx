@@ -200,7 +200,7 @@ export default function PayrollPage() {
     const { totalHours, overtimeHours, salaryConfig } = staff;
 
     if (netSalary <= 0) {
-      showToast('Calculated salary is zero. Verify attendance logs.', 'warning');
+      showToast('Calculated salary is zero. Verify attendance logs.', 'info');
     }
 
     const breakdown = `
