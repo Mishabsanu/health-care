@@ -6,8 +6,18 @@ import FinancialWidget from '@/components/dashboard/FinancialWidget';
 import AppointmentsWidget from '@/components/dashboard/AppointmentsWidget';
 import InventoryWidget from '@/components/dashboard/InventoryWidget';
 import AttendanceWidget from '@/components/dashboard/AttendanceWidget';
-import { Users, Calendar, IndianRupee, Activity as ActivityIcon } from 'lucide-react';
+import { 
+  Users, Calendar, IndianRupee, 
+  Activity as ActivityIcon, 
+  Award
+} from 'lucide-react';
 import api from '@/services/api';
+import { motion } from 'framer-motion';
+import { 
+  BarChart, Bar, XAxis, YAxis, Tooltip, 
+  ResponsiveContainer, Cell, 
+  PieChart, Pie
+} from 'recharts';
 
 export default function Dashboard() {
   const { isLoading } = usePCMSStore();
@@ -57,7 +67,7 @@ export default function Dashboard() {
     const fetchSummary = async () => {
       try {
         const res = await api.get('/stats/dashboard', { params: filterParams });
-        setStatsData(res.data?.summary || null);
+        setStatsData(res.data || null);
       } catch (err) {
         console.error('Stats Error:', err);
       }
@@ -136,10 +146,10 @@ export default function Dashboard() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
         {/* ⚡ Operational Quick-Stats (Click Stats) */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem' }}>
-          <SummaryCard title="Total Patients" value={statsData?.totalPatients ?? '—'} icon={Users} color="#0d9488" onClick={() => router.push('/patients')} />
-          <SummaryCard title="Period Bookings" value={statsData?.totalAppointments ?? '—'} icon={Calendar} color="#6366f1" onClick={() => router.push('/appointments')} />
-          <SummaryCard title="Revenue (Paid)" value={`₹${(statsData?.totalRevenue || 0).toLocaleString()}`} icon={IndianRupee} color="#10b981" onClick={() => router.push('/billing')} />
-          <SummaryCard title="Pending Amount" value={`₹${(statsData?.totalPending || 0).toLocaleString()}`} icon={ActivityIcon} color="#f59e0b" onClick={() => router.push('/billing')} />
+          <SummaryCard title="Total Patients" value={statsData?.summary?.totalPatients ?? '—'} icon={Users} color="#0d9488" onClick={() => router.push('/patients')} />
+          <SummaryCard title="Period Bookings" value={statsData?.summary?.totalAppointments ?? '—'} icon={Calendar} color="#6366f1" onClick={() => router.push('/appointments')} />
+          <SummaryCard title="Revenue (Paid)" value={`₹${(statsData?.summary?.totalRevenue || 0).toLocaleString()}`} icon={IndianRupee} color="#10b981" onClick={() => router.push('/billing')} />
+          <SummaryCard title="Pending Amount" value={`₹${(statsData?.summary?.totalPending || 0).toLocaleString()}`} icon={ActivityIcon} color="#f59e0b" onClick={() => router.push('/billing')} />
         </div>
         {/* Module 3: Clinical Traffic / Appointments */}
         <AppointmentsWidget filterParams={filterParams} />
@@ -155,6 +165,112 @@ export default function Dashboard() {
           {/* Module 1: Financial & Network Intelligence */}
           <FinancialWidget filterParams={filterParams} />
         </div>
+
+        {/* 👨‍⚕️ Module 4: Specialist Distribution Hub */}
+        <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="card-premium" 
+            style={{ padding: '2.5rem', background: 'white' }}
+        >
+            <div style={{ marginBottom: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                    <h3 style={{ fontSize: '1.4rem', fontWeight: 950, letterSpacing: '-0.02em' }}>Specialist <span className="gradient-text">Workload Distribution</span></h3>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600 }}>Visual distribution of clinical sessions across specialists.</p>
+                </div>
+                <div style={{ background: '#f1f5f9', padding: '0.6rem 1.25rem', borderRadius: 'var(--radius-md)', fontWeight: 800, fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Users size={16} /> {statsData?.doctorWorkload?.length || 0} ACTIVE SPECIALISTS
+                </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 1.5fr', gap: '4rem', alignItems: 'center' }}>
+                {/* 🎨 Section A: Modern Doughnut Distribution */}
+                <div style={{ height: '320px', position: 'relative' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Pie
+                                data={statsData?.doctorWorkload || []}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={80}
+                                outerRadius={110}
+                                paddingAngle={8}
+                                dataKey="count"
+                                animationDuration={1800}
+                                animationBegin={200}
+                                stroke="none"
+                            >
+                                {(statsData?.doctorWorkload || []).map((entry: any, index: number) => {
+                                    const COLORS = ['#0f766e', '#0ea5e9', '#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
+                                    return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
+                                })}
+                            </Pie>
+                            <Tooltip 
+                                content={({ active, payload }: any) => {
+                                    if (active && payload && payload.length && payload[0]) {
+                                        const data = payload[0].payload || {};
+                                        const total = Number(statsData?.summary?.totalAppointments) || 1;
+                                        const value = Number(payload[0].value) || 0;
+                                        const percent = Math.round((value / total) * 100);
+                                        return (
+                                            <div style={{ background: 'white', padding: '1rem', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)', border: 'none' }}>
+                                                <div style={{ fontWeight: 900, color: 'var(--text-main)', fontSize: '0.9rem', marginBottom: '0.25rem' }}>{data.name}</div>
+                                                <div style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '0.8rem' }}>{payload[0].value} Appointments</div>
+                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>{percent}% Total Capacity</div>
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                }}
+                            />
+                        </PieChart>
+                    </ResponsiveContainer>
+                    <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.8rem', fontWeight: 950, color: 'var(--text-main)', lineHeight: 1 }}>{statsData?.summary?.totalAppointments || 0}</div>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '0.25rem' }}>Total Sessions</div>
+                    </div>
+                </div>
+
+                {/* 📋 Section B: Interactive Roster / Legend */}
+                <div>
+                  <h4 style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <ActivityIcon size={14} /> Performance Breakdown
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                      {(statsData?.doctorWorkload || []).map((doc: any, idx: number) => {
+                          const COLORS = ['#0f766e', '#0ea5e9', '#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
+                          const color = COLORS[idx % COLORS.length];
+                          const total = Number(statsData?.summary?.totalAppointments) || 1;
+                          const count = Number(doc?.count) || 0;
+                          const percent = Math.round((count / total) * 100);
+                          
+                          return (
+                              <motion.div 
+                                  key={doc.name}
+                                  whileHover={{ x: 5 }}
+                                  style={{ padding: '1rem', borderRadius: 'var(--radius-md)', border: `1.5px solid ${color}15`, background: `${color}05` }}
+                              >
+                                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: color }}></div>
+                                      <span style={{ fontWeight: 850, fontSize: '0.9rem' }}>{doc.name}</span>
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                                      <div>
+                                          <div style={{ fontSize: '1.1rem', fontWeight: 950, color }}>{doc.count}</div>
+                                          <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Appointments</div>
+                                      </div>
+                                      <div style={{ textAlign: 'right' }}>
+                                          <div style={{ fontSize: '0.9rem', fontWeight: 900, color: 'var(--text-main)' }}>{percent}%</div>
+                                          <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Load</div>
+                                      </div>
+                                  </div>
+                              </motion.div>
+                          );
+                      })}
+                  </div>
+                </div>
+            </div>
+        </motion.div>
       </div>
 
     </div>

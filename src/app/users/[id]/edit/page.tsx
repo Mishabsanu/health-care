@@ -43,31 +43,23 @@ export default function EditUserPage() {
       bankName: '',
       accountNumber: '',
       ifscCode: '',
-      basicSalary: '' as string | number,
-      allowance: '' as string | number,
-      deduction: '' as string | number,
+      salaryDetails: {
+        basicSalary: 0,
+        allowance: 0,
+        deduction: 0,
+      },
+      salaryConfig: {
+        type: 'Monthly',
+        rate: 0,
+        expectedHoursPerDay: 8,
+        overtimeRate: 0
+      }
     },
     validationSchema,
     onSubmit: async (values) => {
       setIsSyncing(true);
       try {
-        await api.put(`/users/${id}`, {
-          name: values.name,
-          email: values.email,
-          roleId: values.roleId,
-          status: values.status,
-          panCard: values.panCard,
-          adharCard: values.adharCard,
-          bankName: values.bankName,
-          accountNumber: values.accountNumber,
-          ifscCode: values.ifscCode,
-          joinDate: values.joinDate,
-          salaryDetails: {
-            basicSalary: Number(values.basicSalary) || 0,
-            allowance: Number(values.allowance) || 0,
-            deduction: Number(values.deduction) || 0,
-          },
-        });
+        await api.put(`/users/${id}`, values);
         showToast('Personnel profile updated successfully.', 'success');
         router.push('/users');
       } catch (err) {
@@ -99,9 +91,17 @@ export default function EditUserPage() {
           bankName: u.bankName || '',
           accountNumber: u.accountNumber || '',
           ifscCode: u.ifscCode || '',
-          basicSalary: u.salaryDetails?.basicSalary ?? '',
-          allowance: u.salaryDetails?.allowance ?? '',
-          deduction: u.salaryDetails?.deduction ?? '',
+          salaryDetails: {
+            basicSalary: u.salaryDetails?.basicSalary || 0,
+            allowance: u.salaryDetails?.allowance || 0,
+            deduction: u.salaryDetails?.deduction || 0,
+          },
+          salaryConfig: {
+            type: u.salaryConfig?.type || 'Monthly',
+            rate: u.salaryConfig?.rate || 0,
+            expectedHoursPerDay: u.salaryConfig?.expectedHoursPerDay || 8,
+            overtimeRate: u.salaryConfig?.overtimeRate || 0
+          }
         });
         setRoles(Array.isArray(rolesRes.data) ? rolesRes.data : (rolesRes.data?.data || []));
       } catch (err) {
@@ -139,7 +139,7 @@ export default function EditUserPage() {
 
       <form onSubmit={formik.handleSubmit} className="clinical-form-card" style={{ opacity: formik.isSubmitting ? 0.7 : 1 }}>
         <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: 'var(--radius-sm)', marginBottom: '2.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', borderLeft: '4px solid var(--primary)', fontWeight: 600 }}>
-           Registry Reference: <strong style={{ color: 'var(--primary)' }}>{id}</strong> • Verified Personnel Record
+          Registry Reference: <strong style={{ color: 'var(--primary)' }}>{id}</strong> • Verified Personnel Record
         </div>
 
         <div className="clinical-form-grid">
@@ -215,7 +215,7 @@ export default function EditUserPage() {
           {/* Banking */}
           <div className="col-12" style={{ margin: '1.5rem 0 1rem', padding: '0.75rem 1rem', background: 'linear-gradient(90deg,rgba(16,185,129,0.05) 0%,transparent 100%)', borderRadius: 'var(--radius-sm)', borderLeft: '4px solid #10b981', display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <Banknote size={18} style={{ color: '#10b981' }} />
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 800 }}>Banking &amp; <span style={{ color: '#10b981' }}>Salary</span> <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>(Optional)</span></h3>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 800 }}>Banking &amp; <span style={{ color: '#10b981' }}>Salary</span></h3>
           </div>
           <div className="col-4">
             <label className="label-premium">Bank Name</label>
@@ -231,38 +231,60 @@ export default function EditUserPage() {
           </div>
 
           <div className="col-4">
-            <label className="label-premium">Basic Salary (₹)</label>
-            <div style={{ position: 'relative' }}>
-              <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 800, color: 'var(--primary)', opacity: 0.6 }}>₹</span>
-              <input name="basicSalary" type="number" className="input-premium" style={{ paddingLeft: '2.25rem', fontWeight: 800, color: 'var(--primary)' }} value={formik.values.basicSalary} onChange={formik.handleChange} placeholder="Enter basic salary" min="0" />
-            </div>
-          </div>
-          <div className="col-4">
-            <label className="label-premium">Allowances (₹)</label>
-            <div style={{ position: 'relative' }}>
-              <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 800, color: '#10b981', opacity: 0.6 }}>₹</span>
-              <input name="allowance" type="number" className="input-premium" style={{ paddingLeft: '2.25rem', fontWeight: 800, color: '#10b981' }} value={formik.values.allowance} onChange={formik.handleChange} placeholder="0" min="0" />
-            </div>
-          </div>
-          <div className="col-4">
-            <label className="label-premium">Deductions (₹)</label>
-            <div style={{ position: 'relative' }}>
-              <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 800, color: '#ef4444', opacity: 0.6 }}>₹</span>
-              <input name="deduction" type="number" className="input-premium" style={{ paddingLeft: '2.25rem', fontWeight: 800, color: '#ef4444' }} value={formik.values.deduction} onChange={formik.handleChange} placeholder="0" min="0" />
-            </div>
+            <label className="label-premium">Salary Type</label>
+            <select name="salaryConfig.type" className="input-premium" value={formik.values.salaryConfig.type} onChange={formik.handleChange}>
+              <option value="Monthly">Fixed Monthly</option>
+              <option value="Daily">Daily Rate</option>
+              <option value="Hourly">Hourly Rate</option>
+            </select>
           </div>
 
-          <div className="col-12" style={{ marginTop: '1.5rem' }}>
-            <div style={{ background: 'var(--primary)', padding: '1.5rem', borderRadius: 'var(--radius-md)', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 10px 20px -5px rgba(13,148,136,0.4)' }}>
-              <div>
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Calculated Monthly Take-Home</div>
-                <div style={{ fontSize: '1.8rem', fontWeight: 800 }}>₹{((Number(formik.values.basicSalary)||0) + (Number(formik.values.allowance)||0) - (Number(formik.values.deduction)||0)).toLocaleString()}</div>
+          <div className="col-4">
+            <label className="label-premium">Pay Rate (₹ {formik.values.salaryConfig.type !== 'Monthly' ? '/ unit' : ''})</label>
+            <input name="salaryConfig.rate" type="number" className="input-premium" value={formik.values.salaryConfig.rate} onChange={formik.handleChange} placeholder="0" />
+          </div>
+
+          <div className="col-4">
+            <label className="label-premium">Expt. Hours / Day</label>
+            <input name="salaryConfig.expectedHoursPerDay" type="number" className="input-premium" value={formik.values.salaryConfig.expectedHoursPerDay} onChange={formik.handleChange} placeholder="8" />
+          </div>
+
+          <div className="col-4">
+            <label className="label-premium">Overtime Rate (₹/hr)</label>
+            <input name="salaryConfig.overtimeRate" type="number" className="input-premium" value={formik.values.salaryConfig.overtimeRate} onChange={formik.handleChange} placeholder="0" />
+          </div>
+
+          {formik.values.salaryConfig.type === 'Monthly' && (
+            <>
+              <div className="col-4">
+                <label className="label-premium">Basic Salary (₹)</label>
+                <input name="salaryDetails.basicSalary" type="number" className="input-premium" value={formik.values.salaryDetails.basicSalary} onChange={formik.handleChange} />
               </div>
-              <div style={{ opacity: 0.2 }}><Banknote size={48} /></div>
+              <div className="col-4">
+                <label className="label-premium">Allowances (₹)</label>
+                <input name="salaryDetails.allowance" type="number" className="input-premium" value={formik.values.salaryDetails.allowance} onChange={formik.handleChange} />
+              </div>
+              <div className="col-4">
+                <label className="label-premium">Deductions (₹)</label>
+                <input name="salaryDetails.deduction" type="number" className="input-premium" value={formik.values.salaryDetails.deduction} onChange={formik.handleChange} />
+              </div>
+            </>
+          )}
+
+          <div className="col-12" style={{ marginTop: '1.5rem' }}>
+            <div style={{ background: 'var(--primary)', padding: '1.5rem', borderRadius: 'var(--radius-md)', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, opacity: 0.8, textTransform: 'uppercase' }}>Configured Payment Model</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>
+                  {formik.values.salaryConfig.type === 'Monthly'
+                    ? `₹${((Number(formik.values.salaryDetails.basicSalary) || 0) + (Number(formik.values.salaryDetails.allowance) || 0) - (Number(formik.values.salaryDetails.deduction) || 0)).toLocaleString()} / month`
+                    : `₹${formik.values.salaryConfig.rate} / ${formik.values.salaryConfig.type === 'Daily' ? 'day' : 'hour'}`
+                  }
+                </div>
+              </div>
             </div>
           </div>
         </div>
-
         <div style={{ display: 'flex', gap: '1.25rem', justifyContent: 'flex-end', marginTop: '4rem' }}>
           <button type="button" onClick={() => router.back()} style={{ padding: '0.85rem 2.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', fontWeight: 700, background: 'white', color: 'var(--text-muted)' }}>CANCEL</button>
           <button type="submit" disabled={formik.isSubmitting} style={{ padding: '0.85rem 3.5rem', borderRadius: 'var(--radius-md)', background: 'var(--primary)', color: 'white', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.75rem', boxShadow: '0 10px 20px -5px rgba(13,148,136,0.4)' }}>

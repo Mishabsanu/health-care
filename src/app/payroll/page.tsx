@@ -29,11 +29,18 @@ interface PayrollRecord {
   joinDate: string;
   tenureDays: number;
   workedDays: number;
+  totalHours: number;
+  overtimeHours: number;
   salaryDetails: {
     basicSalary: number;
     allowance: number;
     deduction: number;
     netSalary: number;
+  };
+  salaryConfig: {
+    type: 'Monthly' | 'Daily' | 'Hourly';
+    rate: number;
+    overtimeRate: number;
   };
   bankDetails: {
     bankName: string;
@@ -189,18 +196,31 @@ export default function PayrollPage() {
         return;
     }
 
+    const { netSalary } = staff.salaryDetails;
+    const { totalHours, overtimeHours, salaryConfig } = staff;
+
+    if (netSalary <= 0) {
+      showToast('Calculated salary is zero. Verify attendance logs.', 'warning');
+    }
+
+    const breakdown = `
+      Period: ${selectedMonth}/${selectedYear}
+      Calculated Net: ₹${netSalary.toLocaleString()}
+      (${staff.workedDays} Days | ${totalHours}h Normal | ${overtimeHours}h OT)
+    `;
+
     showConfirm(
       'Initialize Salary Disbursement',
-      `Process salary disbursement of ₹${staff.salaryDetails.netSalary.toLocaleString()} for ${staff.name} for the period ${selectedMonth}/${selectedYear}?`,
+      `Process salary disbursement for ${staff.name}?\n\n${breakdown}`,
       async () => {
         try {
           const count = Math.floor(Math.random() * 9000) + 1000;
           await api.post('/expenses', {
             id: `EXP-SAL-${count}`,
-            date: `${selectedYear}-${selectedMonth}-01`, 
-            amount: staff.salaryDetails.netSalary,
+            date: new Date().toISOString().split('T')[0], // Use current date for payout
+            amount: netSalary,
             category: 'Salaries',
-            description: `Monthly Salary Disbursement | ${staff.name} | Period: ${selectedMonth}-${selectedYear}`,
+            description: `Salary Disbursement | ${staff.name} | Period: ${selectedMonth}-${selectedYear} | ${staff.workedDays} Days`,
             paymentMethod: 'Bank Transfer',
             status: 'Paid',
             staffId: staff._id
@@ -235,19 +255,29 @@ export default function PayrollPage() {
     { 
       header: 'WORK HISTORY', 
       key: (r: PayrollRecord) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>{r.workedDays} Days Worked</div>
-            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Tenure: {r.tenureDays} Days</div>
+            <div style={{ fontSize: '0.8rem', fontWeight: 800 }}>{r.workedDays} Days</div>
+            <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 600 }}>T: {r.tenureDays}d</div>
           </div>
           <button 
             onClick={() => fetchStaffAttendance(r)}
             className="glass-interactive"
             style={{ padding: '0.4rem', borderRadius: '50%', color: 'var(--primary)', border: '1px solid rgba(15, 118, 110, 0.2)' }}
-            title="View Monthly Attendance Calendar"
           >
-            <Calendar size={14} />
+            <Calendar size={13} />
           </button>
+        </div>
+      )
+    },
+    {
+      header: 'HOURS & OT',
+      key: (r: PayrollRecord) => (
+        <div>
+          <div style={{ fontSize: '0.8rem', fontWeight: 800 }}>{r.totalHours}h <span style={{ opacity: 0.5 }}>reg.</span></div>
+          {r.overtimeHours > 0 && (
+            <div style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 900 }}>+{r.overtimeHours}h OT</div>
+          )}
         </div>
       )
     },
