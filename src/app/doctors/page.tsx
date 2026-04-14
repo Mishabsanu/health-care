@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import DataTable from '@/components/DataTable';
 import { usePCMSStore } from '@/store/useStore';
 import api from '@/services/api';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface Doctor {
   _id: string;
@@ -16,9 +17,10 @@ interface Doctor {
 
 export default function DoctorsPage() {
   const router = useRouter();
-  const { isLoading: storeLoading, showToast } = usePCMSStore();
+  const { isLoading: storeLoading, setIsSyncing, showToast } = usePCMSStore();
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [localLoading, setLocalLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   const handleDeleteDoctor = async (doctor: Doctor) => {
     if (!confirm(`⚠️ WARNING: You are about to purge specialist ${doctor.name} from the clinical registry. Continue?`)) return;
@@ -27,30 +29,31 @@ export default function DoctorsPage() {
       await api.delete(`/doctors/${doctor._id}`);
       showToast('Specialist successfully removed from registry.', 'success');
       // Refresh list
-      const res = await api.get('/doctors');
-      const data = res.data?.data || res.data;
-      setDoctors(Array.isArray(data) ? data : []);
+      await fetchDoctors();
     } catch (err) {
       console.error('🚫 Registry Error | Deletion failed:', err);
       showToast('Failed to remove specialist. Ensure no active dependencies exist.', 'error');
     }
   };
 
-  useEffect(() => {
-    const fetchDoctors = async () => {
-      setLocalLoading(true);
-      try {
-        const res = await api.get('/doctors');
-        const data = res.data?.data || res.data;
-        setDoctors(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error('🚫 Registry Error | Failed to fetch specialists:', err);
-      } finally {
-        setLocalLoading(false);
-      }
-    };
+  const fetchDoctors = async (isInitial = false) => {
+    if (isInitial && !hasLoaded) setLocalLoading(true);
+    setIsSyncing(true);
+    try {
+      const res = await api.get('/doctors');
+      const data = res.data?.data || res.data;
+      setDoctors(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('🚫 Registry Error | Failed to fetch specialists:', err);
+    } finally {
+      setLocalLoading(false);
+      setHasLoaded(true);
+      setIsSyncing(false);
+    }
+  };
 
-    fetchDoctors();
+  useEffect(() => {
+    fetchDoctors(!hasLoaded);
   }, []);
 
   const columns = [
@@ -96,6 +99,8 @@ export default function DoctorsPage() {
     },
   ];
 
+  if (localLoading) return <LoadingSpinner />;
+
   return (
     <div className="doctors-container animate-fade-in">
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
@@ -111,11 +116,6 @@ export default function DoctorsPage() {
         </button>
       </div>
 
-      {(localLoading || storeLoading) ? (
-        <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-           🛡️ Synchronizing Specialist Records...
-        </div>
-      ) : (
         <DataTable 
           data={doctors.map(d => ({ ...d, id: d._id }))}
           columns={columns}
@@ -123,8 +123,9 @@ export default function DoctorsPage() {
           onView={(d) => router.push(`/doctors/${d._id}`)}
           onEdit={(d) => router.push(`/doctors/${d._id}/edit`)}
           onDelete={handleDeleteDoctor}
+          onAddNew={() => router.push('/doctors/add')}
+          addNewLabel="Add Specialist"
         />
-      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useRouter, useParams } from 'next/navigation';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
 import { Wallet, Calendar, Tag, CreditCard, CheckCircle2, ChevronLeft, Trash2, MapPin } from 'lucide-react';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function EditExpensePage() {
   const router = useRouter();
@@ -84,13 +85,7 @@ export default function EditExpensePage() {
     }
   };
 
-  if (fetching) {
-    return (
-        <div style={{ padding: '5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-            🛡️ Accessing Financial Records...
-        </div>
-    );
-  }
+  if (fetching) return <LoadingSpinner />;
 
   return (
     <div className="animate-fade-in" style={{ paddingBottom: '5rem' }}>

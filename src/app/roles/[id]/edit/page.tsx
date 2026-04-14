@@ -7,6 +7,7 @@ import { useRouter, useParams } from 'next/navigation';
 import api from '@/services/api';
 import PermissionMatrix from '@/components/PermissionMatrix';
 import { usePCMSStore } from '@/store/useStore';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 const validationSchema = Yup.object().shape({
   name: Yup.string().trim().required('Role name is required'),
@@ -78,13 +79,7 @@ export default function EditRolePage() {
     fetchData();
   }, [id]);
 
-  if (loading) {
-    return (
-      <div style={{ textAlign: 'center', padding: '10rem 2rem', color: 'var(--text-muted)' }}>
-        <div className="animate-pulse" style={{ fontWeight: 600, fontSize: '0.85rem', letterSpacing: '0.1em' }}>🛡️ ACCESSING DYNAMIC SECURITY VAULT...</div>
-      </div>
-    );
-  }
+  if (loading) return <LoadingSpinner />;
 
   const isSuperAdmin = !!user?.allAccess;
   const canModifyProtected = isSuperAdmin || !isSystemRole;

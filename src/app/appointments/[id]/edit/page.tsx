@@ -6,6 +6,7 @@ import * as Yup from 'yup';
 import { ArrowLeft, User, Calendar, Clock, Stethoscope, CheckCircle2, MessageCircle, Activity } from 'lucide-react';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 const validationSchema = Yup.object().shape({
   patientId: Yup.string().required('Patient must be selected'),
@@ -119,12 +120,7 @@ export default function EditAppointmentPage() {
     ) : null
   );
 
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
-      <div className="w-10 h-10 border-4 border-slate-100 border-t-teal-600 rounded-full animate-spin" />
-      <p className="font-bold text-slate-400 animate-pulse text-xs tracking-widest">🛡️ SYNCING SCHEDULER VAULT...</p>
-    </div>
-  );
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className="edit-appointment-container animate-fade-in clinical-form-wide" style={{ paddingBottom: '7rem' }}>

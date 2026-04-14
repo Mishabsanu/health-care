@@ -12,9 +12,10 @@ import {
   RotateCcw,
   Search,
   SlidersHorizontal,
+  Plus,
   X
 } from 'lucide-react';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 
 interface DataTableProps<T> {
   data: T[];
@@ -49,6 +50,8 @@ interface DataTableProps<T> {
     externalSearch?: string;
   };
   getRowStyle?: (item: T) => React.CSSProperties;
+  onAddNew?: () => void;
+  addNewLabel?: string;
 }
 
 export default function DataTable<T extends { id: string }>({ 
@@ -62,9 +65,12 @@ export default function DataTable<T extends { id: string }>({
   defaultPageSize = 10,
   filterableFields = [],
   serverPagination,
-  getRowStyle
+  getRowStyle,
+  onAddNew,
+  addNewLabel = "Add Record"
 }: DataTableProps<T>) {
-  const [searchTerm, setSearchTerm] = useState('');
+  const isFirstRender = useRef(true);
+  const [searchTerm, setSearchTerm] = useState(serverPagination?.externalSearch || '');
   const [currentPage, setCurrentPage] = useState(serverPagination?.currentPage || 1);
   const [pageSize, setPageSize] = useState(serverPagination?.pageSize || defaultPageSize);
   const [sortField, setSortField] = useState<keyof T | null>(null);
@@ -89,24 +95,29 @@ export default function DataTable<T extends { id: string }>({
     }
   }, [isFilterOpen, activeFilters]);
 
-  // Sync to Backend if requested
+  // Sync to Backend if requested — ONLY on user interaction or actual state change
   useEffect(() => {
-    if (serverPagination) {
+    if (serverPagination && !isFirstRender.current) {
       serverPagination.onSearchChange(searchTerm);
     }
   }, [searchTerm, serverPagination]);
 
   useEffect(() => {
-    if (serverPagination) {
+    if (serverPagination && !isFirstRender.current) {
       serverPagination.onFilterChange(activeFilters);
     }
   }, [activeFilters, serverPagination]);
 
   useEffect(() => {
-    if (serverPagination) {
+    if (serverPagination && !isFirstRender.current) {
       serverPagination.onPageChange(currentPage);
     }
   }, [currentPage, serverPagination]);
+
+  // Mark first render as complete
+  useEffect(() => {
+    isFirstRender.current = false;
+  }, []);
 
   // 🔄 Sync from External (Parent) -> Internal
   useEffect(() => {
@@ -501,9 +512,33 @@ export default function DataTable<T extends { id: string }>({
                 <tr>
                   <td colSpan={columns.length + 1} style={{ padding: '8rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                     <div style={{ opacity: 0.1, marginBottom: '2rem' }}><SlidersHorizontal size={80} style={{ margin: '0 auto' }} /></div>
-                    <h3 style={{ fontSize: '1.5rem', fontWeight: 950, color: 'var(--text-main)', marginBottom: '0.75rem', letterSpacing: '-0.02em' }}>No Registry Hits</h3>
-                    <p style={{ fontSize: '1rem', fontWeight: 500, maxWidth: '400px', margin: '0 auto 2.5rem auto', lineHeight: 1.6 }}>The specified advanced filters did not yield any clinical records from the synchronization vault.</p>
-                    <button onClick={clearAll} style={{ padding: '1rem 2.5rem', borderRadius: 'var(--radius-md)', background: 'var(--primary)', color: 'white', fontSize: '0.9rem', fontWeight: 950, letterSpacing: '0.05em', boxShadow: '0 10px 20px -5px rgba(15, 118, 110, 0.4)' }}>CLEAR ALL FILTERS</button>
+                    <h3 style={{ fontSize: '1.5rem', fontWeight: 950, color: 'var(--text-main)', marginBottom: '0.75rem', letterSpacing: '-0.02em' }}>No Data Found</h3>
+                    <p style={{ fontSize: '1rem', fontWeight: 500, maxWidth: '400px', margin: '0 auto 2.5rem auto', lineHeight: 1.6 }}>We couldn't locate any registry entries matching your current search or filter selection. Try adjusting your parameters or clearing all filters.</p>
+                    
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', alignItems: 'center' }}>
+                      <button onClick={clearAll} style={{ padding: '1rem 2rem', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border-subtle)', background: 'white', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 900, letterSpacing: '0.05em' }}>CLEAR ALL FILTERS</button>
+                      
+                      {onAddNew && (
+                        <button 
+                          onClick={onAddNew} 
+                          style={{ 
+                            padding: '1rem 2.5rem', 
+                            borderRadius: 'var(--radius-md)', 
+                            background: 'var(--primary)', 
+                            color: 'white', 
+                            fontSize: '0.9rem', 
+                            fontWeight: 950, 
+                            letterSpacing: '0.05em', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '0.6rem',
+                            boxShadow: '0 10px 20px -5px rgba(15, 118, 110, 0.4)' 
+                          }}
+                        >
+                          <Plus size={18} /> {addNewLabel.toUpperCase()}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )}

@@ -1,4 +1,5 @@
 'use client'
+import LoadingSpinner from '@/components/LoadingSpinner';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
 import { useFormik } from 'formik';
@@ -151,12 +152,7 @@ export default function EditPatientPage() {
     ) : null
   );
 
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
-      <div className="w-10 h-10 border-4 border-slate-100 border-t-teal-600 rounded-full animate-spin" />
-      <p className="font-bold text-slate-400 animate-pulse text-xs tracking-widest">🛡️ SECURING CLINICAL VAULT...</p>
-    </div>
-  );
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className="edit-patient-container animate-fade-in clinical-form-wide" style={{ paddingBottom: '7rem' }}>

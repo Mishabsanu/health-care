@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import DataTable from '@/components/DataTable';
 import { usePCMSStore } from '@/store/useStore';
 import api from '@/services/api';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import { Plus, UserPlus, Filter, Download } from 'lucide-react';
 import HasPermission from '@/components/HasPermission';
 import { usePermission } from '@/hooks/usePermission';
@@ -27,6 +28,7 @@ export default function PatientsPage() {
   const { isLoading: storeLoading, showToast, setIsSyncing, showConfirm } = usePCMSStore();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [localLoading, setLocalLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   // Backend Pagination State
   const [totalRecords, setTotalRecords] = useState(0);
@@ -38,8 +40,9 @@ export default function PatientsPage() {
   // -------------------------------------------------------------------
   // SYNC | Fetch Clinical Patient Registry (Server-Paginated)
   // -------------------------------------------------------------------
-  const fetchPatients = async () => {
-    setLocalLoading(true);
+  const fetchPatients = async (isInitial = false) => {
+    if (isInitial && !hasLoaded) setLocalLoading(true);
+    setIsSyncing(true);
     try {
       // Build query string
       const params = new URLSearchParams({
@@ -71,11 +74,13 @@ export default function PatientsPage() {
       showToast('Failed to load clinical registry', 'error');
     } finally {
       setLocalLoading(false);
+      setHasLoaded(true);
+      setIsSyncing(false);
     }
   };
 
   useEffect(() => {
-    fetchPatients();
+    fetchPatients(!hasLoaded);
   }, [currentPage, pageSize, searchQuery, activeFilters]);
 
   const handleDeletePatient = (patient: Patient) => {
@@ -168,6 +173,8 @@ export default function PatientsPage() {
     }
   ];
 
+  if (localLoading) return <LoadingSpinner />;
+
   return (
     <div className="patients-container animate-fade-in">
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3rem' }}>
@@ -239,6 +246,8 @@ export default function PatientsPage() {
             }
           }) : undefined}
           onDelete={hasPermission('patients:delete') ? handleDeletePatient : undefined}
+          onAddNew={() => router.push('/patients/add')}
+          addNewLabel="Register Patient"
           serverPagination={{
             totalRecords,
             currentPage,

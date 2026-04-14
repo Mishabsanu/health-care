@@ -6,7 +6,7 @@ import * as Yup from 'yup';
 import { ArrowLeft, Stethoscope, Phone, Mail, Activity, MessageCircle, CheckCircle2, User } from 'lucide-react';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
-import Loading from '@/components/Loading';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 const validationSchema = Yup.object().shape({
   name: Yup.string().trim().required('Specialist name is required'),
@@ -91,7 +91,7 @@ export default function EditDoctorPage() {
       </div>
     ) : null;
 
-  if (loading) return <Loading message="Accessing Specialist Registry..." />;
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className="edit-doctor-container animate-fade-in clinical-form-wide" style={{ paddingBottom: '7rem' }}>

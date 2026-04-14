@@ -1,4 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #0f766e;
+  --color-primary-light: #14b8a6;
+  --color-primary-dark: #134e4a;
+  --color-secondary: #0ea5e9;
+  --color-accent: #f59e0b;
+  --color-bg-main: #f8fafc;
+  --color-text-main: #1e293b;
+  --color-text-muted: #64748b;
+  
+  --radius-sm: 0.375rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1.25rem;
+  
+  --shadow-premium: 0 10px 40px -10px rgba(0,0,0,0.05);
+  --shadow-premium-hover: 0 20px 50px -12px rgba(0,0,0,0.1);
+}
 
 :root {
   /* Color Palette - Premium Healthcare Teal & Slate */
@@ -144,6 +163,12 @@ button {
   background: radial-gradient(circle at top right, #f1f5f9, var(--bg-main));
   display: flex;
   flex-direction: column;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .page-content {
@@ -466,6 +491,10 @@ button {
 .col-2 { grid-column: span 2; }
 .col-1 { grid-column: span 1; }
 
+@media (max-width: 1280px) {
+  .finance-grid { grid-template-columns: 1fr !important; }
+}
+
 @media (max-width: 1024px) {
   .col-4, .col-3 { grid-column: span 6; }
 }
@@ -504,4 +533,50 @@ button {
   color: var(--text-muted);
   font-style: italic;
   margin-top: 0.75rem;
+}
+
+/* 🌀 Global Animations & Motion Systems */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseSubtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(0.99); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pulse-subtle {
+  animation: pulseSubtle 3s ease-in-out infinite;
+}
+
+/* 🎨 Clinical Scrollbar Identity */
+.custom-scrollbar::-webkit-scrollbar {
+  height: 8px; width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--bg-main); border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--primary); border-radius: 10px; border: 2px solid var(--bg-main);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-dark);
 }

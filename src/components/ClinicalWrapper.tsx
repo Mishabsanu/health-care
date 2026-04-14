@@ -6,6 +6,8 @@ import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import GlobalToast from '../components/Toast';
 import ConfirmDialog from '../components/ConfirmDialog';
+import LoadingSpinner from './LoadingSpinner';
+
 
 export default function ClinicalWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -33,6 +35,8 @@ export default function ClinicalWrapper({ children }: { children: React.ReactNod
   }, [pathname, user, fetchInitialData, router]);
 
   if (pathname === '/login') return <>{children}</>;
+
+  if (isLoading) return <LoadingSpinner/>;
 
 
 

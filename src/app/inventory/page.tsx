@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import DataTable from '@/components/DataTable';
 import { usePCMSStore } from '@/store/useStore';
 import api from '@/services/api';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import { Plus, AlertCircle } from 'lucide-react';
 import HasPermission from '@/components/HasPermission';
 import { usePermission } from '@/hooks/usePermission';
@@ -30,6 +31,7 @@ export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [topSellers, setTopSellers] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   // Backend Pagination State
   const [totalRecords, setTotalRecords] = useState(0);
@@ -40,8 +42,8 @@ export default function InventoryPage() {
 
   const categories = ['Equipment', 'Consumables', 'Medicines', 'Stationery', 'Others'];
 
-  const fetchInventory = async () => {
-    setLoading(true);
+  const fetchInventory = async (isInitial = false) => {
+    if (isInitial && !hasLoaded) setLoading(true);
     setIsSyncing(true);
     try {
       const params = new URLSearchParams({
@@ -73,12 +75,13 @@ export default function InventoryPage() {
       console.error('🚫 Registry Error | Failed to fetch inventory:', err);
     } finally {
       setLoading(false);
+      setHasLoaded(true);
       setIsSyncing(false);
     }
   };
 
   useEffect(() => {
-    fetchInventory();
+    fetchInventory(!hasLoaded);
   }, [currentPage, pageSize, searchQuery, activeFilters]);
 
   const handleDelete = (item: InventoryItem) => {
@@ -156,6 +159,8 @@ export default function InventoryPage() {
     }
   ];
 
+  if (loading) return <LoadingSpinner />;
+
   return (
     <div className="inventory-container animate-fade-in">
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
@@ -204,6 +209,8 @@ export default function InventoryPage() {
             }
           }) : undefined}
           onDelete={hasPermission('inventory:delete') ? handleDelete : undefined}
+          onAddNew={() => router.push('/inventory/add')}
+          addNewLabel="Add Item"
           filterableFields={[
             { label: 'Category', key: 'category' as keyof InventoryItem, options: categories }
           ]}

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import DataTable from '@/components/DataTable';
 import api from '@/services/api';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import { usePCMSStore } from '@/store/useStore';
 
 interface Role {
@@ -16,15 +17,18 @@ interface Role {
 
 export default function RolesPage() {
   const router = useRouter();
+  const { showConfirm, showToast, setIsSyncing } = usePCMSStore();
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
-  const { showConfirm, showToast } = usePCMSStore();
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   // -------------------------------------------------------------------
   // SYNC | Fetch Dynamic Role Registry
   // -------------------------------------------------------------------
   useEffect(() => {
-    const fetchRoles = async () => {
+    const fetchRoles = async (isInitial = false) => {
+      if (isInitial && !hasLoaded) setLoading(true);
+      setIsSyncing(true);
       try {
         const res = await api.get('/roles');
         const data = res.data?.data || res.data;
@@ -33,9 +37,11 @@ export default function RolesPage() {
         console.error('🚫 Registry Error | Failed to fetch clinical roles:', err);
       } finally {
         setLoading(false);
+        setHasLoaded(true);
+        setIsSyncing(false);
       }
     };
-    fetchRoles();
+    fetchRoles(!hasLoaded);
   }, []);
 
   const columns = [
@@ -96,6 +102,8 @@ export default function RolesPage() {
     );
   };
 
+  if (loading) return <LoadingSpinner />;
+
   return (
     <div className="roles-container animate-fade-in">
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
@@ -118,6 +126,8 @@ export default function RolesPage() {
           onView={(r) => router.push(`/roles/${r._id}`)}
           onEdit={(r) => router.push(`/roles/${r._id}/edit`)}
           onDelete={handleDelete}
+          onAddNew={() => router.push('/roles/add')}
+          addNewLabel="Add Role"
           filterableFields={[
             { label: 'Type', key: 'isSystemRole' as keyof Role, options: ['true', 'false'] }
           ]}

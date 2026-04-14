@@ -4,6 +4,7 @@ import { useRouter, useParams } from 'next/navigation';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
 import { Package, Tag, Hash, BarChart3, CheckCircle2, ChevronLeft, Trash2, Info, MapPin } from 'lucide-react';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function EditInventoryPage() {
   const router = useRouter();
@@ -89,13 +90,7 @@ export default function EditInventoryPage() {
     }
   };
 
-  if (fetching) {
-    return (
-        <div style={{ padding: '5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-            🛡️ Accessing Stock Registry...
-        </div>
-    );
-  }
+  if (fetching) return <LoadingSpinner />;
 
   return (
     <div className="animate-fade-in" style={{ paddingBottom: '5rem' }}>

@@ -1,13 +1,14 @@
 'use client'
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import DataTable from '@/components/DataTable';
-import { usePCMSStore } from '@/store/useStore';
-import api from '@/services/api';
-import { generateInvoicePDF } from '@/utils/pdfGenerator';
-import { Download, CheckCircle2, Printer } from 'lucide-react';
 import HasPermission from '@/components/HasPermission';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import { usePermission } from '@/hooks/usePermission';
+import api from '@/services/api';
+import { usePCMSStore } from '@/store/useStore';
+import { generateInvoicePDF } from '@/utils/pdfGenerator';
+import { CheckCircle2, Printer } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 interface Invoice {
   _id: string;
@@ -26,9 +27,10 @@ interface Invoice {
 export default function BillingPage() {
   const router = useRouter();
   const { hasPermission, canOperate } = usePermission();
-  const { showToast, showConfirm } = usePCMSStore();
+  const { showToast, showConfirm, setIsSyncing } = usePCMSStore();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [localLoading, setLocalLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   // Backend Pagination State
   const [totalRecords, setTotalRecords] = useState(0);
@@ -37,8 +39,9 @@ export default function BillingPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
 
-  const fetchInvoices = async () => {
-    setLocalLoading(true);
+  const fetchInvoices = async (isInitial = false) => {
+    if (isInitial && !hasLoaded) setLocalLoading(true);
+    setIsSyncing(true);
     try {
       const params = new URLSearchParams({
         page: currentPage.toString(),
@@ -65,11 +68,13 @@ export default function BillingPage() {
       console.error('🚫 Registry Error | Failed to fetch invoices:', err);
     } finally {
       setLocalLoading(false);
+      setHasLoaded(true);
+      setIsSyncing(false);
     }
   };
 
   useEffect(() => {
-    fetchInvoices();
+    fetchInvoices(!hasLoaded);
   }, [currentPage, pageSize, searchQuery, activeFilters]);
 
   const handleDownloadPDF = (i: Invoice) => {
@@ -168,6 +173,8 @@ export default function BillingPage() {
     },
   ];
 
+  if (localLoading) return <LoadingSpinner />;
+
   return (
     <div className="billing-container animate-fade-in">
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
@@ -190,6 +197,8 @@ export default function BillingPage() {
           columns={columns}
           searchPlaceholder="Search by patient or invoice #..."
           onView={(i) => router.push(`/billing/${i._id}`)}
+          onAddNew={() => router.push('/billing/generate')}
+          addNewLabel="Generate Bill"
           onEdit={hasPermission('billing:edit') ? ((i) => {
             if (canOperate(i)) {
               router.push(`/billing/${i._id}/edit`);

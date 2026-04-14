@@ -4,6 +4,7 @@ import HasPermission from '@/components/HasPermission';
 import { usePermission } from '@/hooks/usePermission';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import { Clock, MessageSquare, Receipt } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -28,6 +29,7 @@ export default function AppointmentsPage() {
   const { isLoading: storeLoading, showToast, showConfirm, setIsSyncing } = usePCMSStore();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [localLoading, setLocalLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   // -------------------------------------------------------------------
   // SYNC | Fetch Clinical Appointment Registry
@@ -40,8 +42,9 @@ export default function AppointmentsPage() {
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
   const [activeTimeframe, setActiveTimeframe] = useState<'today' | 'upcoming' | 'history'>('today');
 
-  const fetchAppointments = async () => {
-    setLocalLoading(true);
+  const fetchAppointments = async (isInitial = false) => {
+    if (isInitial && !hasLoaded) setLocalLoading(true);
+    setIsSyncing(true);
     try {
       const localDate = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD format
       const params = new URLSearchParams({
@@ -83,11 +86,13 @@ export default function AppointmentsPage() {
       showToast('Failed to load clinical scheduler.', 'error');
     } finally {
       setLocalLoading(false);
+      setHasLoaded(true);
+      setIsSyncing(false);
     }
   };
 
   useEffect(() => {
-    fetchAppointments();
+    fetchAppointments(!hasLoaded);
   }, [currentPage, pageSize, searchQuery, activeFilters, activeTimeframe]);
 
   const handleDeleteAppointment = (appointment: Appointment) => {
@@ -455,6 +460,8 @@ export default function AppointmentsPage() {
     }
   ];
 
+  if (localLoading) return <LoadingSpinner />;
+
   return (
     <div className="appointments-container animate-fade-in">
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
@@ -532,6 +539,8 @@ export default function AppointmentsPage() {
             showToast('🚫 Access Denied | You can only cancel your own appointments.', 'error');
           }
         }) : undefined}
+        onAddNew={() => router.push('/appointments/add')}
+        addNewLabel="Book Appointment"
         filterableFields={[
           { label: 'Status', key: 'status' as keyof Appointment, options: ['Queued', 'Patient In', 'Session Done', 'Cancelled'] },
           { label: 'Date', key: 'date' as keyof Appointment, options: [] }

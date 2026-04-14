@@ -6,6 +6,7 @@ import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
 import HasPermission from '@/components/HasPermission';
 import { usePermission } from '@/hooks/usePermission';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface User {
   _id: string;
@@ -20,9 +21,10 @@ interface User {
 export default function UsersPage() {
   const router = useRouter();
   const { hasPermission, canOperate } = usePermission();
-  const { showToast, showConfirm } = usePCMSStore();
+  const { showToast, showConfirm, setIsSyncing } = usePCMSStore();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   const handleDeleteUser = (user: User) => {
     if (!canOperate(user)) return showToast('🚫 Access Denied | You do not have permission to revoke this specialist access.', 'error');
@@ -53,8 +55,9 @@ export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
 
-  const fetchUsers = async () => {
-    setLoading(true);
+  const fetchUsers = async (isInitial = false) => {
+    if (isInitial && !hasLoaded) setLoading(true);
+    setIsSyncing(true);
     try {
       const params = new URLSearchParams({
         page: currentPage.toString(),
@@ -81,11 +84,13 @@ export default function UsersPage() {
       console.error('🚫 Registry Error | Failed to fetch clinical users:', err);
     } finally {
       setLoading(false);
+      setHasLoaded(true);
+      setIsSyncing(false);
     }
   };
 
   useEffect(() => {
-    fetchUsers();
+    fetchUsers(!hasLoaded);
   }, [currentPage, pageSize, searchQuery, activeFilters]);
 
   const columns = [
@@ -132,6 +137,8 @@ export default function UsersPage() {
     },
   ]
 
+  if (loading) return <LoadingSpinner />;
+
   return (
     <div className="users-container animate-fade-in">
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
@@ -162,6 +169,8 @@ export default function UsersPage() {
           }
         }) : undefined}
         onDelete={hasPermission('users:delete') ? handleDeleteUser : undefined}
+        onAddNew={() => router.push('/users/add')}
+        addNewLabel="Onboard User"
         filterableFields={[
           { label: 'Status', key: 'status' as keyof User, options: ['Active', 'Inactive'] }
         ]}

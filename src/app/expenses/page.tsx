@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import DataTable from '@/components/DataTable';
 import { usePCMSStore } from '@/store/useStore';
 import api from '@/services/api';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import { Plus } from 'lucide-react';
 import HasPermission from '@/components/HasPermission';
 import { usePermission } from '@/hooks/usePermission';
@@ -26,6 +27,7 @@ export default function ExpensesPage() {
   const { isLoading: storeLoading, setIsSyncing, showToast, showConfirm } = usePCMSStore();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   // Backend Pagination State
   const [totalRecords, setTotalRecords] = useState(0);
@@ -36,8 +38,8 @@ export default function ExpensesPage() {
 
   const categories = ['Rent', 'Salaries', 'Supplies', 'Utilities', 'Maintenance', 'Marketing', 'Others'];
 
-  const fetchExpenses = async () => {
-    setLoading(true);
+  const fetchExpenses = async (isInitial = false) => {
+    if (isInitial && !hasLoaded) setLoading(true);
     setIsSyncing(true);
     try {
       const params = new URLSearchParams({
@@ -65,12 +67,13 @@ export default function ExpensesPage() {
       console.error('🚫 Registry Error | Failed to fetch expenses:', err);
     } finally {
       setLoading(false);
+      setHasLoaded(true);
       setIsSyncing(false);
     }
   };
 
   useEffect(() => {
-    fetchExpenses();
+    fetchExpenses(!hasLoaded);
   }, [currentPage, pageSize, searchQuery, activeFilters]);
 
   const handleDelete = (expense: Expense) => {
@@ -135,6 +138,8 @@ export default function ExpensesPage() {
     }
   ];
 
+  if (loading) return <LoadingSpinner />;
+
   return (
     <div className="expenses-container animate-fade-in">
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
@@ -171,6 +176,8 @@ export default function ExpensesPage() {
                   showToast('🚫 Access Denied | You can only delete your own expense records.', 'error');
               }
           }) : undefined}
+          onAddNew={() => router.push('/expenses/add')}
+          addNewLabel="Log Expense"
           filterableFields={[
             { label: 'Category', key: 'category' as keyof Expense, options: categories },
             { label: 'Status', key: 'status' as keyof Expense, options: ['Paid', 'Pending'] }

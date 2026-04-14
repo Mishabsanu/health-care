@@ -1,591 +1,894 @@
-'use client'
-import React, { useState, useEffect } from 'react';
-import { usePCMSStore } from '@/store/useStore';
+'use client';
+
+import React, { useCallback, useEffect, useState } from 'react';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import api from '@/services/api';
-import { usePermission } from '@/hooks/usePermission';
+import { usePCMSStore } from '@/store/useStore';
+import styles from './page.module.css';
 import {
-  Calendar, Users, Clock, Search, LogIn, LogOut,
-  Download, FileText, Activity, XCircle, Info, ChevronRight
+  Activity,
+  Calendar,
+  Clock,
+  Download,
+  Eye,
+  LogIn,
+  LogOut,
+  Search,
+  Users,
+  XCircle,
 } from 'lucide-react';
+
+type ApiDateValue =
+  | string
+  | number
+  | Date
+  | { $date?: string | number | Date }
+  | null
+  | undefined;
+
+interface StaffMember {
+  _id: string;
+  id?: string;
+  name: string;
+  role?: { name?: string | null } | null;
+}
+
+interface ActiveSession {
+  id: string;
+  sessionId?: string;
+  checkIn?: ApiDateValue;
+}
+
+interface AttendanceStatus {
+  staffPresent: ActiveSession[];
+}
+
+interface StaffReference {
+  _id?: string;
+  id?: string;
+  name?: string;
+}
+
+interface AttendanceLog {
+  _id?: string;
+  staffId?: string | StaffReference | null;
+  checkIn?: ApiDateValue;
+  checkOut?: ApiDateValue | null;
+}
+
+interface ModalHeader {
+  title: string;
+  subtitle: string;
+}
+
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+const YEAR_OPTIONS = Array.from(
+  { length: 4 },
+  (_, index) => new Date().getFullYear() - 2 + index
+);
+
+const WEEK_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const cn = (...classNames: Array<string | false | null | undefined>) =>
+  classNames.filter(Boolean).join(' ');
+
+const getEntityId = (
+  entity?: string | { _id?: string; id?: string } | null
+) => {
+  if (!entity) return '';
+  return typeof entity === 'string' ? entity : entity._id || entity.id || '';
+};
+
+const safeDate = (value: ApiDateValue) => {
+  if (!value) return null;
+
+  const rawValue =
+    typeof value === 'object' && !(value instanceof Date) && '$date' in value
+      ? value.$date
+      : value;
+
+  const parsed = rawValue instanceof Date ? rawValue : new Date(rawValue as string | number);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const formatTime = (value: ApiDateValue) => {
+  const parsed = safeDate(value);
+  if (!parsed) return '-- : --';
+  return parsed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
+const formatDateLabel = (value: Date) =>
+  value.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+
+const getDisplayNameFromLog = (log: AttendanceLog) => {
+  if (typeof log.staffId === 'string') return 'Staff member';
+  return log.staffId?.name || 'Staff member';
+};
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (
+    error &&
+    typeof error === 'object' &&
+    'response' in error &&
+    error.response &&
+    typeof error.response === 'object' &&
+    'data' in error.response &&
+    error.response.data &&
+    typeof error.response.data === 'object' &&
+    'message' in error.response.data &&
+    typeof error.response.data.message === 'string'
+  ) {
+    return error.response.data.message;
+  }
+
+  return fallback;
+};
 
 export default function AttendancePage() {
   const { user, showToast } = usePCMSStore();
-  const { hasPermission } = usePermission();
 
-  // 🧭 System State
   const [teamSubTab, setTeamSubTab] = useState<'day' | 'register'>('day');
-  const [status, setStatus] = useState<any>({ staffPresent: [] });
-  const [history, setHistory] = useState<any[]>([]);
-  const [staffList, setStaffList] = useState<any[]>([]);
+  const [status, setStatus] = useState<AttendanceStatus>({ staffPresent: [] });
+  const [history, setHistory] = useState<AttendanceLog[]>([]);
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
-  // 🔍 Filtering & Context
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 📋 Modal Orchestration
   const [showModal, setShowModal] = useState(false);
-  const [modalData, setModalData] = useState<any>(null);
+  const [modalHeader, setModalHeader] = useState<ModalHeader>({
+    title: 'Shift Audit',
+    subtitle: 'Detailed attendance segments for the selected period.',
+  });
+  const [modalData, setModalData] = useState<AttendanceLog[]>([]);
 
-  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const monthLabel = MONTHS[selectedMonth - 1];
+  const monthDaysCount = new Date(selectedYear, selectedMonth, 0).getDate();
+  const todayKey = new Date().toDateString();
+  const firstName = user?.name?.trim()?.split(' ')[0] || 'Team';
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [statusRes, historyRes, staffRes] = await Promise.all([
         api.get('/attendance/status'),
         api.get(`/attendance?month=${selectedMonth}&year=${selectedYear}`),
-        api.get('/attendance/staff')
+        api.get('/attendance/staff'),
       ]);
 
-      setStatus(statusRes.data);
-      setHistory(historyRes.data);
-      setStaffList(staffRes.data);
-    } catch (err: any) {
-      console.error('🚫 Intelligence Gateway Error:', err);
+      setStatus({
+        staffPresent: Array.isArray(statusRes.data?.staffPresent)
+          ? statusRes.data.staffPresent
+          : [],
+      });
+      setHistory(
+        Array.isArray(historyRes.data)
+          ? historyRes.data
+          : Array.isArray(historyRes.data?.data)
+            ? historyRes.data.data
+            : []
+      );
+      setStaffList(
+        Array.isArray(staffRes.data)
+          ? staffRes.data
+          : Array.isArray(staffRes.data?.data)
+            ? staffRes.data.data
+            : []
+      );
+    } catch (error) {
+      console.error('Attendance fetch failed:', error);
+      showToast('Could not load attendance data.', 'error');
     } finally {
       setLoading(false);
+      setHasLoaded(true);
     }
-  };
+  }, [selectedMonth, selectedYear, showToast]);
 
   useEffect(() => {
-    fetchData();
-  }, [selectedMonth, selectedYear]);
+    void fetchData();
+  }, [fetchData]);
 
-  const safeDate = (val: any) => {
-    if (!val) return null;
-    const d = val?.$date ? new Date(val.$date) : new Date(val);
-    return isNaN(d.getTime()) ? null : d;
-  };
-
-  const togglePresence = async (staffId: string, currentSessionId?: string) => {
-    setActionLoading(true);
-    try {
-      if (!currentSessionId) {
-        await api.post('/attendance/check-in', { staffId });
-        showToast('Clinical Session Activated', 'success');
-      } else {
-        await api.put(`/attendance/check-out/${currentSessionId}`);
-        showToast('Clinical Session Terminated', 'success');
-      }
-      fetchData();
-    } catch (err: any) {
-      showToast(err.response?.data?.message || 'Action failed', 'error');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const calculateDuration = (inTime: any, outTime: any) => {
+  const calculateDuration = (inTime: ApiDateValue, outTime: ApiDateValue) => {
     const start = safeDate(inTime);
     const end = safeDate(outTime);
     if (!start || !end) return 0;
     return end.getTime() - start.getTime();
   };
 
-  const formatMs = (ms: number) => {
-    const h = Math.floor(ms / (1000 * 60 * 60));
-    const m = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-    return `${h}h ${m}m`;
+  const formatMs = (milliseconds: number) => {
+    const hours = Math.floor(milliseconds / (1000 * 60 * 60));
+    const minutes = Math.floor((milliseconds % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${minutes}m`;
   };
 
-  const getDaysInMonth = (y: number, m: number) => new Date(y, m, 0).getDate();
-  const monthDaysCount = getDaysInMonth(selectedYear, selectedMonth);
+  const openLogModal = (
+    logs: AttendanceLog[],
+    title: string,
+    subtitle: string
+  ) => {
+    if (!logs.length) {
+      showToast('No attendance logs available for this selection.', 'info');
+      return;
+    }
 
-  const filteredStaff = staffList.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    setModalHeader({ title, subtitle });
+    setModalData(logs);
+    setShowModal(true);
+  };
 
-  // 📈 Dynamic Clinic Analytics (Responsive to Search)
-  const workforceSize = filteredStaff.length || 0;
-  const presentCount = status?.staffPresent?.filter((p: any) =>
-    filteredStaff.some(s => s._id === p.id)
-  ).length || 0;
+  const togglePresence = async (staffId: string, currentSessionId?: string) => {
+    setActionLoadingId(staffId);
+    try {
+      if (!currentSessionId) {
+        await api.post('/attendance/check-in', { staffId });
+        showToast('Check-in recorded successfully.', 'success');
+      } else {
+        await api.put(`/attendance/check-out/${currentSessionId}`);
+        showToast('Check-out recorded successfully.', 'success');
+      }
+
+      await fetchData();
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error, 'Attendance action failed.'), 'error');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const filteredStaff = staffList.filter((member) =>
+    member.name?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const workforceSize = filteredStaff.length;
+  const presentCount =
+    status.staffPresent.filter((entry) =>
+      filteredStaff.some((member) => getEntityId(member) === entry.id)
+    ).length || 0;
+  const absentCount = Math.max(0, workforceSize - presentCount);
   const clinicalPulse = workforceSize > 0 ? Math.round((presentCount / workforceSize) * 100) : 0;
+  const trackedDays = new Set(
+    history
+      .map((entry) => safeDate(entry.checkIn)?.toDateString())
+      .filter((value): value is string => Boolean(value))
+  ).size;
+  const coverageRatio = monthDaysCount > 0 ? Math.round((trackedDays / monthDaysCount) * 100) : 0;
+  const activeSessions = status.staffPresent.length;
+  const totalSessions = history.length;
+
+  const handleExportAudit = () => {
+    if (!filteredStaff.length) {
+      showToast('There are no staff rows to export right now.', 'info');
+      return;
+    }
+
+    const headers = [
+      'Staff Name',
+      'Role',
+      'Current Status',
+      'First Check In Today',
+      'Last Check Out Today',
+      'Worked Today',
+      'Sessions This Month',
+    ];
+
+    const rows = filteredStaff.map((member) => {
+      const memberId = getEntityId(member);
+      const activeSession = status.staffPresent.find((entry) => entry.id === memberId);
+      const todayLogs = history.filter((entry) => {
+        const logDate = safeDate(entry.checkIn);
+        return getEntityId(entry.staffId) === memberId && logDate?.toDateString() === todayKey;
+      });
+
+      const finishedLogs = todayLogs.filter((entry) => safeDate(entry.checkOut));
+      const firstCheckIn = todayLogs[0]?.checkIn || activeSession?.checkIn;
+      const lastCheckOut = finishedLogs[finishedLogs.length - 1]?.checkOut;
+
+      const workedMilliseconds = todayLogs.reduce((total, entry) => {
+        const endTime = entry.checkOut || new Date();
+        return total + calculateDuration(entry.checkIn, endTime);
+      }, 0);
+
+      return [
+        member.name,
+        member.role?.name || 'Practitioner',
+        activeSession ? 'On floor' : 'Off duty',
+        formatTime(firstCheckIn),
+        formatTime(lastCheckOut),
+        formatMs(workedMilliseconds),
+        history.filter((entry) => getEntityId(entry.staffId) === memberId).length,
+      ];
+    });
+
+    const csvContent = [headers, ...rows]
+      .map((row) =>
+        row
+          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+          .join(',')
+      )
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = `attendance-audit-${selectedYear}-${String(selectedMonth).padStart(2, '0')}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+
+    showToast('Attendance audit exported.', 'success');
+  };
+
+  const renderRegisterCells = () => {
+    const firstDay = new Date(selectedYear, selectedMonth - 1, 1).getDay();
+    const totalDays = new Date(selectedYear, selectedMonth, 0).getDate();
+    const cells: React.ReactNode[] = [];
+
+    for (let paddingIndex = 0; paddingIndex < firstDay; paddingIndex += 1) {
+      cells.push(<div key={`pad-${paddingIndex}`} className={styles.calendarPad} />);
+    }
+
+    for (let day = 1; day <= totalDays; day += 1) {
+      const dateObject = new Date(selectedYear, selectedMonth - 1, day);
+      const isToday = dateObject.toDateString() === todayKey;
+      const isSunday = dateObject.getDay() === 0;
+
+      const dailyLogs = history.filter((entry) => {
+        const checkIn = safeDate(entry.checkIn);
+        return (
+          checkIn?.getDate() === day &&
+          checkIn.getMonth() === selectedMonth - 1 &&
+          checkIn.getFullYear() === selectedYear
+        );
+      });
+
+      const presentIds = Array.from(
+        new Set(dailyLogs.map((entry) => getEntityId(entry.staffId)).filter(Boolean))
+      );
+
+      const visibleMembers = filteredStaff.filter((member) =>
+        presentIds.includes(getEntityId(member))
+      );
+      const previewMembers = visibleMembers.slice(0, 3);
+      const remainingCount = Math.max(0, visibleMembers.length - previewMembers.length);
+      const presenceRatio = workforceSize > 0 ? Math.round((presentIds.length / workforceSize) * 100) : 0;
+
+      cells.push(
+        <button
+          key={day}
+          type="button"
+          disabled={!dailyLogs.length}
+          onClick={() =>
+            openLogModal(
+              dailyLogs,
+              `${formatDateLabel(dateObject)} Attendance`,
+              `${dailyLogs.length} session segment${dailyLogs.length === 1 ? '' : 's'} recorded for this day.`
+            )
+          }
+          className={cn(
+            styles.calendarCell,
+            isToday && styles.calendarCellToday,
+            isSunday && styles.calendarCellSunday,
+            !isSunday && !dailyLogs.length && styles.calendarCellQuiet
+          )}
+        >
+          <div className={styles.calendarCellHeader}>
+            <span className={styles.calendarDay}>{day}</span>
+            <span className={styles.calendarHint}>
+              {isSunday ? 'Weekend' : dailyLogs.length ? 'Open log' : 'No logs'}
+            </span>
+          </div>
+
+          {isSunday ? (
+            <div className={styles.calendarOffState}>
+              <Clock size={16} />
+              <span>Rest day</span>
+            </div>
+          ) : (
+            <>
+              <div className={styles.calendarRatio}>
+                <span>{presentIds.length} present</span>
+                <span>{presenceRatio}%</span>
+              </div>
+
+              {previewMembers.length > 0 ? (
+                <div className={styles.calendarMembers}>
+                  {previewMembers.map((member) => (
+                    <div key={member._id} className={styles.memberPill}>
+                      <span className={styles.memberAvatar}>
+                        {member.name?.trim()?.charAt(0).toUpperCase() || '?'}
+                      </span>
+                      <span>{member.name.split(' ')[0]}</span>
+                    </div>
+                  ))}
+                  {remainingCount > 0 ? (
+                    <div className={styles.moreMembers}>+{remainingCount} more</div>
+                  ) : null}
+                </div>
+              ) : (
+                <p className={styles.calendarEmptyText}>
+                  {dailyLogs.length ? 'Logs available' : 'No sessions logged'}
+                </p>
+              )}
+
+              <div className={styles.progressTrack}>
+                <div
+                  className={styles.progressBar}
+                  style={{ width: `${presenceRatio}%` }}
+                />
+              </div>
+            </>
+          )}
+        </button>
+      );
+    }
+
+    return cells;
+  };
+
+  if (loading && !hasLoaded) {
+    return <LoadingSpinner />;
+  }
 
   return (
-    <div style={{ background: '#f8fafc', minHeight: '100vh', padding: '1.5rem 2.5rem 5rem', overflowX: 'hidden' }} className="animate-fade-in">
+    <div className={cn(styles.page, 'animate-fade-in')}>
+      <section className={styles.hero}>
+        <div className={styles.heroGlow} />
 
-      {/* 🏛️ Command Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem' }}>
-        <div>
-          <h1 style={{ fontSize: '2.2rem', fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>
-            Clinical <span className="gradient-text">Attendance</span>
+        <div className={styles.heroCopy}>
+          <span className={styles.eyebrow}>Attendance Desk</span>
+          <h1 className={styles.heroTitle}>
+            Clinical <span>Attendance</span>
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontWeight: 500, marginTop: '0.4rem', fontSize: '0.95rem' }}>
-            Real-time workforce visibility and clinical floor analytics.
+          <p className={styles.heroText}>
+            Keep a live eye on floor coverage, daily movement, and monthly attendance
+            trends from one calmer workspace.
           </p>
+
+          <div className={styles.heroBadges}>
+            <span className={styles.heroBadge}>Hello, {firstName}</span>
+            <span className={styles.heroBadge}>{trackedDays}/{monthDaysCount} days tracked</span>
+            <span className={styles.heroBadge}>{totalSessions} session logs this month</span>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <Search size={18} style={{ position: 'absolute', left: '1.25rem', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+
+        <div className={styles.heroPanel}>
+          <div className={styles.searchField}>
+            <Search size={18} className={styles.searchIcon} />
             <input
-              placeholder="Search medical staff..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="input-premium"
-              style={{ paddingLeft: '3.2rem', width: '320px', borderRadius: '14px', height: '48px' }}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search staff name..."
+              className={cn('input-premium', styles.searchInput)}
             />
           </div>
-          <button style={{ height: '48px', padding: '0 1.5rem', borderRadius: '14px', background: 'white', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '0.75rem', fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-main)', boxShadow: 'var(--shadow-sm)' }}>
+
+          <div className={styles.panelControls}>
+            <div className={styles.selectGroup}>
+              <label className={styles.controlLabel}>Month</label>
+              <div className={styles.selectWrap}>
+                <Calendar size={16} />
+                <select
+                  value={selectedMonth}
+                  onChange={(event) => setSelectedMonth(Number(event.target.value))}
+                  className={styles.selectInput}
+                >
+                  {MONTHS.map((month, index) => (
+                    <option key={month} value={index + 1}>
+                      {month}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className={styles.selectGroup}>
+              <label className={styles.controlLabel}>Year</label>
+              <div className={styles.selectWrap}>
+                <Clock size={16} />
+                <select
+                  value={selectedYear}
+                  onChange={(event) => setSelectedYear(Number(event.target.value))}
+                  className={styles.selectInput}
+                >
+                  {YEAR_OPTIONS.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <button type="button" onClick={handleExportAudit} className={styles.exportButton}>
             <Download size={18} />
             Export Audit
           </button>
-        </div>
-      </div>
 
-      {/* 📊 High-Fidelity Analytics */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '3rem' }}>
+          <div className={styles.panelFootnote}>
+            <span className={styles.liveDot} />
+            {loading ? 'Refreshing live attendance data...' : `${monthLabel} ${selectedYear} is in sync.`}
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.statsGrid}>
         {[
-          { label: 'Clinic Pulse', value: `${clinicalPulse}%`, icon: Activity, color: '#0ea5e9', bg: 'rgba(14, 165, 233, 0.05)' },
-          { label: 'Total Staff', value: workforceSize, icon: Users, color: '#0d9488', bg: 'rgba(13, 148, 136, 0.05)' },
-          { label: 'On Floor Now', value: presentCount, icon: Clock, color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.05)' },
-          { label: 'Today Absents', value: Math.max(0, workforceSize - presentCount), icon: XCircle, color: '#e11d48', bg: 'rgba(225, 29, 72, 0.05)', critical: true },
-        ].map((card, i) => (
-          <div key={i} className="card-premium" style={{ padding: '1.75rem', background: card.critical ? '#fff1f2' : 'white', border: card.critical ? '1px solid #ffe4e6' : '1px solid var(--border-subtle)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
-              <div style={{ padding: '0.75rem', borderRadius: '12px', background: card.bg, color: card.color }}>
-                <card.icon size={22} />
-              </div>
-              <div style={{ fontSize: '0.75rem', fontWeight: 800, color: card.critical ? '#e11d48' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.label}</div>
+          {
+            label: 'Live Coverage',
+            value: `${clinicalPulse}%`,
+            detail: `${presentCount} of ${workforceSize} staff are currently active`,
+            icon: Activity,
+            accentColor: '#0f766e',
+            accentSurface: 'rgba(15, 118, 110, 0.1)',
+          },
+          {
+            label: 'Present Now',
+            value: presentCount,
+            detail: `${activeSessions} open session${activeSessions === 1 ? '' : 's'} on the floor`,
+            icon: Users,
+            accentColor: '#0ea5e9',
+            accentSurface: 'rgba(14, 165, 233, 0.1)',
+          },
+          {
+            label: 'Absent Today',
+            value: absentCount,
+            detail: 'Staff outside the current active attendance set',
+            icon: XCircle,
+            accentColor: '#e11d48',
+            accentSurface: 'rgba(225, 29, 72, 0.1)',
+          },
+          {
+            label: 'Month Coverage',
+            value: `${coverageRatio}%`,
+            detail: `${trackedDays} tracked day${trackedDays === 1 ? '' : 's'} across ${monthDaysCount} days`,
+            icon: Calendar,
+            accentColor: '#f59e0b',
+            accentSurface: 'rgba(245, 158, 11, 0.12)',
+          },
+        ].map((card) => (
+          <article
+            key={card.label}
+            className={styles.statCard}
+            style={
+              {
+                '--accent-color': card.accentColor,
+                '--accent-surface': card.accentSurface,
+              } as React.CSSProperties
+            }
+          >
+            <div className={styles.statIcon}>
+              <card.icon size={20} />
             </div>
-            <h2 style={{ fontSize: '2.4rem', fontWeight: 800, color: card.critical ? '#e11d48' : 'var(--text-main)', margin: 0, letterSpacing: '-0.03em' }}>{card.value}</h2>
-          </div>
+            <div className={styles.statLabel}>{card.label}</div>
+            <div className={styles.statValue}>{card.value}</div>
+            <p className={styles.statDetail}>{card.detail}</p>
+          </article>
         ))}
-      </div>
+      </section>
 
-      {/* 📅 Operational Framework */}
-
-      <div
-        style={{
-          background: 'white',
-          borderRadius: '30px',
-          border: '1px solid var(--border-subtle)',
-          boxShadow: '0 20px 50px -12px rgba(0,0,0,0.05)',
-          width: '100%',
-          maxWidth: '100%',
-          contain: 'paint',
-        }}
-      >
-        {/* Navigation & Period Controls */}
-        <div style={{ padding: '1.5rem 2.5rem', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', borderRadius: '30px 30px 0 0' }}>
-          <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--bg-main)', padding: '0.4rem', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
+      <section className={styles.workspace}>
+        <div className={styles.workspaceHeader}>
+          <div className={styles.segmentedControl}>
             <button
+              type="button"
               onClick={() => setTeamSubTab('day')}
-              style={{
-                padding: '0.75rem 1.5rem', borderRadius: '12px',
-                background: teamSubTab === 'day' ? 'white' : 'transparent',
-                color: teamSubTab === 'day' ? 'var(--primary)' : 'var(--text-muted)',
-                fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s',
-                boxShadow: teamSubTab === 'day' ? 'var(--shadow-sm)' : 'none',
-                border: teamSubTab === 'day' ? '1px solid var(--border-subtle)' : '1px solid transparent'
-              }}
+              className={cn(styles.segmentButton, teamSubTab === 'day' && styles.segmentButtonActive)}
             >
-              Operational Ledger
+              Daily Board
             </button>
             <button
+              type="button"
               onClick={() => setTeamSubTab('register')}
-              style={{
-                padding: '0.75rem 1.5rem', borderRadius: '12px',
-                background: teamSubTab === 'register' ? 'white' : 'transparent',
-                color: teamSubTab === 'register' ? 'var(--primary)' : 'var(--text-muted)',
-                fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s',
-                boxShadow: teamSubTab === 'register' ? 'var(--shadow-sm)' : 'none',
-                border: teamSubTab === 'register' ? '1px solid var(--border-subtle)' : '1px solid transparent'
-              }}
+              className={cn(styles.segmentButton, teamSubTab === 'register' && styles.segmentButtonActive)}
             >
-              Attendance Register
+              Monthly Register
             </button>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'var(--bg-main)', padding: '0.5rem 1.25rem', borderRadius: '14px', border: '1px solid var(--border-subtle)' }}>
-              <Calendar size={16} style={{ color: 'var(--primary)' }} />
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                style={{ background: 'none', border: 'none', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)', cursor: 'pointer', outline: 'none' }}
-              >
-                {months.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-              </select>
-              <div style={{ width: '1px', height: '16px', background: 'var(--border-subtle)' }} />
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
-                style={{ background: 'none', border: 'none', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)', cursor: 'pointer', outline: 'none' }}
-              >
-                {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-            </div>
+          <div className={styles.headerMeta}>
+            <span className={styles.metaPill}>{monthLabel} {selectedYear}</span>
+            <span className={styles.metaPill}>{filteredStaff.length} visible staff</span>
+            {loading ? <span className={styles.metaPillLive}>Syncing...</span> : null}
           </div>
         </div>
 
-        {/* 📋 Data Rendering Layer */}
-        <div style={{ padding: '0', width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
-          {teamSubTab === 'day' ? (
-            <div
-              style={{
-                overflowX: 'auto',
-                overflowY: 'hidden',
-                width: '100%',
-                maxWidth: '100%',
-                padding: '1.5rem 2.5rem 2.5rem',
-                boxSizing: 'border-box',
-              }}
-              className="custom-scrollbar"
-            >
-              <table style={{ minWidth: '820px', width: '100%', borderCollapse: 'separate', borderSpacing: '0 0.75rem' }}>
-                <thead>
-                  <tr style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    <th style={{ textAlign: 'left', padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>STAFF</th>
-                    <th style={{ textAlign: 'center', padding: '0.75rem' }}>Status</th>
-                    <th style={{ textAlign: 'center', padding: '0.75rem' }}>Discovery Time</th>
-                    <th style={{ textAlign: 'center', padding: '0.75rem' }}>Departure</th>
-                    <th style={{ textAlign: 'center', padding: '0.75rem' }}>Bench Duration</th>
-                    <th style={{ textAlign: 'right', padding: '0.75rem 1.5rem' }}>Operations</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredStaff.map(member => {
-                    const activeSession = status.staffPresent.find((s: any) => s.id === member._id);
-                    const isCurrentUser = member._id === user?.id;
+        {teamSubTab === 'day' ? (
+          <div className={styles.viewSection}>
+            <div className={styles.sectionIntro}>
+              <div>
+                <h2 className={styles.sectionTitle}>Today&apos;s Floor Board</h2>
+                <p className={styles.sectionText}>
+                  Review check-in state, arrival time, shift duration, and quick actions
+                  without leaving the page.
+                </p>
+              </div>
 
-                    const todayStr = new Date().toDateString();
-                    const todayLogs = history
-                      .filter(h => {
-                        const hId = h.staffId?._id?.toString() || h.staffId?.toString();
-                        const mId = member._id?.toString() || member.id?.toString();
-                        return hId === mId && safeDate(h.checkIn)?.toDateString() === todayStr;
-                      })
-                      .sort((a, b) => (safeDate(a.checkIn)?.getTime() || 0) - (safeDate(b.checkIn)?.getTime() || 0));
-
-                    const arrival = todayLogs.length > 0 ? safeDate(todayLogs[0].checkIn) : (activeSession ? safeDate(activeSession.checkIn) : null);
-                    const finishedLogs = todayLogs.filter(l => l.checkOut);
-                    const departure = finishedLogs.length > 0 ? safeDate(finishedLogs[finishedLogs.length - 1].checkOut) : null;
-
-                    let dailyMs = 0;
-                    todayLogs.forEach(l => {
-                      const start = safeDate(l.checkIn);
-                      const end = safeDate(l.checkOut);
-                      if (start && end) dailyMs += (end.getTime() - start.getTime());
-                    });
-                    if (activeSession) {
-                      const activeStart = safeDate(activeSession.checkIn);
-                      if (activeStart) dailyMs += (new Date().getTime() - activeStart.getTime());
-                    }
-
-                    return (
-                      <tr key={member._id} className="table-row-hover-refined" style={{ transition: 'all 0.2s' }}>
-                        <td style={{ padding: '0.75rem 1.5rem', background: 'white', borderRadius: '16px 0 0 16px', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)', borderLeft: '1px solid var(--border-subtle)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{
-                              width: '44px', height: '44px', borderRadius: '12px',
-                              background: activeSession ? 'var(--primary)' : 'var(--bg-main)',
-                              color: activeSession ? 'white' : 'var(--primary)',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              fontWeight: 800, fontSize: '1rem', border: '1px solid var(--border-subtle)'
-                            }}>
-                              {member.name[0]}
-                            </div>
-                            <div>
-                              <p style={{ fontWeight: 700, fontSize: '0.95rem', margin: 0, color: 'var(--text-main)' }}>{member.name}</p>
-                              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, fontWeight: 500 }}>{member.role?.name || 'Practitioner'}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td style={{ textAlign: 'center', background: 'white', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)' }}>
-                          <span style={{
-                            fontSize: '0.7rem', fontWeight: 800, padding: '0.4rem 0.8rem', borderRadius: '10px',
-                            background: activeSession ? 'rgba(13, 148, 136, 0.1)' : 'rgba(225, 29, 72, 0.05)',
-                            color: activeSession ? 'var(--primary)' : '#e11d48',
-                            border: `1px solid ${activeSession ? 'rgba(13, 148, 136, 0.2)' : 'rgba(225, 29, 72, 0.1)'}`
-                          }}>
-                            {activeSession ? 'ON FLOOR' : 'OFF DUTY'}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: 'center', fontWeight: 600, color: 'var(--text-main)', fontSize: '0.9rem', background: 'white', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)' }}>
-                          {arrival ? arrival.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: true }) : '-- : --'}
-                        </td>
-                        <td style={{ textAlign: 'center', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.9rem', background: 'white', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)' }}>
-                          {departure ? departure.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: true }) : '-- : --'}
-                        </td>
-                        <td style={{ textAlign: 'center', background: 'white', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)' }}>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-main)', padding: '0.4rem 0.75rem', borderRadius: '8px', color: 'var(--primary)', fontWeight: 700, fontSize: '0.85rem' }}>
-                            <Clock size={14} />
-                            {formatMs(dailyMs)}
-                          </div>
-                        </td>
-                        <td style={{ padding: '0.75rem 1.5rem', textAlign: 'right', background: 'white', borderRadius: '0 16px 16px 0', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)', borderRight: '1px solid var(--border-subtle)' }}>
-                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                            <button
-                              onClick={() => togglePresence(member._id, activeSession?.sessionId)}
-                              disabled={actionLoading}
-                              className="action-btn"
-                              style={{
-                                padding: '0.6rem', borderRadius: '10px',
-                                background: activeSession ? 'rgba(225, 29, 72, 0.05)' : 'rgba(13, 148, 136, 0.05)',
-                                color: activeSession ? '#e11d48' : 'var(--primary)',
-                                border: `1px solid ${activeSession ? 'rgba(225, 29, 72, 0.1)' : 'rgba(13, 148, 136, 0.1)'}`
-                              }}
-                            >
-                              {activeSession ? <LogOut size={18} /> : <LogIn size={18} />}
-                            </button>
-                            <button className="action-btn" style={{ padding: '0.6rem', borderRadius: '10px', background: 'var(--bg-main)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}>
-                              <Activity size={18} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className={styles.legendRow}>
+                <span className={styles.legendItem}>
+                  <span className={cn(styles.legendDot, styles.legendDotActive)} />
+                  On floor
+                </span>
+                <span className={styles.legendItem}>
+                  <span className={cn(styles.legendDot, styles.legendDotInactive)} />
+                  Off duty
+                </span>
+              </div>
             </div>
-          ) : (
-            <div
-              style={{
-                overflowX: 'auto',
-                overflowY: 'hidden',
-                width: '100%',
-                maxWidth: '100%',
-                paddingBottom: '1.5rem',
-                boxSizing: 'border-box',
-                WebkitOverflowScrolling: 'touch',
-              }}
-              className="custom-scrollbar"
-            >
-              <table
-                style={{
-                  minWidth: `${180 + (monthDaysCount * 48)}px`,
-                  width: 'max-content',
-                  borderCollapse: 'separate',
-                  borderSpacing: 0,
-                }}
-              >
-                <thead>
-                  <tr style={{ background: 'var(--bg-main)' }}>
-                    <th style={{
-                      textAlign: 'left', padding: '1.25rem 2rem', position: 'sticky', left: 0,
-                      background: 'var(--bg-main)', zIndex: 100, fontSize: '0.7rem',
-                      fontWeight: 800, color: 'var(--text-main)', borderRight: '1px solid var(--border-subtle)',
-                      textTransform: 'uppercase', letterSpacing: '0.12em', borderBottom: '1px solid var(--border-subtle)',
-                      boxShadow: '4px 0 10px -5px rgba(0,0,0,0.08)'
-                    }}>STAFF</th>
-                    {Array.from({ length: monthDaysCount }).map((_, i) => {
-                      const date = new Date(selectedYear, selectedMonth - 1, i + 1);
-                      const isSun = date.getDay() === 0;
+
+            {filteredStaff.length === 0 ? (
+              <div className={styles.emptyState}>
+                <Search size={22} />
+                <h3>No staff match this search</h3>
+                <p>Try a different name or clear the search field to see the full roster.</p>
+              </div>
+            ) : (
+              <div className={styles.tableShell}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Staff</th>
+                      <th>Status</th>
+                      <th>Check In</th>
+                      <th>Check Out</th>
+                      <th>Worked</th>
+                      <th className={styles.actionsHeader}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredStaff.map((member) => {
+                      const memberId = getEntityId(member);
+                      const activeSession = status.staffPresent.find((entry) => entry.id === memberId);
+
+                      const todayLogs = history.filter((entry) => {
+                        const logDate = safeDate(entry.checkIn);
+                        return (
+                          getEntityId(entry.staffId) === memberId &&
+                          logDate?.toDateString() === todayKey
+                        );
+                      });
+
+                      const fallbackActiveLog =
+                        activeSession && todayLogs.length === 0
+                          ? [
+                              {
+                                staffId: {
+                                  _id: member._id,
+                                  name: member.name,
+                                },
+                                checkIn: activeSession.checkIn,
+                                checkOut: null,
+                              } satisfies AttendanceLog,
+                            ]
+                          : [];
+
+                      const sessionLogs = todayLogs.length > 0 ? todayLogs : fallbackActiveLog;
+                      const firstArrival = todayLogs[0]?.checkIn || activeSession?.checkIn;
+                      const finishedLogs = todayLogs.filter((entry) => safeDate(entry.checkOut));
+                      const lastDeparture = finishedLogs[finishedLogs.length - 1]?.checkOut;
+
+                      const workedMilliseconds = todayLogs.reduce((total, entry) => {
+                        const checkOutTime = entry.checkOut || new Date();
+                        return total + calculateDuration(entry.checkIn, checkOutTime);
+                      }, 0);
+
+                      const liveWorkedMilliseconds = activeSession
+                        ? calculateDuration(activeSession.checkIn, new Date())
+                        : 0;
+                      const totalWorked = todayLogs.length > 0 ? workedMilliseconds : liveWorkedMilliseconds;
+
                       return (
-                        <th key={i} style={{
-                          padding: '0.75rem 0.25rem', minWidth: '48px', textAlign: 'center',
-                          borderRight: '1px solid rgba(0,0,0,0.03)', borderBottom: '1px solid var(--border-subtle)',
-                          background: isSun ? 'rgba(225, 29, 72, 0.02)' : 'transparent'
-                        }}>
-                          <p style={{ fontSize: '0.6rem', fontWeight: 800, color: isSun ? '#e11d48' : 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.02em' }}>{date.toLocaleDateString(undefined, { weekday: 'short' }).substring(0, 2)}</p>
-                          <p style={{ fontSize: '0.78rem', fontWeight: 800, color: isSun ? '#e11d48' : 'var(--text-main)', margin: '1px 0 0' }}>{i + 1}</p>
-                        </th>
+                        <tr key={member._id}>
+                          <td>
+                            <div className={styles.staffCell}>
+                              <div className={cn(styles.avatar, activeSession && styles.avatarActive)}>
+                                {member.name?.trim()?.charAt(0).toUpperCase() || '?'}
+                              </div>
+                              <div>
+                                <div className={styles.staffName}>{member.name}</div>
+                                <div className={styles.staffRole}>
+                                  {member.role?.name || 'Practitioner'}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <span
+                              className={cn(
+                                styles.statusBadge,
+                                activeSession ? styles.statusBadgeActive : styles.statusBadgeInactive
+                              )}
+                            >
+                              {activeSession ? 'On floor' : 'Off duty'}
+                            </span>
+                          </td>
+                          <td className={styles.timeCell}>{formatTime(firstArrival)}</td>
+                          <td className={styles.timeCellMuted}>{formatTime(lastDeparture)}</td>
+                          <td>
+                            <span className={styles.durationChip}>
+                              <Clock size={14} />
+                              {formatMs(totalWorked)}
+                            </span>
+                          </td>
+                          <td>
+                            <div className={styles.actionGroup}>
+                              <button
+                                type="button"
+                                title={activeSession ? 'Check out' : 'Check in'}
+                                disabled={actionLoadingId === member._id}
+                                onClick={() => togglePresence(member._id, activeSession?.sessionId)}
+                                className={cn(
+                                  styles.iconButton,
+                                  activeSession ? styles.iconButtonDanger : styles.iconButtonPrimary
+                                )}
+                              >
+                                {activeSession ? <LogOut size={18} /> : <LogIn size={18} />}
+                              </button>
+
+                              <button
+                                type="button"
+                                title="View today log"
+                                onClick={() =>
+                                  openLogModal(
+                                    sessionLogs,
+                                    `${member.name} Shift Audit`,
+                                    'Today\'s attendance segments for this staff member.'
+                                  )
+                                }
+                                className={cn(styles.iconButton, styles.iconButtonNeutral)}
+                              >
+                                <Eye size={18} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
                       );
                     })}
-                    <th style={{ padding: '1rem 1.25rem', minWidth: '80px', textAlign: 'center', background: 'rgba(13, 148, 136, 0.07)', fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary)', borderLeft: '2px solid var(--primary)', textTransform: 'uppercase', borderBottom: '1px solid var(--border-subtle)', whiteSpace: 'nowrap' }}>Days P</th>
-                    <th style={{ padding: '1rem 1.25rem', minWidth: '80px', textAlign: 'center', background: 'rgba(225, 29, 72, 0.07)', fontSize: '0.7rem', fontWeight: 800, color: '#e11d48', textTransform: 'uppercase', borderBottom: '1px solid var(--border-subtle)', whiteSpace: 'nowrap' }}>Days A</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredStaff.map(member => {
-                    let pDays = 0;
-                    return (
-                      <tr key={member._id} className="matrix-row-hover">
-                        <td style={{
-                          padding: '0.5rem 2rem', position: 'sticky', left: 0,
-                          background: 'white', zIndex: 90, borderRight: '1px solid var(--border-subtle)',
-                          borderBottom: '1px solid rgba(0,0,0,0.03)', boxShadow: '4px 0 10px -5px rgba(0,0,0,0.08)'
-                        }}>
-                          <p style={{ fontWeight: 800, fontSize: '0.85rem', margin: 0, color: 'var(--text-main)', lineHeight: 1.1 }}>{member.name}</p>
-                          <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, margin: '2px 0 0', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{member.role?.shortName || member.role?.name || 'Staff'}</p>
-                        </td>
-                        {Array.from({ length: monthDaysCount }).map((_, i) => {
-                          const isSun = new Date(selectedYear, selectedMonth - 1, i + 1).getDay() === 0;
-                          const dailyLogs = history.filter(h => {
-                            const hId = h.staffId?._id?.toString() || h.staffId?.toString();
-                            const mId = member._id?.toString() || member.id?.toString();
-                            return hId === mId && safeDate(h.checkIn)?.getDate() === (i + 1);
-                          });
-                          if (dailyLogs.length > 0 && !isSun) pDays++;
-
-                          return (
-                            <td key={i} style={{
-                              padding: '0.5rem', textAlign: 'center',
-                              borderRight: '1px solid rgba(0,0,0,0.03)',
-                              borderBottom: '1px solid rgba(0,0,0,0.03)',
-                              background: isSun ? 'rgba(225, 29, 72, 0.01)' : 'transparent'
-                            }}>
-                              {isSun ? (
-                                <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem', fontWeight: 800, opacity: 0.4 }}>WO</span>
-                              ) : dailyLogs.length > 0 ? (
-                                <div
-                                  onClick={() => { setModalData(dailyLogs); setShowModal(true); }}
-                                  className="attendance-dot present"
-                                  title="Present - Click for details"
-                                >
-                                  P
-                                </div>
-                              ) : (
-                                <div className="attendance-dot absent">A</div>
-                              )}
-                            </td>
-                          );
-                        })}
-                        <td style={{ textAlign: 'center', fontWeight: 800, color: 'var(--primary)', background: 'rgba(13, 148, 136, 0.05)', fontSize: '1rem', borderBottom: '1px solid rgba(0,0,0,0.03)', borderLeft: '2px solid var(--primary)', padding: '0.5rem 1rem' }}>{pDays}</td>
-                        <td style={{ textAlign: 'center', fontWeight: 800, color: '#e11d48', background: 'rgba(225, 29, 72, 0.05)', fontSize: '1rem', borderBottom: '1px solid rgba(0,0,0,0.03)', padding: '0.5rem 1rem' }}>{Math.max(0, (monthDaysCount - 4) - pDays)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 🛠️ High-Capacity Details Modal */}
-      {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, padding: '2rem' }}>
-          <div className="animate-slide-up glass-premium" style={{ width: '100%', maxWidth: '600px', maxHeight: '85vh', borderRadius: '32px', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.6)' }}>
-            <div style={{ padding: '2rem 2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', background: 'rgba(255,255,255,0.5)' }}>
-              <div>
-                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>Shift Analysis</h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, margin: 0 }}>Detailed clinical session audit</p>
+                  </tbody>
+                </table>
               </div>
+            )}
+          </div>
+        ) : (
+          <div className={styles.viewSection}>
+            <div className={styles.sectionIntro}>
+              <div>
+                <h2 className={styles.sectionTitle}>Monthly Attendance Register</h2>
+                <p className={styles.sectionText}>
+                  Scan the month at a glance, open any recorded day, and spot gaps in the
+                  attendance trail faster.
+                </p>
+              </div>
+
+              <div className={styles.legendRow}>
+                <span className={styles.legendItem}>
+                  <span className={cn(styles.legendDot, styles.legendDotCalendar)} />
+                  Logged day
+                </span>
+                <span className={styles.legendItem}>
+                  <span className={cn(styles.legendDot, styles.legendDotQuiet)} />
+                  No log
+                </span>
+                <span className={styles.legendItem}>
+                  <span className={cn(styles.legendDot, styles.legendDotSunday)} />
+                  Weekend
+                </span>
+              </div>
+            </div>
+
+            <div className={styles.registerMetrics}>
+              <article className={styles.miniCard}>
+                <span className={styles.miniLabel}>Staff in view</span>
+                <strong>{workforceSize}</strong>
+                <p>Current search scope</p>
+              </article>
+              <article className={styles.miniCard}>
+                <span className={styles.miniLabel}>Tracked days</span>
+                <strong>{trackedDays}</strong>
+                <p>Days with at least one attendance entry</p>
+              </article>
+              <article className={styles.miniCard}>
+                <span className={styles.miniLabel}>Session logs</span>
+                <strong>{totalSessions}</strong>
+                <p>Recorded in {monthLabel} {selectedYear}</p>
+              </article>
+            </div>
+
+            <div className={styles.calendarShell}>
+              <div className={styles.weekdayRow}>
+                {WEEK_DAYS.map((day) => (
+                  <div key={day} className={styles.weekdayLabel}>
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              <div className={styles.calendarGrid}>{renderRegisterCells()}</div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {showModal ? (
+        <div className={styles.modalBackdrop}>
+          <div className={cn(styles.modalCard, 'animate-slide-up')}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalHeaderInfo}>
+                <div className={styles.modalHeaderIcon}>
+                  <Activity size={20} />
+                </div>
+                <div>
+                  <h3>{modalHeader.title}</h3>
+                  <p>{modalHeader.subtitle}</p>
+                </div>
+              </div>
+
               <button
+                type="button"
                 onClick={() => setShowModal(false)}
-                style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-subtle)', color: 'var(--text-main)', cursor: 'pointer' }}
+                className={styles.modalClose}
+                aria-label="Close attendance details"
               >
-                <XCircle size={20} />
+                <XCircle size={22} />
               </button>
             </div>
 
-            <div style={{ padding: '2rem 2.5rem', overflowY: 'auto', flex: 1 }} className="custom-scrollbar">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                {modalData?.map((log: any, idx: number) => (
-                  <div key={idx} style={{ background: 'white', padding: '1.5rem', borderRadius: '20px', border: '1px solid var(--border-subtle)', position: 'relative', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
-                    <div style={{ position: 'absolute', top: '-10px', left: '20px', background: 'var(--primary)', color: 'white', padding: '2px 10px', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 800 }}>SEGMENT {idx + 1}</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                      <div>
-                        <p style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Arrival</p>
-                        <p style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
-                          {safeDate(log.checkIn)?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </div>
-                      <div>
-                        <p style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Departure</p>
-                        <p style={{ fontSize: '1.1rem', fontWeight: 800, color: log.checkOut ? 'var(--text-main)' : 'var(--primary)', margin: 0 }}>
-                          {log.checkOut ? safeDate(log.checkOut)?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'ACTIVE'}
-                        </p>
-                      </div>
+            <div className={styles.modalBody}>
+              {modalData.map((log, index) => (
+                <article key={log._id || `${getEntityId(log.staffId)}-${index}`} className={styles.logCard}>
+                  <div className={styles.logCardTop}>
+                    <div>
+                      <span className={styles.logIndex}>Segment {index + 1}</span>
+                      <h4>{getDisplayNameFromLog(log)}</h4>
                     </div>
-                    <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px dashed var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>Duration:</span>
-                      <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--primary)' }}>{formatMs(calculateDuration(log.checkIn, log.checkOut || new Date()))}</span>
+                    <span className={styles.logDuration}>
+                      {formatMs(calculateDuration(log.checkIn, log.checkOut || new Date()))}
+                    </span>
+                  </div>
+
+                  <div className={styles.logGrid}>
+                    <div>
+                      <span className={styles.logLabel}>Check in</span>
+                      <strong>{formatTime(log.checkIn)}</strong>
+                    </div>
+                    <div>
+                      <span className={styles.logLabel}>Check out</span>
+                      <strong>{log.checkOut ? formatTime(log.checkOut) : 'Active session'}</strong>
                     </div>
                   </div>
-                ))}
-                {modalData?.length === 0 && <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontWeight: 600 }}>No segments found.</p>}
-              </div>
+                </article>
+              ))}
             </div>
 
-            <div style={{ padding: '1.5rem 2.5rem', background: 'rgba(255,255,255,0.5)', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setShowModal(false)}
-                style={{ background: 'var(--text-main)', color: 'white', padding: '0.75rem 2rem', borderRadius: '14px', fontWeight: 700, border: 'none', cursor: 'pointer', fontSize: '0.9rem' }}
-              >
-                Close Analysis
+            <div className={styles.modalFooter}>
+              <button type="button" onClick={() => setShowModal(false)} className={styles.closeButton}>
+                Close Audit
               </button>
             </div>
           </div>
         </div>
-      )}
-
-      <style jsx>{`
-        .gradient-text {
-          background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          font-weight: 800;
-        }
-        .table-row-hover-refined:hover td {
-          background-color: var(--bg-main) !important;
-          transform: translateY(-1px);
-        }
-        .matrix-row-hover:hover td {
-          background-color: rgba(13, 148, 136, 0.02) !important;
-        }
-        .matrix-row-hover:hover td:first-child {
-          background-color: #f8fafc !important;
-          box-shadow: 4px 0 15px -5px rgba(0,0,0,0.1);
-        }
-        .attendance-dot {
-          width: 30px; height: 30px; border-radius: 8px; margin: 0 auto;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 0.7rem; font-weight: 900; transition: all 0.2s;
-          line-height: 1;
-        }
-        .attendance-dot.present {
-          background: rgba(13, 148, 136, 0.12); color: var(--primary);
-          border: 1px solid rgba(13, 148, 136, 0.25); cursor: pointer;
-          font-weight: 900;
-        }
-        .attendance-dot.present:hover {
-          background: var(--primary); color: white; transform: scale(1.1);
-        }
-        .attendance-dot.absent {
-          background: rgba(225, 29, 72, 0.08); color: #e11d48;
-          border: 1px solid rgba(225, 29, 72, 0.2); font-weight: 900;
-        }
-        .action-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
-        .animate-fade-in {
-          animation: fadeIn 0.5s ease-out;
-        }
-          .custom-scrollbar::-webkit-scrollbar {
-  height: 8px;
-  width: 8px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 10px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-        .animate-slide-up {
-          animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .custom-scrollbar::-webkit-scrollbar {
-          height: 14px; width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: #f8fafc; border-radius: 10px;
-          border: 1px solid var(--border-subtle);
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: var(--primary); border-radius: 10px; border: 3px solid #f8fafc;
-          box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1);
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #0f766e;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(40px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
+      ) : null}
     </div>
   );
 }

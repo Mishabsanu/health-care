@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface Treatment {
   date: string;
@@ -156,12 +157,7 @@ export default function PatientDetailsPage() {
     }
   };
 
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center h-[80vh] gap-4">
-      <div className="w-12 h-12 border-4 border-[#f1f5f9] border-t-teal-600 rounded-full animate-spin" />
-      <p className="font-bold text-slate-500 animate-pulse tracking-widest text-xs">🛡️ ACCESSING CLINICAL VAULT...</p>
-    </div>
-  );
+  if (loading) return <LoadingSpinner />;
 
   if (!patient) return <div className="p-12 text-center font-bold text-slate-400">🚫 PATIENT REGISTRY NOT FOUND</div>;
 

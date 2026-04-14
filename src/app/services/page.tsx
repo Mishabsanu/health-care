@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import DataTable from '@/components/DataTable';
 import { usePCMSStore } from '@/store/useStore';
 import api from '@/services/api';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import HasPermission from '@/components/HasPermission';
 import { usePermission } from '@/hooks/usePermission';
 
@@ -19,9 +20,10 @@ interface Service {
 export default function ServicesPage() {
   const router = useRouter();
   const { hasPermission, canOperate } = usePermission();
-  const { isLoading: storeLoading, showToast, showConfirm } = usePCMSStore();
+  const { isLoading: storeLoading, setIsSyncing, showToast, showConfirm } = usePCMSStore();
   const [services, setServices] = useState<Service[]>([]);
   const [localLoading, setLocalLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   // -------------------------------------------------------------------
   // SYNC | Clinical Services Data from Backend
@@ -55,8 +57,9 @@ export default function ServicesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
 
-  const fetchServices = async () => {
-    setLocalLoading(true);
+  const fetchServices = async (isInitial = false) => {
+    if (isInitial && !hasLoaded) setLocalLoading(true);
+    setIsSyncing(true);
     try {
       const params = new URLSearchParams({
         page: currentPage.toString(),
@@ -83,11 +86,13 @@ export default function ServicesPage() {
       console.error('🚫 Registry Error | Failed to fetch clinical services:', err);
     } finally {
       setLocalLoading(false);
+      setHasLoaded(true);
+      setIsSyncing(false);
     }
   };
 
   useEffect(() => {
-    fetchServices();
+    fetchServices(!hasLoaded);
   }, [currentPage, pageSize, searchQuery, activeFilters]);
 
   const columns = [
@@ -124,6 +129,8 @@ export default function ServicesPage() {
     }
   ];
 
+  if (localLoading) return <LoadingSpinner />;
+
   return (
     <div className="services-container animate-fade-in">
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
@@ -154,6 +161,8 @@ export default function ServicesPage() {
             }
           }) : undefined}
           onDelete={hasPermission('services:delete') ? handleDeleteService : undefined}
+          onAddNew={() => router.push('/services/add')}
+          addNewLabel="Add Service"
           filterableFields={[
             { label: 'Status', key: 'status' as keyof Service, options: ['Available', 'Archived'] }
           ]}

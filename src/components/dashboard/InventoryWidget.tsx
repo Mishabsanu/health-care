@@ -3,8 +3,10 @@ import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
 import { Package, AlertCircle } from 'lucide-react';
 import { usePCMSStore } from '@/store/useStore';
+import { useRouter } from 'next/navigation';
 
 export default function InventoryWidget() {
+    const router = useRouter();
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -31,7 +33,11 @@ export default function InventoryWidget() {
     const { summary, alerts } = data || {};
 
     return (
-        <div className="card" style={{ padding: '2rem', borderLeft: '4px solid #f43f5e' }}>
+        <div 
+            onClick={() => router.push('/inventory')}
+            className="card interactive-card" 
+            style={{ padding: '2rem', borderLeft: '4px solid #f43f5e', cursor: 'pointer', transition: 'transform 0.2s', background: 'white' }}
+        >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Package size={18} style={{ color: '#f43f5e' }} />

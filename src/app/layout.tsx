@@ -4,8 +4,8 @@ import ClinicalWrapper from '../components/ClinicalWrapper';
 import NextTopLoader from 'nextjs-toploader';
 
 export const metadata: Metadata = {
-  title: "PCMS | Physiotherapy Clinic Management System",
-  description: "Unified Clinical Management Platform for Physiotherapy Centers.",
+  title: "AKOD | Clinic Management System",
+  description: "Unified Clinical Management Platform for Centers.",
 };
 
 export default function RootLayout({

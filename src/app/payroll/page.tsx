@@ -20,6 +20,7 @@ import {
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
 import DataTable from '@/components/DataTable';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface PayrollRecord {
   _id: string;
@@ -53,6 +54,7 @@ export default function PayrollPage() {
   const { showToast, setIsSyncing, user, showConfirm } = usePCMSStore();
   const [records, setRecords] = useState<PayrollRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   // Period State
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(5, 7));
@@ -97,9 +99,9 @@ export default function PayrollPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
 
-  const fetchPayroll = async () => {
+  const fetchPayroll = async (isInitial = false) => {
     setIsSyncing(true);
-    setLoading(true);
+    if (isInitial && !hasLoaded) setLoading(true);
     try {
       const params = new URLSearchParams({
         page: currentPage.toString(),
@@ -129,12 +131,13 @@ export default function PayrollPage() {
       showToast('Could not synchronize payroll ledger.', 'error');
     } finally {
       setLoading(false);
+      setHasLoaded(true);
       setIsSyncing(false);
     }
   };
 
   useEffect(() => {
-    fetchPayroll();
+    fetchPayroll(!hasLoaded);
   }, [selectedMonth, selectedYear, currentPage, pageSize, searchQuery, activeFilters]);
 
   const fetchStaffAttendance = async (staff: PayrollRecord) => {
@@ -285,6 +288,8 @@ export default function PayrollPage() {
       ) 
     },
   ];
+
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className="payroll-container animate-fade-in">

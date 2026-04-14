@@ -5,6 +5,7 @@ import api from '@/services/api';
 import { ArrowLeft, Tag, CreditCard, Activity, Building2, CheckCircle2, FlaskConical } from 'lucide-react';
 
 import { usePCMSStore } from '@/store/useStore';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function EditServicePage() {
   const router = useRouter();
@@ -69,7 +70,7 @@ export default function EditServicePage() {
     }
   };
 
-  if (loading) return <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>🛡️ Accessing Clinical Registry...</div>;
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className="edit-service-container animate-fade-in clinical-form-wide" style={{ paddingBottom: '7rem' }}>

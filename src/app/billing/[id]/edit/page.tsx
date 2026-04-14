@@ -6,6 +6,7 @@ import { usePCMSStore } from '@/store/useStore';
 import ClinicalSearchSelect from '@/components/ClinicalSearchSelect';
 import { generateInvoicePDF } from '@/utils/pdfGenerator';
 import { ChevronRight, Printer, Save, Trash2, Plus, Info, Calendar, Search, UserCheck, User, MapPin, Phone, ShieldCheck, MessageSquare, Receipt } from 'lucide-react';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function EditInvoicePage() {
   const router = useRouter();
@@ -146,12 +147,7 @@ export default function EditInvoicePage() {
   const totalServices = formData.serviceItems.reduce((sum, item) => sum + (Number(item.price) || 0), 0);
   const totalInventory = formData.inventoryItems.reduce((sum, item) => sum + ((Number(item.quantity) || 0) * (Number(item.price) || 0)), 0);
 
-  if (loading) return (
-    <div style={{ height: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
-      <div className="w-10 h-10 border-4 border-slate-100 border-t-teal-600 rounded-full animate-spin" />
-      <p style={{ fontWeight: 900, color: 'var(--text-muted)', fontSize: '0.7rem', letterSpacing: '0.15em' }}>HYDRATING CLINICAL REGISTRY...</p>
-    </div>
-  );
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className="animate-fade-in" style={{ paddingBottom: '5rem', maxWidth: '1400px', margin: '0 auto' }}>

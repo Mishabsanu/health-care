@@ -6,6 +6,7 @@ import { usePCMSStore } from '@/store/useStore';
 import ClinicalSearchSelect from '@/components/ClinicalSearchSelect';
 import { ChevronRight, Printer, Save, Trash2, Plus, Info, Calendar, Search, UserCheck, User, MapPin, Phone, ShieldCheck, MessageSquare, Receipt } from 'lucide-react';
 import { generateInvoicePDF } from '@/utils/pdfGenerator';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function GenerateInvoicePage() {
   const router = useRouter();
@@ -147,6 +148,8 @@ export default function GenerateInvoicePage() {
   const selectedPatient = patients.find(p => p._id === formData.patientId);
   const totalServices = formData.serviceItems.reduce((sum, item) => sum + (Number(item.price) || 0), 0);
   const totalInventory = formData.inventoryItems.reduce((sum, item) => sum + ((Number(item.quantity) || 0) * (Number(item.price) || 0)), 0);
+
+  if (loading && !isPreview) return <LoadingSpinner />;
 
   return (
     <div className="animate-fade-in" style={{ paddingBottom: '5rem', maxWidth: '1400px', margin: '0 auto' }}>

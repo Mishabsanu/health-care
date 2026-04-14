@@ -3,8 +3,10 @@ import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
 import { UserCheck, Clock, Fingerprint } from 'lucide-react';
 import { usePCMSStore } from '@/store/useStore';
+import { useRouter } from 'next/navigation';
 
 export default function AttendanceWidget({ filterParams }: { filterParams: any }) {
+    const router = useRouter();
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -32,19 +34,23 @@ export default function AttendanceWidget({ filterParams }: { filterParams: any }
     const { summary, activeLogs } = data || {};
 
     return (
-        <div className="card" style={{ padding: '2rem', borderLeft: '4px solid #10b981' }}>
+        <div
+            onClick={() => router.push('/attendance')}
+            className="card interactive-card"
+            style={{ padding: '2rem', borderLeft: '4px solid #10b981', cursor: 'pointer', transition: 'transform 0.2s', background: 'white' }}
+        >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Fingerprint size={18} style={{ color: '#10b981' }} />
                     Staff <span className="gradient-text">Attendance</span>
                 </h3>
-                <span style={{ 
-                    padding: '0.3rem 0.8rem', 
-                    borderRadius: '2rem', 
+                <span style={{
+                    padding: '0.3rem 0.8rem',
+                    borderRadius: '2rem',
                     background: '#ecfdf5',
                     color: '#10b981',
-                    fontSize: '0.7rem', 
-                    fontWeight: 800 
+                    fontSize: '0.7rem',
+                    fontWeight: 800
                 }}>
                     {summary?.totalPresent || 0} PRESENT TODAY
                 </span>
@@ -67,9 +73,9 @@ export default function AttendanceWidget({ filterParams }: { filterParams: any }
                             </div>
                         </div>
                         <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
-                            <span style={{ 
-                                padding: '0.2rem 0.5rem', 
-                                borderRadius: '1rem', 
+                            <span style={{
+                                padding: '0.2rem 0.5rem',
+                                borderRadius: '1rem',
                                 background: log.status === 'Present' ? '#dcfce7' : log.status === 'Open' ? '#e0f2fe' : '#fef9c3',
                                 color: log.status === 'Present' ? '#166534' : log.status === 'Open' ? '#0ea5e9' : '#854d0e',
                                 fontSize: '0.6rem',
