@@ -292,7 +292,7 @@ export default function GenerateInvoicePage() {
                                 {services.filter(s => !itemSearch || s.name.toLowerCase().includes(itemSearch.toLowerCase())).map(s => (
                                   <div key={s._id} onClick={() => {
                                     const newItems = [...formData.serviceItems];
-                                    newItems[idx] = { name: s.name, price: s.price, serviceId: s._id };
+                                    newItems[idx] = { name: s.name, price: s.price, serviceId: s._id, description: '' };
                                     setFormData({ ...formData, serviceItems: newItems });
                                     setActiveSearchRow(null);
                                   }} className="table-row-hover" style={{ padding: '1rem', borderRadius: '10px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>

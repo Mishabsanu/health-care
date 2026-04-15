@@ -14,7 +14,8 @@ import {
   Key,
   Smartphone,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Banknote
 } from 'lucide-react';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
@@ -328,7 +329,7 @@ export default function UserDetailsPage() {
                        </div>
                        <div style={{ textAlign: 'right' }}>
                           <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--primary)' }}>{new Date(s.date).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</div>
-                          <div style={{ fontSize: '0.65rem', fontWeight: 900, color: '#10b981', mt: '0.2rem' }}>SUCCESSFULLY DISBURSED</div>
+                          <div style={{ fontSize: '0.65rem', fontWeight: 900, color: '#10b981', marginTop: '0.2rem' }}>SUCCESSFULLY DISBURSED</div>
                        </div>
                     </div>
                   ))

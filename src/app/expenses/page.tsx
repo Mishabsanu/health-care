@@ -5,7 +5,7 @@ import DataTable from '@/components/DataTable';
 import { usePCMSStore } from '@/store/useStore';
 import api from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { Plus } from 'lucide-react';
+import { Plus, FileText } from 'lucide-react';
 import HasPermission from '@/components/HasPermission';
 import { usePermission } from '@/hooks/usePermission';
 
@@ -153,7 +153,7 @@ export default function ExpensesPage() {
           <FileText size={18} />
         </a>
       ) : <span style={{ opacity: 0.2 }}>-</span>,
-      style: { textAlign: 'center' }
+      style: { textAlign: 'center' as any }
     }
   ];
 
