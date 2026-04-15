@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import DataTable from '@/components/DataTable';
 import api from '@/services/api';
@@ -93,7 +93,7 @@ export default function UsersPage() {
     fetchUsers(!hasLoaded);
   }, [currentPage, pageSize, searchQuery, activeFilters]);
 
-  const columns = [
+  const columnsData = useMemo(() => [
     { header: 'EMPLOYEE ID', key: 'employeeId' as keyof User, style: { fontWeight: 800, color: 'var(--text-muted)', fontSize: '0.75rem' } },
     { header: 'SPECIALIST NAME', key: 'name' as keyof User, style: { fontWeight: 600, color: 'var(--primary)' } },
     { header: 'EMAIL', key: 'email' as keyof User, style: { fontSize: '0.85rem' } },
@@ -135,7 +135,20 @@ export default function UsersPage() {
         </span>
       )
     },
-  ]
+  ], []);
+
+  const paginationConfig = useMemo(() => ({
+      totalRecords,
+      currentPage,
+      pageSize,
+      onPageChange: setCurrentPage,
+      onSearchChange: (s: string) => { setSearchQuery(s); setCurrentPage(1); },
+      onFilterChange: (f: any) => { setActiveFilters(f); setCurrentPage(1); }
+  }), [totalRecords, currentPage, pageSize]);
+
+  const usersForTable = useMemo(() => 
+    users.map(u => ({ ...u, id: u._id })), 
+  [users]);
 
   if (loading) return <LoadingSpinner />;
 
@@ -156,9 +169,10 @@ export default function UsersPage() {
         </HasPermission>
       </div>
 
+
       <DataTable
-        data={users.map(u => ({ ...u, id: u._id }))}
-        columns={columns}
+        data={usersForTable}
+        columns={columnsData}
         searchPlaceholder="Search by name, email..."
         onView={(u) => router.push(`/users/${u._id}`)}
         onEdit={hasPermission('users:edit') ? ((u) => {
@@ -171,33 +185,10 @@ export default function UsersPage() {
         onDelete={hasPermission('users:delete') ? handleDeleteUser : undefined}
         onAddNew={() => router.push('/users/add')}
         addNewLabel="Onboard User"
-        customActions={(u) => (
-          <button 
-            onClick={() => router.push(`/users/${u._id}`)}
-            className="glass-interactive"
-            style={{ 
-              padding: '0.4rem 0.8rem', 
-              borderRadius: 'var(--radius-sm)', 
-              background: 'rgba(15, 118, 110, 0.08)', 
-              color: 'var(--primary)', 
-              fontWeight: 800, 
-              fontSize: '0.7rem' 
-            }}
-          >
-            VIEW PROFILE
-          </button>
-        )}
         filterableFields={[
           { label: 'Status', key: 'status' as keyof User, options: ['Active', 'Inactive'] }
         ]}
-        serverPagination={{
-          totalRecords,
-          currentPage,
-          pageSize,
-          onPageChange: setCurrentPage,
-          onSearchChange: (s) => { setSearchQuery(s); setCurrentPage(1); },
-          onFilterChange: (f) => { setActiveFilters(f); setCurrentPage(1); }
-        }}
+        serverPagination={paginationConfig}
       />
     </div>
   );

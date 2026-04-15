@@ -21,6 +21,8 @@ const validationSchema = Yup.object().shape({
   basicSalary: Yup.number().typeError('Must be a number').min(0, 'Cannot be negative'),
   allowance: Yup.number().typeError('Must be a number').min(0, 'Cannot be negative'),
   deduction: Yup.number().typeError('Must be a number').min(0, 'Cannot be negative'),
+  salaryType: Yup.string().oneOf(['Monthly', 'Daily', 'Hourly'], 'Invalid type'),
+  salaryRate: Yup.number().typeError('Must be a number').min(0, 'Cannot be negative'),
 });
 
 export default function OnboardUserPage() {
@@ -50,6 +52,10 @@ export default function OnboardUserPage() {
       basicSalary: '',
       allowance: '',
       deduction: '',
+      salaryType: 'Monthly',
+      salaryRate: '',
+      expectedHoursPerDay: 8,
+      overtimeRate: '',
     },
     validationSchema,
     onSubmit: async (values) => {
@@ -71,6 +77,12 @@ export default function OnboardUserPage() {
             allowance: Number(values.allowance) || 0,
             deduction: Number(values.deduction) || 0,
           },
+          salaryConfig: {
+            type: values.salaryType,
+            rate: Number(values.salaryRate) || 0,
+            expectedHoursPerDay: Number(values.expectedHoursPerDay) || 8,
+            overtimeRate: Number(values.overtimeRate) || 0,
+          }
         };
         await api.post('/auth/register', payload);
         showToast('Staff account created successfully.', 'success');
@@ -95,7 +107,16 @@ export default function OnboardUserPage() {
   const basic = Number(formik.values.basicSalary) || 0;
   const allowance = Number(formik.values.allowance) || 0;
   const deduction = Number(formik.values.deduction) || 0;
-  const takeHome = basic + allowance - deduction;
+  
+  // Calculate projected take-home
+  let takeHome = 0;
+  if (formik.values.salaryType === 'Monthly') {
+    takeHome = basic + allowance - deduction;
+  } else if (formik.values.salaryType === 'Daily') {
+    takeHome = (Number(formik.values.salaryRate) * 22) + allowance - deduction; // Approx 22 working days
+  } else {
+    takeHome = (Number(formik.values.salaryRate) * 8 * 22) + allowance - deduction; // Approx 8h/day, 22 days
+  }
 
   return (
     <div className="onboard-user-container animate-fade-in clinical-form-wide" style={{ paddingBottom: '5rem' }}>
@@ -195,10 +216,38 @@ export default function OnboardUserPage() {
             <label className="label-premium">Account Number</label>
             <input name="accountNumber" type="text" className="input-premium" value={formik.values.accountNumber} onChange={formik.handleChange} placeholder="00000000000" />
           </div>
-          <div className="col-4">
+          <div className="col-3">
             <label className="label-premium">IFSC Code</label>
             <input name="ifscCode" type="text" className="input-premium" value={formik.values.ifscCode} onChange={(e) => formik.setFieldValue('ifscCode', e.target.value.toUpperCase())} placeholder="SBIN0001234" />
           </div>
+          <div className="col-3">
+            <label className="label-premium">Salary Basis</label>
+            <select name="salaryType" className="input-premium" value={formik.values.salaryType} onChange={formik.handleChange}>
+              <option value="Monthly">Monthly Fixed</option>
+              <option value="Daily">Daily Wage</option>
+              <option value="Hourly">Hourly Rate</option>
+            </select>
+          </div>
+
+          {formik.values.salaryType !== 'Monthly' && (
+            <div className="col-3">
+              <label className="label-premium">{formik.values.salaryType} Rate (₹)</label>
+              <input name="salaryRate" type="number" className="input-premium" value={formik.values.salaryRate} onChange={formik.handleChange} placeholder="0.00" />
+            </div>
+          )}
+
+          {formik.values.salaryType === 'Hourly' && (
+            <>
+              <div className="col-3">
+                <label className="label-premium">Expected Hrs/Day</label>
+                <input name="expectedHoursPerDay" type="number" className="input-premium" value={formik.values.expectedHoursPerDay} onChange={formik.handleChange} placeholder="8" />
+              </div>
+              <div className="col-3">
+                <label className="label-premium">OT Rate (Extra/Hr)</label>
+                <input name="overtimeRate" type="number" className="input-premium" value={formik.values.overtimeRate} onChange={formik.handleChange} placeholder="0.00" />
+              </div>
+            </>
+          )}
 
           <div className="col-4">
             <label className="label-premium">Basic Salary (₹)</label>

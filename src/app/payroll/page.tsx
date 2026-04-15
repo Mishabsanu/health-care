@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
     Wallet, 
@@ -20,7 +20,7 @@ import {
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
 import DataTable from '@/components/DataTable';
-import LoadingSpinner from '@/components/LoadingSpinner';
+import Loading from '@/components/Loading';
 
 interface PayrollRecord {
   _id: string;
@@ -41,6 +41,7 @@ interface PayrollRecord {
     type: 'Monthly' | 'Daily' | 'Hourly';
     rate: number;
     overtimeRate: number;
+    expectedHoursPerDay?: number;
   };
   bankDetails: {
     bankName: string;
@@ -69,19 +70,9 @@ export default function PayrollPage() {
 
   // Attendance Detail State
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
-  const [showPayslipModal, setShowPayslipModal] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<PayrollRecord | null>(null);
   const [attendanceDetail, setAttendanceDetail] = useState<Record<number, AttendanceDay>>({});
   const [detailLoading, setDetailLoading] = useState(false);
-
-  // Payslip Wizard State
-  const [payslipData, setPayslipData] = useState({
-    basicSalary: 0,
-    allowance: 0,
-    deduction: 0,
-    bonus: 0,
-    note: ''
-  });
 
   const months = [
     { label: 'January', value: '01' }, { label: 'February', value: '02' }, { label: 'March', value: '03' },
@@ -200,249 +191,256 @@ export default function PayrollPage() {
     document.body.removeChild(link);
   };
 
-  const openPayslipWizard = (staff: PayrollRecord) => {
-    setSelectedStaff(staff);
-    setPayslipData({
-      basicSalary: staff.salaryDetails.basicSalary || 0,
-      allowance: staff.salaryDetails.allowance || 0,
-      deduction: staff.salaryDetails.deduction || 0,
-      bonus: 0,
-      note: ''
-    });
-    setShowPayslipModal(true);
-  };
-
-  const handleProcessPayment = async () => {
-    if (!selectedStaff) return;
-    if (isFuturePeriod()) {
-        showToast('Cannot process payments for future months.', 'error');
-        return;
-    }
-
-    const { basicSalary, allowance, deduction, bonus, note } = payslipData;
-    const netSalary = (basicSalary + allowance + bonus) - deduction;
-
-    if (netSalary <= 0 && bonus === 0) {
-      showToast('Calculated salary is zero. Please verify configurations.', 'error');
-      return;
-    }
-
-    try {
-      const count = Math.floor(Math.random() * 9000) + 1000;
-      await api.post('/expenses', {
-        id: `EXP-SAL-${count}`,
-        date: new Date().toISOString().split('T')[0],
-        amount: netSalary,
-        category: 'Salaries',
-        description: `Salary Disbursement | ${selectedStaff.name} | Period: ${selectedMonth}-${selectedYear} | ${selectedStaff.workedDays} Days. ${note}`,
-        paymentMethod: 'Bank Transfer',
-        status: 'Paid',
-        staffId: selectedStaff._id
-      });
-
-      // Also update the staff's salary details if they were previously 0
-      if (selectedStaff.salaryDetails.basicSalary === 0 && basicSalary > 0) {
-        await api.put(`/users/${selectedStaff._id}`, {
-          salaryDetails: {
-            basicSalary,
-            allowance,
-            deduction
-          }
-        });
-      }
-
-      showToast(`Salary processed for ${selectedStaff.name}`, 'success');
-      setShowPayslipModal(false);
-      fetchPayroll();
-    } catch (err: any) {
-      console.error('🚫 Financial Error | Payment failed:', err);
-      showToast('Salary disbursement failed.', 'error');
-    }
-  };
-
-  const columns = [
+  const columnsData = useMemo(() => [
     { 
-      header: 'SPECIALIST', 
+      header: 'CLINICAL SPECIALIST', 
       key: (r: PayrollRecord) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ width: '35px', height: '35px', borderRadius: '50%', background: 'rgba(15, 118, 110, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
-            <UserCircle size={20} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ position: 'relative' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'rgba(15, 118, 110, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', border: '1.5px solid rgba(15, 118, 110, 0.1)' }}>
+              <UserCircle size={24} />
+            </div>
+            <div style={{ position: 'absolute', top: '-4px', right: '-4px', width: '12px', height: '12px', borderRadius: '50%', background: '#10b981', border: '2px solid white' }} />
           </div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{r.name}</div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>{r.role}</div>
+            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)', letterSpacing: '-0.02em' }}>{r.name}</div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 800, opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{r.role}</div>
           </div>
         </div>
       )
     },
     { 
-      header: 'WORK HISTORY', 
+      header: 'WORK VELOCITY', 
       key: (r: PayrollRecord) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div>
-            <div style={{ fontSize: '0.8rem', fontWeight: 800 }}>{r.workedDays} Days</div>
-            <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 600 }}>T: {r.tenureDays}d</div>
+            <div style={{ fontSize: '0.9rem', fontWeight: 950, color: 'var(--text-main)' }}>{r.workedDays} <span style={{ fontSize: '0.65rem', opacity: 0.5 }}>DAYS</span></div>
+            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700 }}>Tenure: {r.tenureDays}d</div>
           </div>
           <button 
             onClick={() => fetchStaffAttendance(r)}
             className="glass-interactive"
-            style={{ padding: '0.4rem', borderRadius: '50%', color: 'var(--primary)', border: '1px solid rgba(15, 118, 110, 0.2)' }}
+            style={{ 
+              width: '32px', 
+              height: '32px', 
+              borderRadius: '8px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              color: 'var(--primary)', 
+              border: '1.5px solid rgba(15, 118, 110, 0.15)',
+              background: 'white'
+            }}
           >
-            <Calendar size={13} />
+            <Calendar size={14} />
           </button>
         </div>
       )
     },
     {
-      header: 'HOURS & OT',
+      header: 'UTILIZATION',
       key: (r: PayrollRecord) => (
         <div>
-          <div style={{ fontSize: '0.8rem', fontWeight: 800 }}>{r.totalHours}h <span style={{ opacity: 0.5 }}>reg.</span></div>
+          <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-main)' }}>{r.totalHours}h <span style={{ fontSize: '0.65rem', opacity: 0.4 }}>BASE</span></div>
           {r.overtimeHours > 0 && (
-            <div style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 900 }}>+{r.overtimeHours}h OT</div>
+            <div style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '2px' }}>
+              <ArrowUpRight size={10} /> {r.overtimeHours}h OT
+            </div>
           )}
         </div>
       )
     },
     { 
-        header: 'MONTHLY NET', 
+        header: 'NET DISBURSEMENT', 
         key: (r: PayrollRecord) => (
-          <div style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '0.95rem' }}>
+          <div style={{ fontWeight: 950, color: 'var(--primary)', fontSize: '1rem', letterSpacing: '-0.03em' }}>
             ₹{r.salaryDetails.netSalary.toLocaleString()}
           </div>
         )
     },
     { 
-        header: 'BANKING', 
+        header: 'LEDGER STATUS', 
         key: (r: PayrollRecord) => (
-          <div style={{ fontSize: '0.75rem' }}>
-            <div style={{ fontWeight: 700 }}>{r.bankDetails.bankName || 'N/A'}</div>
-            <div style={{ opacity: 0.6 }}>{r.bankDetails.accountNumber}</div>
-          </div>
-        )
+          <span style={{ 
+            padding: '0.5rem 1rem', 
+            borderRadius: '0.75rem', 
+            fontSize: '0.7rem', 
+            fontWeight: 900,
+            background: r.paymentStatus === 'Paid' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+            color: r.paymentStatus === 'Paid' ? '#059669' : '#d97706',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            border: r.paymentStatus === 'Paid' ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(245, 158, 11, 0.2)'
+          }}>
+            {r.paymentStatus === 'Paid' ? <BadgeCheck size={14} /> : <Clock size={14} />}
+            {r.paymentStatus.toUpperCase()}
+          </span>
+        ) 
     },
-    { 
-      header: 'STATUS', 
-      key: (r: PayrollRecord) => (
-        <span style={{ 
-          padding: '0.4rem 0.85rem', 
-          borderRadius: '2rem', 
-          fontSize: '0.65rem', 
-          fontWeight: 900,
-          background: r.paymentStatus === 'Paid' ? '#dcfce7' : '#fff7ed',
-          color: r.paymentStatus === 'Paid' ? '#166534' : '#c2410c',
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '0.3rem'
-        }}>
-          {r.paymentStatus === 'Paid' ? <BadgeCheck size={12} /> : <Clock size={12} />}
-          {r.paymentStatus.toUpperCase()}
-        </span>
-      ) 
-    },
-  ];
+  ], []);
 
-  if (loading) return <LoadingSpinner />;
+  const paginationConfig = useMemo(() => ({
+    totalRecords,
+    currentPage,
+    pageSize,
+    onPageChange: setCurrentPage,
+    onSearchChange: (s: string) => { setSearchQuery(s); setCurrentPage(1); },
+    onFilterChange: (f: any) => { setActiveFilters(f); setCurrentPage(1); }
+  }), [totalRecords, currentPage, pageSize]);
+
+  const recordsForTable = useMemo(() => 
+    records.map(r => ({ ...r, id: r._id })), 
+  [records]);
 
   return (
-    <div className="payroll-container animate-fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem' }}>
+    <div className="payroll-container animate-fade-in" style={{ padding: '2rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3.5rem' }}>
         <div>
-            <h1 style={{ fontSize: '1.8rem', fontWeight: 950, letterSpacing: '-0.02em' }}>Salary & <span className="gradient-text">Payroll Registry</span></h1>
-            <p style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Monitor specialist compensation, tenure, and monthly disbursement status.</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+              <div style={{ width: '14px', height: '14px', borderRadius: '4px', background: 'linear-gradient(135deg, var(--primary), #0d9488)', boxShadow: '0 4px 10px rgba(13, 148, 136, 0.3)' }} />
+              <span style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Financial Operations</span>
+            </div>
+            <h1 style={{ fontSize: '2.5rem', fontWeight: 950, letterSpacing: '-0.04em', margin: 0, lineHeight: 1 }}>
+              Salary & <span className="gradient-text">Payroll Registry</span>
+            </h1>
+            <p style={{ color: 'var(--text-muted)', fontWeight: 600, marginTop: '0.75rem', fontSize: '1rem' }}>
+              Centralized hub for specialist compensation, attendance analytics, and disbursements.
+            </p>
         </div>
         <button 
             onClick={handleExportCSV}
             className="glass-interactive"
-            style={{ padding: '0.75rem 1.5rem', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: '0.75rem', fontWeight: 800, color: 'var(--primary)', fontSize: '0.85rem', border: '1.5px solid var(--primary)' }}
+            style={{ 
+              padding: '1rem 2rem', 
+              borderRadius: '1rem', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.75rem', 
+              fontWeight: 800, 
+              color: 'var(--primary)', 
+              fontSize: '0.9rem', 
+              border: '2px solid rgba(15, 118, 110, 0.2)',
+              background: 'white',
+              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)'
+            }}
         >
-            <FileDown size={18} /> EXPORT REPORT
+            <FileDown size={20} /> EXPORT DATA
         </button>
       </div>
 
-      <div className="card-premium" style={{ display: 'flex', gap: '2rem', padding: '1.5rem', marginBottom: '3rem', alignItems: 'center', background: 'rgba(15, 118, 110, 0.03)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Filter size={20} style={{ color: 'var(--primary)' }} />
-            <span style={{ fontWeight: 900, fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Report Period:</span>
+      {/* 📅 Control Center (Filters & Analysis) */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '1.5rem', marginBottom: '3.5rem' }}>
+        
+        {/* Period Control */}
+        <div className="card-premium" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.75rem', background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(10px)', border: '1px solid rgba(15, 118, 110, 0.1)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ padding: '0.5rem', borderRadius: '0.75rem', background: 'rgba(15, 118, 110, 0.1)', color: 'var(--primary)' }}>
+                <Filter size={18} />
+              </div>
+              <span style={{ fontWeight: 900, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Registry Period</span>
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <select 
+                  value={selectedMonth} 
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="input-premium"
+                  style={{ flex: 2, padding: '0.75rem 1rem', fontSize: '0.95rem', fontWeight: 700 }}
+              >
+                  {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </select>
+              <select 
+                  value={selectedYear} 
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                  className="input-premium"
+                  style={{ flex: 1, padding: '0.75rem 1rem', fontSize: '0.95rem', fontWeight: 700 }}
+              >
+                  {years.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-            <select 
-                value={selectedMonth} 
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="input-premium"
-                style={{ width: '180px', padding: '0.6rem 1rem' }}
-            >
-                {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-            </select>
-            <select 
-                value={selectedYear} 
-                onChange={(e) => setSelectedYear(e.target.value)}
-                className="input-premium"
-                style={{ width: '120px', padding: '0.6rem 1rem' }}
-            >
-                {years.map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
-        </div>
-      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-        <div className="card-premium" style={{ borderLeft: '4px solid var(--primary)', padding: '1.5rem' }}>
-            <div style={{ opacity: 0.5, marginBottom: '0.5rem' }}><Banknote size={20} /></div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 950 }}>₹{records.reduce((sum, r) => sum + r.salaryDetails.netSalary, 0).toLocaleString()}</div>
-            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-              {isFuturePeriod() ? 'PROJECTED' : `${selectedMonth}/${selectedYear}`} Total Liability
+        {/* LIABILITY CARD */}
+        <div className="card-premium" style={{ 
+          background: 'linear-gradient(135deg, var(--primary), #0d9488)', 
+          color: 'white', 
+          padding: '1.75rem', 
+          position: 'relative', 
+          overflow: 'hidden',
+          boxShadow: '0 20px 40px -10px rgba(13, 148, 136, 0.3)',
+          border: 'none'
+        }}>
+            <Banknote size={80} style={{ position: 'absolute', right: '-10px', bottom: '-10px', opacity: 0.1, transform: 'rotate(-15deg)' }} />
+            <div style={{ fontSize: '0.75rem', fontWeight: 800, opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>
+              {isFuturePeriod() ? 'PROJECTED' : 'TOTAL'} LIABILITY
+            </div>
+            <div style={{ fontSize: '2.25rem', fontWeight: 950, letterSpacing: '-0.02em', marginBottom: '0.25rem' }}>
+              ₹{records.reduce((sum, r) => sum + r.salaryDetails.netSalary, 0).toLocaleString()}
+            </div>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, opacity: 0.9 }}>
+               Computed for {months.find(m => m.value === selectedMonth)?.label} {selectedYear}
             </div>
         </div>
-        <div className="card-premium" style={{ borderLeft: '4px solid #10b981', padding: '1.5rem' }}>
-            <div style={{ opacity: 0.5, marginBottom: '0.5rem' }}><BadgeCheck size={20} /></div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 950 }}>
+
+        {/* STATUS CARD */}
+        <div className="card-premium" style={{ 
+          background: '#1e293b', 
+          color: 'white', 
+          padding: '1.75rem', 
+          position: 'relative', 
+          overflow: 'hidden',
+          border: 'none'
+        }}>
+            <BadgeCheck size={80} style={{ position: 'absolute', right: '-10px', bottom: '-10px', opacity: 0.1, transform: 'rotate(-15deg)' }} />
+            <div style={{ fontSize: '0.75rem', fontWeight: 800, opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>
+              DISBURSEMENT STATUS
+            </div>
+            <div style={{ fontSize: '2.25rem', fontWeight: 950, letterSpacing: '-0.02em', marginBottom: '0.25rem' }}>
               {isFuturePeriod() ? '-- / --' : `${records.filter(r => r.paymentStatus === 'Paid').length} / ${records.length}`}
             </div>
-            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-              {isFuturePeriod() ? 'PAYROLL NOT OPEN' : 'Disbursements Cleared'}
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isFuturePeriod() ? 'var(--text-muted)' : '#10b981' }} />
+               {isFuturePeriod() ? 'Payroll Cycle Not Yet Open' : `${records.filter(r => r.paymentStatus === 'Paid').length} Specialists Paid Successfully`}
             </div>
         </div>
       </div>
 
-        <DataTable<any> 
-          data={records.map(r => ({ ...r, id: r._id }))}
-          columns={columns}
-          searchPlaceholder="Search specialists by name..."
-          onView={(r) => router.push(`/payroll/${r._id}`)}
-          filterableFields={[
-            { label: 'Payment Status', key: 'paymentStatus' as keyof PayrollRecord, options: ['Paid', 'Pending'] }
-          ]}
-          serverPagination={{
-            totalRecords,
-            currentPage,
-            pageSize,
-            onPageChange: setCurrentPage,
-            onSearchChange: (s) => { setSearchQuery(s); setCurrentPage(1); },
-            onFilterChange: (f) => { setActiveFilters(f); setCurrentPage(1); }
-          }}
-          customActions={(staff: PayrollRecord) => (
-            <button 
-                onClick={() => openPayslipWizard(staff)}
-                disabled={staff.paymentStatus === 'Paid' || isFuturePeriod()}
-                style={{ 
-                    padding: '0.5rem 1rem', 
-                    borderRadius: 'var(--radius-sm)', 
-                    background: (staff.paymentStatus === 'Paid' || isFuturePeriod()) ? '#f1f5f9' : 'var(--primary)', 
-                    color: (staff.paymentStatus === 'Paid' || isFuturePeriod()) ? '#94a3b8' : 'white', 
-                    fontWeight: 800, 
-                    fontSize: '0.75rem',
-                    border: 'none',
-                    cursor: (staff.paymentStatus === 'Paid' || isFuturePeriod()) ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                }}
-            >
-                <ArrowUpRight size={14} /> 
-                {isFuturePeriod() ? 'NOT OPEN' : (staff.paymentStatus === 'Paid' ? 'DISBURSED' : (staff.salaryDetails.basicSalary === 0 ? 'SET SALARY & PAY' : 'GENERATE PAYSLIP'))}
-            </button>
-          )}
-        />
+        {loading ? (
+          <Loading />
+        ) : (
+          <DataTable<any> 
+            data={recordsForTable}
+            columns={columnsData}
+            searchPlaceholder="Search specialists by name..."
+            onView={(r) => router.push(`/payroll/${r._id}`)}
+            filterableFields={[
+              { label: 'Payment Status', key: 'paymentStatus' as keyof PayrollRecord, options: ['Paid', 'Pending'] }
+            ]}
+            serverPagination={paginationConfig}
+            customActions={(staff: PayrollRecord) => (
+              <button 
+                  onClick={() => router.push(`/payroll/generate/${staff._id}?month=${selectedMonth}&year=${selectedYear}`)}
+                  disabled={staff.paymentStatus === 'Paid' || isFuturePeriod()}
+                  style={{ 
+                      padding: '0.5rem 1rem', 
+                      borderRadius: 'var(--radius-sm)', 
+                      background: (staff.paymentStatus === 'Paid' || isFuturePeriod()) ? '#f1f5f9' : 'var(--primary)', 
+                      color: (staff.paymentStatus === 'Paid' || isFuturePeriod()) ? '#94a3b8' : 'white', 
+                      fontWeight: 800, 
+                      fontSize: '0.75rem',
+                      border: 'none',
+                      cursor: (staff.paymentStatus === 'Paid' || isFuturePeriod()) ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                  }}
+              >
+                  <ArrowUpRight size={14} /> 
+                  {isFuturePeriod() ? 'NOT OPEN' : (staff.paymentStatus === 'Paid' ? 'DISBURSED' : (staff.salaryDetails.basicSalary === 0 ? 'SET SALARY & PAY' : 'GENERATE PAYSLIP'))}
+              </button>
+            )}
+          />
+        )}
 
       {/* 📅 Monthly Attendance Grid Modal */}
       {showAttendanceModal && (
@@ -528,84 +526,7 @@ export default function PayrollPage() {
           </div>
       )}
 
-      {/* 🧾 Payslip Generation Modal */}
-      {showPayslipModal && selectedStaff && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.9)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 110, padding: '2rem' }}>
-              <div className="card-premium animate-scale-up clinical-form-wide" style={{ width: '100%', maxWidth: '800px', padding: '3rem', maxHeight: '90vh', overflow: 'auto' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem' }}>
-                      <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-                          <div style={{ width: '60px', height: '60px', borderRadius: '1.5rem', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <Banknote size={32} />
-                          </div>
-                          <div>
-                              <h2 style={{ fontSize: '1.75rem', fontWeight: 950, letterSpacing: '-0.02em' }}>Generate <span className="gradient-text">Payslip</span></h2>
-                              <p style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Reviewing disbursement for {selectedStaff.name} • {selectedMonth}/{selectedYear}</p>
-                          </div>
-                      </div>
-                      <button onClick={() => setShowPayslipModal(false)} className="glass-interactive" style={{ padding: '0.75rem', borderRadius: '50%', color: 'var(--text-muted)' }}><X size={24} /></button>
-                  </div>
 
-                  <div className="clinical-form-grid">
-                      {/* Section: Attendance Context */}
-                      <div className="col-12" style={{ padding: '1.5rem', background: 'rgba(15, 118, 110, 0.04)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(15, 118, 110, 0.1)', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                         <div style={{ display: 'flex', gap: '2rem' }}>
-                            <div>
-                               <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Working Days</div>
-                               <div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{selectedStaff.workedDays} Days</div>
-                            </div>
-                            <div>
-                               <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Calculated Reg. Hours</div>
-                               <div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{selectedStaff.totalHours}h</div>
-                            </div>
-                         </div>
-                         <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Configured Type</div>
-                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary)' }}>{selectedStaff.salaryConfig.type} Basis</div>
-                         </div>
-                      </div>
-
-                      {/* Section: Financial Inputs */}
-                      <div className="col-4">
-                          <label className="label-premium">Basic Salary (Monthly) {selectedStaff.salaryDetails.basicSalary === 0 && <span style={{ color: '#ef4444' }}>*</span>}</label>
-                          <input type="number" className="input-premium" value={payslipData.basicSalary} onChange={(e) => setPayslipData({...payslipData, basicSalary: Number(e.target.value)})} placeholder="0.00" />
-                      </div>
-                      <div className="col-4">
-                          <label className="label-premium">Allowances</label>
-                          <input type="number" className="input-premium" value={payslipData.allowance} onChange={(e) => setPayslipData({...payslipData, allowance: Number(e.target.value)})} placeholder="0" />
-                      </div>
-                      <div className="col-4">
-                          <label className="label-premium">Deductions</label>
-                          <input type="number" className="input-premium" value={payslipData.deduction} onChange={(e) => setPayslipData({...payslipData, deduction: Number(e.target.value)})} placeholder="0" />
-                      </div>
-
-                      <div className="col-6">
-                          <label className="label-premium" style={{ color: '#10b981' }}>Bonus / Incentives</label>
-                          <input type="number" className="input-premium" style={{ borderColor: '#10b981' }} value={payslipData.bonus} onChange={(e) => setPayslipData({...payslipData, bonus: Number(e.target.value)})} placeholder="Enter bonus if applicable" />
-                      </div>
-                      <div className="col-6">
-                          <label className="label-premium">Payment Remarks</label>
-                          <input type="text" className="input-premium" value={payslipData.note} onChange={(e) => setPayslipData({...payslipData, note: e.target.value})} placeholder="e.g. Performance Bonus included" />
-                      </div>
-
-                      {/* Breakdown Footer */}
-                      <div className="col-12" style={{ marginTop: '2.5rem' }}>
-                         <div style={{ background: 'var(--primary)', padding: '2rem', borderRadius: 'var(--radius-lg)', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 20px 40px -10px rgba(13, 148, 136, 0.4)' }}>
-                            <div>
-                               <div style={{ fontSize: '0.85rem', fontWeight: 700, opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Net Disbursement Amount</div>
-                               <div style={{ fontSize: '2.5rem', fontWeight: 950 }}>₹{(payslipData.basicSalary + payslipData.allowance + payslipData.bonus - payslipData.deduction).toLocaleString()}</div>
-                            </div>
-                            <button 
-                                onClick={handleProcessPayment}
-                                style={{ padding: '1rem 3rem', borderRadius: 'var(--radius-md)', background: 'white', color: 'var(--primary)', fontWeight: 900, fontSize: '1rem', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                            >
-                                CONFIRM & DISBURSE
-                            </button>
-                         </div>
-                      </div>
-                  </div>
-              </div>
-          </div>
-      )}
     </div>
   );
 }

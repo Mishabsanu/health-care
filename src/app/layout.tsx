@@ -15,7 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body style={{ margin: 0, padding: 0 }} suppressHydrationWarning>
+      <body style={{ margin: 0, padding: 0 }} suppressHydrationWarning={true}>
         <NextTopLoader color="var(--primary)" height={3} showSpinner={false} />
         <ClinicalWrapper>
             {children}

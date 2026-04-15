@@ -29,7 +29,10 @@ export default function GenerateInvoicePage() {
     status: 'Unpaid',
     discount: '' as any,
     amount: 0,
-    remarks: ''
+    remarks: '',
+    paidAmount: 0,
+    paymentNote: '',
+    method: 'UPI'
   });
 
   const fetchData = async () => {
@@ -130,6 +133,9 @@ export default function GenerateInvoicePage() {
         appointmentId: formData.appointmentId === '' ? undefined : formData.appointmentId,
         discount: Number(formData.discount) || 0,
         amount: Number(formData.amount) || 0,
+        paidAmount: Number(formData.paidAmount) || 0,
+        paymentNote: formData.paymentNote,
+        method: formData.method,
         patientName: selectedPatient?.name || 'Unknown Patient',
         clinicName: 'Physio 4 (Edavanna)',
         description: formData.remarks
@@ -483,13 +489,68 @@ export default function GenerateInvoicePage() {
                     value={formData.discount ?? 0} placeholder="0" onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
                   />
                 </div>
+
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1.5rem', marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--primary-light)', display: 'block', marginBottom: '0.5rem' }}>Amount Paid Now (₹)</label>
+                    <input
+                      type="number" className="input-premium"
+                      style={{ background: 'rgba(255,255,255,0.08)', border: '1.5px solid var(--primary)', color: 'white', fontWeight: 800, fontSize: '1.1rem', borderRadius: '10px', boxShadow: '0 0 15px rgba(13, 148, 136, 0.2)' }}
+                      value={formData.paidAmount} placeholder="0" onChange={(e) => setFormData({ ...formData, paidAmount: Number(e.target.value) })}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div>
+                      <label style={{ fontSize: '0.55rem', fontWeight: 900, textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.4rem' }}>Method</label>
+                      <select 
+                        style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontWeight: 700, fontSize: '0.75rem', padding: '0.5rem', borderRadius: '8px' }}
+                        value={formData.method}
+                        onChange={(e) => setFormData({...formData, method: e.target.value})}
+                      >
+                        <option value="UPI">UPI</option>
+                        <option value="Cash">Cash</option>
+                        <option value="Card">Card</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.55rem', fontWeight: 900, textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.4rem' }}>Status</label>
+                      <select 
+                        style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontWeight: 700, fontSize: '0.75rem', padding: '0.5rem', borderRadius: '8px' }}
+                        value={formData.status}
+                        onChange={(e) => setFormData({...formData, status: e.target.value})}
+                      >
+                        <option value="Unpaid">Unpaid</option>
+                        <option value="Partially Paid">Partial</option>
+                        <option value="Paid">Fully Paid</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.55rem', fontWeight: 900, textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.4rem' }}>Payment Note</label>
+                    <input
+                      type="text" className="input-premium"
+                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontWeight: 600, fontSize: '0.7rem', borderRadius: '8px' }}
+                      value={formData.paymentNote} placeholder="e.g. Partial / Advance" onChange={(e) => setFormData({ ...formData, paymentNote: e.target.value })}
+                    />
+                  </div>
+                </div>
               </div>
 
               <div style={{ borderTop: '2px dashed rgba(255,255,255,0.1)', paddingTop: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
-                    <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Authorizable Total</p>
-                    <p style={{ fontSize: '2rem', fontWeight: 950, color: '#2dd4bf', margin: 0 }}>₹{formData.amount.toLocaleString()}</p>
+                    <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Payable Total</p>
+                    <p style={{ fontSize: '1.75rem', fontWeight: 950, color: 'white', margin: 0 }}>₹{formData.amount.toLocaleString()}</p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <p style={{ fontSize: '0.65rem', fontWeight: 900, color: (formData.amount - formData.paidAmount) > 0 ? '#fb923c' : (formData.amount - formData.paidAmount < 0 ? '#2dd4bf' : '#64748b'), textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+                      {formData.amount - formData.paidAmount < 0 ? 'Credit / Advance' : 'Balance Due'}
+                    </p>
+                    <p style={{ fontSize: '1.75rem', fontWeight: 950, color: (formData.amount - formData.paidAmount) > 0 ? '#fb923c' : (formData.amount - formData.paidAmount < 0 ? '#2dd4bf' : 'white'), margin: 0 }}>
+                      ₹{Math.abs(formData.amount - formData.paidAmount).toLocaleString()}
+                    </p>
                   </div>
                 </div>
 
@@ -616,6 +677,23 @@ export default function GenerateInvoicePage() {
                     <p style={{ fontWeight: 900, fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', margin: 0 }}>Net Payable</p>
                     <p style={{ fontWeight: 950, fontSize: '1.75rem', color: 'var(--primary)', margin: 0 }}>₹{formData.amount.toLocaleString()}</p>
                   </div>
+
+                  {formData.paidAmount > 0 && (
+                    <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px dashed #f1f5f9' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                        <span>Amount Paid Now</span>
+                        <span style={{ color: '#0f172a' }}>₹{formData.paidAmount.toLocaleString()}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <p style={{ fontWeight: 950, fontSize: '0.7rem', textTransform: 'uppercase', color: (formData.amount - formData.paidAmount) > 0 ? '#fb923c' : '#0d9488' }}>
+                          {(formData.amount - formData.paidAmount) < 0 ? 'Credit / Advanced' : 'Balance Due'}
+                        </p>
+                        <p style={{ fontWeight: 950, fontSize: '1.25rem', color: (formData.amount - formData.paidAmount) > 0 ? '#fb923c' : '#0d9488' }}>
+                          ₹{Math.abs(formData.amount - formData.paidAmount).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

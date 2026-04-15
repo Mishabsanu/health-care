@@ -75,68 +75,73 @@ export default function UserDetailsPage() {
           <h1 style={{ fontSize: '1.8rem', letterSpacing: '-0.01em' }}>Specialist <span className="gradient-text">Intelligence Hub</span></h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Comprehensive breakdown of clinical credentials, attendance logs, and financial records.</p>
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
           <button
             onClick={() => setActiveTab('info')}
-            className={`glass-interactive ${activeTab === 'info' ? 'active-tab' : ''}`}
+            className="glass-interactive"
             style={{
-              padding: '0.75rem 1.5rem',
-              borderRadius: 'var(--radius-md)',
-              background: activeTab === 'info' ? 'var(--primary)' : 'white',
+              padding: '0.6rem 1.25rem',
+              borderRadius: 'var(--radius-sm)',
+              background: activeTab === 'info' ? 'var(--primary)' : 'rgba(255,255,255,0.7)',
               color: activeTab === 'info' ? 'white' : 'var(--text-main)',
-              fontWeight: 700,
-              fontSize: '0.8rem',
-              border: '1.5px solid var(--border-subtle)'
+              fontWeight: 800,
+              fontSize: '0.75rem',
+              border: activeTab === 'info' ? 'none' : '1px solid var(--border-subtle)',
+              boxShadow: activeTab === 'info' ? '0 4px 12px rgba(13,148,136,0.3)' : 'none'
             }}
           >
-            IDENTITY
+            CREDENTIALS
           </button>
           <button
             onClick={() => setActiveTab('attendance')}
-            className={`glass-interactive ${activeTab === 'attendance' ? 'active-tab' : ''}`}
+            className="glass-interactive"
             style={{
-              padding: '0.75rem 1.5rem',
-              borderRadius: 'var(--radius-md)',
-              background: activeTab === 'attendance' ? 'var(--primary)' : 'white',
+              padding: '0.6rem 1.25rem',
+              borderRadius: 'var(--radius-sm)',
+              background: activeTab === 'attendance' ? 'var(--primary)' : 'rgba(255,255,255,0.7)',
               color: activeTab === 'attendance' ? 'white' : 'var(--text-main)',
-              fontWeight: 700,
-              fontSize: '0.8rem',
-              border: '1.5px solid var(--border-subtle)'
+              fontWeight: 800,
+              fontSize: '0.75rem',
+              border: activeTab === 'attendance' ? 'none' : '1px solid var(--border-subtle)',
+              boxShadow: activeTab === 'attendance' ? '0 4px 12px rgba(13,148,136,0.3)' : 'none'
             }}
           >
-            ATTENDANCE
+            ATTENDANCE REPORT
           </button>
           <button
             onClick={() => setActiveTab('salaries')}
-            className={`glass-interactive ${activeTab === 'salaries' ? 'active-tab' : ''}`}
+            className="glass-interactive"
             style={{
-              padding: '0.75rem 1.5rem',
-              borderRadius: 'var(--radius-md)',
-              background: activeTab === 'salaries' ? 'var(--primary)' : 'white',
+              padding: '0.6rem 1.25rem',
+              borderRadius: 'var(--radius-sm)',
+              background: activeTab === 'salaries' ? 'var(--primary)' : 'rgba(255,255,255,0.7)',
               color: activeTab === 'salaries' ? 'white' : 'var(--text-main)',
-              fontWeight: 700,
-              fontSize: '0.8rem',
-              border: '1.5px solid var(--border-subtle)'
+              fontWeight: 800,
+              fontSize: '0.75rem',
+              border: activeTab === 'salaries' ? 'none' : '1px solid var(--border-subtle)',
+              boxShadow: activeTab === 'salaries' ? '0 4px 12px rgba(13,148,136,0.3)' : 'none'
             }}
           >
-            PAYSLIPS
+            PAYROLL LEDGER
           </button>
+          <div style={{ width: '1px', background: 'var(--border-subtle)', margin: '0 0.5rem' }} />
           <button
             onClick={() => router.push(`/users/${id}/edit`)}
             className="glass-interactive"
             style={{
-              padding: '0.75rem 1.5rem',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--primary)',
-              color: 'white',
+              padding: '0.6rem 1.25rem',
+              borderRadius: 'var(--radius-sm)',
+              background: 'white',
+              color: 'var(--primary)',
               fontWeight: 800,
               display: 'flex',
               alignItems: 'center',
-              gap: '0.75rem',
-              fontSize: '0.8rem'
+              gap: '0.5rem',
+              fontSize: '0.75rem',
+              border: '1.5px solid var(--primary)'
             }}
           >
-            <Edit size={16} /> EDIT
+            <Edit size={14} /> MODIFY
           </button>
         </div>
       </div>
@@ -196,6 +201,20 @@ export default function UserDetailsPage() {
                   {userData.employeeId || 'AKOD-PENDING'}
                 </div>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, marginTop: '0.5rem' }}>Internal clinical reference</p>
+              </div>
+
+              <div className="spec-block">
+                <label className="label-premium" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Banknote size={14} style={{ color: '#10b981' }} /> SALARY CONFIGURATION
+                </label>
+                <div style={{ padding: '0.75rem 1rem', background: 'rgba(16, 185, 129, 0.05)', borderRadius: 'var(--radius-md)', border: '1.5px solid rgba(16, 185, 129, 0.2)' }}>
+                  <div style={{ fontWeight: 900, color: '#10b981', fontSize: '0.85rem' }}>{userData.salaryConfig?.type?.toUpperCase() || 'MONTHLY'} BASIS</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                    {userData.salaryConfig?.type === 'Monthly' 
+                      ? `Monthly: ₹${userData.salaryDetails?.basicSalary?.toLocaleString()}` 
+                      : `${userData.salaryConfig?.type} Rate: ₹${userData.salaryConfig?.rate?.toLocaleString()}`}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -276,7 +295,7 @@ export default function UserDetailsPage() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.75rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.75rem', marginBottom: '2.5rem' }}>
                 {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map(day => (
                     <div key={day} style={{ textAlign: 'center', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.05em', paddingBottom: '0.5rem' }}>{day}</div>
                 ))}
@@ -300,6 +319,21 @@ export default function UserDetailsPage() {
                         )}
                     </div>
                 ))}
+              </div>
+
+              <div style={{ display: 'flex', gap: '2rem', padding: '1.5rem', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-subtle)' }}>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ width: '12px', height: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #10b981', borderRadius: '2px' }} />
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800 }}>Clinical Presence Established</span>
+                 </div>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ width: '12px', height: '12px', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid #ef4444', borderRadius: '2px' }} />
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800 }}>Absenteeism Recorded</span>
+                 </div>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ width: '12px', height: '12px', background: 'rgba(0,0,0,0.05)', borderRadius: '2px' }} />
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800 }}>Scheduled Off / Sunday</span>
+                 </div>
               </div>
            </div>
         </div>

@@ -26,34 +26,27 @@ export default function ClinicalWrapper({ children }: { children: React.ReactNod
         return;
       }
 
-      if (token && !user) {
+      if (token && !user && !isLoading) {
         await fetchInitialData();
       }
     };
 
     syncSession();
+  }, [pathname, user, isLoading, fetchInitialData, router]);
 
-    // ── SECURITY | Disable Global Autocomplete ──
+  // ── SECURITY | Throttle Autocomplete Suppression ──
+  useEffect(() => {
     const disableAutocomplete = () => {
-      const inputs = document.querySelectorAll('input');
-      const forms = document.querySelectorAll('form');
-      inputs.forEach(input => {
-        if (!input.getAttribute('autocomplete')) {
-          input.setAttribute('autocomplete', 'off');
-        }
-      });
-      forms.forEach(form => {
-        if (!form.getAttribute('autocomplete')) {
-          form.setAttribute('autocomplete', 'off');
-        }
-      });
+      const inputs = document.querySelectorAll('input:not([autocomplete])');
+      const forms = document.querySelectorAll('form:not([autocomplete])');
+      inputs.forEach(input => input.setAttribute('autocomplete', 'off'));
+      forms.forEach(form => form.setAttribute('autocomplete', 'off'));
     };
 
     disableAutocomplete();
-    // Also run after a short delay to catch dynamically rendered fields
-    const timer = setTimeout(disableAutocomplete, 500);
+    const timer = setTimeout(disableAutocomplete, 1000); // Delayed sweep for dynamic components
     return () => clearTimeout(timer);
-  }, [pathname, user, fetchInitialData, router]);
+  }, [pathname]); // Only re-run sweep on route navigation
 
   if (pathname === '/login') return <>{children}</>;
 
@@ -92,7 +85,7 @@ export default function ClinicalWrapper({ children }: { children: React.ReactNod
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-              © {new Date().getFullYear()} <strong style={{ color: 'var(--text-main)' }}>AKOD TECH</strong>. All rights reserved.
+            <span suppressHydrationWarning>© {new Date().getFullYear()}</span> <strong style={{ color: 'var(--text-main)' }}>AKOD TECH</strong>. All rights reserved.
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>

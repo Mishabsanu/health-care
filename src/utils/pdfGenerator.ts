@@ -19,6 +19,8 @@ interface InvoiceData {
   discount: number;
   tax: number;
   amount: number;
+  paidAmount?: number;
+  balanceAmount?: number;
   remarks?: string;
   clinicName?: string;
   clinicAddress?: string;
@@ -193,11 +195,32 @@ export const generateInvoicePDF = (data: InvoiceData) => {
   
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.text(`Amount (INR)`, summaryX, totalY + 2);
+  doc.text(`Total Amount`, summaryX, totalY + 2);
   doc.text(`${data.amount.toLocaleString()}`, 195, totalY + 2, { align: 'right' });
   
   doc.setLineWidth(0.2);
   doc.line(summaryX, totalY + 6, 195, totalY + 6);
+
+  // 💳 PAYMENT SUMMARY
+  const paymentY = totalY + 14;
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...slateMuted);
+  
+  if (typeof data.paidAmount !== 'undefined') {
+    doc.text('Amount Paid', summaryX, paymentY);
+    doc.text(`${data.paidAmount.toLocaleString()}`, 195, paymentY, { align: 'right' });
+  }
+
+  if (typeof data.balanceAmount !== 'undefined') {
+    const isCredit = data.balanceAmount < 0;
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(isCredit ? brandColor[0] : [239, 68, 68]); // brand Teal or #ef4444 Red
+    doc.text(isCredit ? 'Credit / Advance' : 'Balance Due', summaryX, paymentY + rowH);
+    doc.text(`${Math.abs(data.balanceAmount).toLocaleString()}`, 195, paymentY + rowH, { align: 'right' });
+  }
+
+  const finalCheckY = paymentY + rowH + 10;
 
   // -------------------------------------------------------------------
   // 📝 FOOTER / NOTES | Overall Case Remarks

@@ -138,6 +138,7 @@ export default function Sidebar() {
       <div className="sidebar-footer" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.5rem', marginTop: 'auto' }}>
         <button 
           onClick={() => logout()}
+          suppressHydrationWarning
           className="nav-item glass-interactive"
           style={{ 
             width: '100%', 

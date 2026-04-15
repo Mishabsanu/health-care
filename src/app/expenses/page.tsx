@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import DataTable from '@/components/DataTable';
 import { usePCMSStore } from '@/store/useStore';
@@ -99,7 +99,7 @@ export default function ExpensesPage() {
     );
   };
 
-  const columns = [
+  const columnsData = useMemo(() => [
     { header: 'EXPENSE #', key: 'id' as keyof Expense, style: { fontWeight: 700, color: 'var(--primary)' } },
     { header: 'DATE', key: (e: Expense) => new Date(e.date).toLocaleDateString(), sortKey: 'date' as keyof Expense },
     { header: 'SUPPLIER', key: 'supplierName' as keyof Expense, style: { fontWeight: 600 } },
@@ -155,7 +155,16 @@ export default function ExpensesPage() {
       ) : <span style={{ opacity: 0.2 }}>-</span>,
       style: { textAlign: 'center' as any }
     }
-  ];
+  ], []);
+
+  const paginationConfig = useMemo(() => ({
+    totalRecords,
+    currentPage,
+    pageSize,
+    onPageChange: setCurrentPage,
+    onSearchChange: (s: string) => { setSearchQuery(s); setCurrentPage(1); },
+    onFilterChange: (f: any) => { setActiveFilters(f); setCurrentPage(1); }
+  }), [totalRecords, currentPage, pageSize]);
 
   if (loading) return <LoadingSpinner />;
 
@@ -176,9 +185,10 @@ export default function ExpensesPage() {
         </HasPermission>
       </div>
 
+
         <DataTable 
-          data={expenses.map(e => ({ ...e, id: e._id }))}
-          columns={columns}
+          data={expenses}
+          columns={columnsData}
           searchPlaceholder="Search by description or ID..."
           onView={(e) => router.push(`/expenses/${e._id}`)}
           onEdit={hasPermission('expenses:edit') ? ((e) => {
@@ -201,14 +211,7 @@ export default function ExpensesPage() {
             { label: 'Category', key: 'category' as keyof Expense, options: categories },
             { label: 'Status', key: 'status' as keyof Expense, options: ['Paid', 'Pending'] }
           ]}
-          serverPagination={{
-            totalRecords,
-            currentPage,
-            pageSize,
-            onPageChange: setCurrentPage,
-            onSearchChange: (s) => { setSearchQuery(s); setCurrentPage(1); },
-            onFilterChange: (f) => { setActiveFilters(f); setCurrentPage(1); }
-          }}
+          serverPagination={paginationConfig}
         />
     </div>
   );

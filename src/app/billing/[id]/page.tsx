@@ -26,6 +26,16 @@ export default function InvoiceDetailsPage() {
   const { showToast } = usePCMSStore();
   const [loading, setLoading] = useState(true);
   const [invoice, setInvoice] = useState<any>(null);
+  
+  // Payment Modal State
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentData, setPaymentData] = useState({
+      amount: '',
+      method: 'Cash',
+      date: new Date().toISOString().split('T')[0],
+      note: ''
+  });
+  const [submittingPayment, setSubmittingPayment] = useState(false);
 
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -42,6 +52,34 @@ export default function InvoiceDetailsPage() {
     fetchInvoice();
   }, [id, showToast]);
 
+  const handleRecordPayment = async () => {
+      if (!paymentData.amount || Number(paymentData.amount) <= 0) {
+          return showToast('Please enter a valid amount.', 'error');
+      }
+
+      setSubmittingPayment(true);
+      try {
+          const res = await api.post(`/invoices/${id}/payments`, {
+              ...paymentData,
+              amount: Number(paymentData.amount)
+          });
+          setInvoice(res.data);
+          setShowPaymentModal(false);
+          setPaymentData({
+              amount: '',
+              method: 'Cash',
+              date: new Date().toISOString().split('T')[0],
+              note: ''
+          });
+          showToast('Payment recorded successfully.', 'success');
+      } catch (err) {
+          console.error('🚫 Ledger Error | Failed to record payment:', err);
+          showToast('Failed to log payment.', 'error');
+      } finally {
+          setSubmittingPayment(false);
+      }
+  };
+
   const handleDownloadPDF = () => {
     if (!invoice) return;
     generateInvoicePDF({
@@ -53,7 +91,9 @@ export default function InvoiceDetailsPage() {
       subtotal: invoice.subtotal || invoice.amount,
       discount: invoice.discount || 0,
       tax: invoice.tax || 0,
-      amount: invoice.amount
+      amount: invoice.amount,
+      paidAmount: invoice.paidAmount,
+      balanceAmount: invoice.balanceAmount
     });
   };
 
@@ -207,51 +247,151 @@ export default function InvoiceDetailsPage() {
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                  <Clock size={16} style={{ opacity: 0.5 }} />
-                  <span style={{ fontSize: '0.75rem', fontWeight: 900 }}>TRANSACTION AGE</span>
-                </div>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Current</span>
+              <div style={{ padding: '1.25rem', background: '#f8fafc', borderRadius: 'var(--radius-md)' }}>
+                  <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Total Paid</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 950, color: '#10b981' }}>₹{invoice.paidAmount?.toLocaleString()}</div>
               </div>
-              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                  <CheckCircle2 size={16} style={{ color: '#10b981' }} />
-                  <span style={{ fontSize: '0.75rem', fontWeight: 900 }}>TAX COMPLIANCE</span>
-                </div>
-                <span style={{ fontSize: '0.85rem', fontWeight: 900, color: '#10b981' }}>VERIFIED</span>
+              <div style={{ padding: '1.25rem', background: (invoice.balanceAmount || 0) > 0 ? 'rgba(245, 158, 11, 0.05)' : (invoice.balanceAmount < 0 ? 'rgba(16, 185, 129, 0.05)' : '#f8fafc'), borderRadius: 'var(--radius-md)', border: (invoice.balanceAmount || 0) !== 0 ? '1px solid currentColor' : 'none', color: (invoice.balanceAmount || 0) > 0 ? '#d97706' : (invoice.balanceAmount < 0 ? '#059669' : 'var(--text-main)') }}>
+                  <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.7, textTransform: 'uppercase', marginBottom: '0.5rem' }}>{invoice.balanceAmount < 0 ? 'Advanced / Credit' : 'Balance Due'}</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 950 }}>₹{Math.abs(invoice.balanceAmount || 0).toLocaleString()}</div>
               </div>
             </div>
+
+            <button 
+                onClick={() => setShowPaymentModal(true)}
+                className="glass-interactive"
+                style={{ 
+                    marginTop: '2rem', 
+                    width: '100%', 
+                    padding: '1rem', 
+                    borderRadius: 'var(--radius-md)', 
+                    background: 'var(--primary)', 
+                    color: 'white', 
+                    fontWeight: 800, 
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.75rem',
+                    boxShadow: '0 10px 20px -5px rgba(13, 148, 136, 0.4)'
+                }}
+            >
+                <CheckCircle2 size={18} /> RECORD PAYMENT
+            </button>
           </div>
 
-          <div 
-            onClick={() => router.push(`/billing/${id}/edit`)}
-            className="glass-interactive"
-            style={{ 
-              padding: '2rem', 
-              borderRadius: 'var(--radius-lg)', 
-              background: 'white', 
-              border: '2px solid var(--border-subtle)', 
-              cursor: 'pointer',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}
-          >
-            <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
-              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(15, 118, 110, 0.1)', color: 'var(--primary)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <CreditCard size={24} />
+          <div className="clinical-form-card" style={{ padding: '2rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
+                <Clock size={20} style={{ color: 'var(--primary)' }} />
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 950, letterSpacing: '-0.01em' }}>PAYMENT LOG</h3>
               </div>
-              <div>
-                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 900 }}>Modify Ledger</h4>
-                <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.6, fontWeight: 700 }}>Update items or status</p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {(!invoice.payments || invoice.payments.length === 0) ? (
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1rem' }}>No payments recorded yet.</p>
+                  ) : (
+                      invoice.payments.map((p: any, idx: number) => (
+                          <div key={idx} style={{ padding: '1rem', borderLeft: '3px solid var(--primary)', background: '#f8fafc', borderRadius: '0 8px 8px 0' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                                  <span style={{ fontSize: '0.85rem', fontWeight: 900 }}>₹{p.amount.toLocaleString()}</span>
+                                  <span style={{ fontSize: '0.65rem', fontWeight: 800, opacity: 0.5 }}>{new Date(p.date).toLocaleDateString()}</span>
+                              </div>
+                              <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)' }}>{p.method} • {p.note || 'No note'}</div>
+                          </div>
+                      ))
+                  )}
               </div>
-            </div>
-            <ArrowRight size={20} style={{ opacity: 0.3 }} />
           </div>
 
-        </div>
       </div>
+
+      {/* 💳 RECORD PAYMENT MODAL */}
+      {showPaymentModal && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '2rem' }}>
+              <div className="card-premium animate-scale-up" style={{ width: '100%', maxWidth: '500px', padding: '2.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <CreditCard size={20} />
+                          </div>
+                          <div>
+                              <h2 style={{ fontSize: '1.25rem', fontWeight: 950, margin: 0 }}>Record Settlement</h2>
+                              <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Invoice #{invoice.id}</p>
+                          </div>
+                      </div>
+                      <button onClick={() => setShowPaymentModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                          <Clock size={24} style={{ transform: 'rotate(45deg)' }} />
+                      </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                      <div>
+                          <label className="label-premium">PAYMENT AMOUNT (₹)</label>
+                          <input 
+                              type="number" 
+                              className="input-premium" 
+                              style={{ fontSize: '1.5rem', fontWeight: 950, color: 'var(--primary)' }}
+                              placeholder="0.00"
+                              value={paymentData.amount}
+                              onChange={(e) => setPaymentData({...paymentData, amount: e.target.value})}
+                          />
+                      </div>
+
+                      <div>
+                          <label className="label-premium">PAYMENT METHOD</label>
+                          <select 
+                            className="input-premium"
+                            value={paymentData.method}
+                            onChange={(e) => setPaymentData({...paymentData, method: e.target.value})}
+                          >
+                              <option value="UPI">UPI / GPay</option>
+                              <option value="Cash">Cash</option>
+                              <option value="Card">Clinical Card Terminal</option>
+                              <option value="Insurance">Insurance Settlement</option>
+                          </select>
+                      </div>
+
+                      <div>
+                          <label className="label-premium">VALORIZATION DATE</label>
+                          <input 
+                            type="date" 
+                            className="input-premium" 
+                            value={paymentData.date}
+                            onChange={(e) => setPaymentData({...paymentData, date: e.target.value})}
+                          />
+                      </div>
+
+                      <div>
+                          <label className="label-premium">TRANSACTION NOTE</label>
+                          <input 
+                            type="text" 
+                            className="input-premium" 
+                            placeholder="e.g. Week 2 Treatment Partial"
+                            value={paymentData.note}
+                            onChange={(e) => setPaymentData({...paymentData, note: e.target.value})}
+                          />
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                          <button 
+                            onClick={() => setShowPaymentModal(false)}
+                            style={{ flex: 1, padding: '1rem', borderRadius: 'var(--radius-md)', border: '2px solid var(--border-subtle)', fontWeight: 700, color: 'var(--text-muted)' }}
+                          >
+                              Discard
+                          </button>
+                          <button 
+                            onClick={handleRecordPayment}
+                            disabled={submittingPayment}
+                            style={{ flex: 2, padding: '1rem', borderRadius: 'var(--radius-md)', background: 'var(--primary)', color: 'white', fontWeight: 800, border: 'none', boxShadow: '0 10px 20px -5px rgba(13, 148, 136, 0.4)' }}
+                          >
+                              {submittingPayment ? 'Registering...' : 'Confirm Payment'}
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
+  </div>
   );
 }

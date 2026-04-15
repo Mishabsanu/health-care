@@ -9,7 +9,7 @@ import { generateInvoicePDF } from '@/utils/pdfGenerator';
 import { CheckCircle2, Printer } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 interface Invoice {
   _id: string;
@@ -96,6 +96,8 @@ export default function BillingPage() {
         discount: i.discount || 0,
         tax: i.tax || 0,
         amount: i.amount,
+        paidAmount: i.paidAmount,
+        balanceAmount: i.balanceAmount,
         clinicName: 'Physio 4',
         clinicAddress: 'Edavanna Central, Kerala',
         clinicPhone: '976441'
@@ -133,7 +135,7 @@ export default function BillingPage() {
     );
   };
 
-  const columns = [
+  const columnsData = useMemo(() => [
     { 
       header: 'BILL NO', 
       key: 'id' as keyof Invoice,
@@ -208,7 +210,16 @@ export default function BillingPage() {
         </span>
       )
     },
-  ];
+  ], []);
+
+  const paginationConfig = useMemo(() => ({
+      totalRecords,
+      currentPage,
+      pageSize,
+      onPageChange: setCurrentPage,
+      onSearchChange: (s: string) => { setSearchQuery(s); setCurrentPage(1); },
+      onFilterChange: (f: any) => { setActiveFilters(f); setCurrentPage(1); }
+  }), [totalRecords, currentPage, pageSize]);
 
   if (localLoading) return <LoadingSpinner />;
 
@@ -231,7 +242,7 @@ export default function BillingPage() {
 
         <DataTable 
           data={invoices}
-          columns={columns}
+          columns={columnsData}
           searchPlaceholder="Search by patient or invoice #..."
           onView={(i) => router.push(`/billing/${i._id}`)}
           onAddNew={() => router.push('/billing/generate')}
@@ -347,14 +358,7 @@ export default function BillingPage() {
           filterableFields={[
             { label: 'Payment Status', key: 'status' as keyof Invoice, options: ['Paid', 'Unpaid', 'Partially Paid'] }
           ]}
-          serverPagination={{
-            totalRecords,
-            currentPage,
-            pageSize,
-            onPageChange: setCurrentPage,
-            onSearchChange: (s) => { setSearchQuery(s); setCurrentPage(1); },
-            onFilterChange: (f) => { setActiveFilters(f); setCurrentPage(1); }
-          }}
+          serverPagination={paginationConfig}
         />
     </div>
   );

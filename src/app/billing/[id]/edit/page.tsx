@@ -31,7 +31,10 @@ export default function EditInvoicePage() {
     status: 'Unpaid',
     discount: '' as any,
     amount: 0,
-    remarks: ''
+    remarks: '',
+    paidAmount: 0,
+    payments: [] as any[],
+    balanceAmount: 0
   });
 
   const fetchData = async () => {
@@ -52,7 +55,7 @@ export default function EditInvoicePage() {
           serviceId: i.serviceId 
         })) || [];
         
-        const invtItems = inv.items?.filter((i: any) => i.inventoryId).map((i: any) => ({ 
+        const invtItems = inv.items?.filter((i: any) => !i.serviceId && i.inventoryId).map((i: any) => ({ 
           name: i.name, 
           price: i.price, 
           quantity: i.quantity, 
@@ -68,7 +71,10 @@ export default function EditInvoicePage() {
           status: inv.status || 'Unpaid',
           discount: inv.discount || 0,
           amount: inv.amount || 0,
-          remarks: inv.description || ''
+          remarks: inv.description || '',
+          paidAmount: inv.paidAmount || 0,
+          payments: inv.payments || [],
+          balanceAmount: inv.balanceAmount || 0
         });
       }
 
@@ -388,15 +394,45 @@ export default function EditInvoicePage() {
                 </div>
               </div>
               <div style={{ borderTop: '2px dashed rgba(255,255,255,0.1)', paddingTop: '1.5rem' }}>
-                <div>
-                    <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Updated Payable</p>
-                    <p style={{ fontSize: '2rem', fontWeight: 950, color: '#2dd4bf', margin: 0 }}>₹{formData.amount.toLocaleString()}</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+                    <div>
+                        <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Updated Total</p>
+                        <p style={{ fontSize: '1.5rem', fontWeight: 950, color: 'white', margin: 0 }}>₹{formData.amount.toLocaleString()}</p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Paid Amount</p>
+                        <p style={{ fontSize: '1.5rem', fontWeight: 950, color: '#f8fafc', margin: 0 }}>₹{formData.paidAmount.toLocaleString()}</p>
+                    </div>
                 </div>
+
+                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '1.5rem' }}>
+                    <p style={{ fontSize: '0.6rem', fontWeight: 900, color: (formData.amount - formData.paidAmount) > 0 ? '#fb923c' : '#2dd4bf', textTransform: 'uppercase', marginBottom: '0.2rem' }}>
+                        {formData.amount - formData.paidAmount < 0 ? 'Projected Credit' : 'Projected Balance'}
+                    </p>
+                    <p style={{ fontSize: '1.75rem', fontWeight: 950, color: (formData.amount - formData.paidAmount) > 0 ? '#fb923c' : (formData.amount - formData.paidAmount < 0 ? '#2dd4bf' : 'white'), margin: 0 }}>
+                        ₹{Math.abs(formData.amount - formData.paidAmount).toLocaleString()}
+                    </p>
+                </div>
+
+                {formData.payments.length > 0 && (
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <p style={{ fontSize: '0.55rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>Payment Timeline</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                      {formData.payments.map((p, idx) => (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.7rem', padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                          <span style={{ color: '#94a3b8' }}>{new Date(p.date).toLocaleDateString()}</span>
+                          <span style={{ color: 'white', fontWeight: 700 }}>₹{p.amount.toLocaleString()} ({p.method})</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <button
                   type="button"
                   onClick={() => { if (validateForm()) setIsPreview(true) }}
                   style={{
-                    width: '100%', marginTop: '2rem', padding: '1.1rem', borderRadius: '14px',
+                    width: '100%', marginTop: '0.5rem', padding: '1.1rem', borderRadius: '14px',
                     background: 'var(--primary)', color: 'white', fontWeight: 900, fontSize: '0.95rem',
                     border: 'none', cursor: 'pointer', transition: 'all 0.3s ease',
                     boxShadow: '0 10px 20px -5px rgba(15, 118, 110, 0.4)',
@@ -470,9 +506,26 @@ export default function EditInvoicePage() {
                     <span>- ₹{Number(formData.discount || 0).toLocaleString()}</span>
                   </div>
                   <div style={{ borderTop: '2px solid #0f172a', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <p style={{ fontWeight: 900, fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', margin: 0 }}>Net Payable</p>
+                    <p style={{ fontWeight: 900, fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', margin: 0 }}>Revised Payable</p>
                     <p style={{ fontWeight: 950, fontSize: '1.75rem', color: 'var(--primary)', margin: 0 }}>₹{formData.amount.toLocaleString()}</p>
                   </div>
+
+                  {formData.paidAmount > 0 && (
+                    <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px dashed #f1f5f9' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                        <span>Previously Paid</span>
+                        <span style={{ color: '#0f172a' }}>₹{formData.paidAmount.toLocaleString()}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <p style={{ fontWeight: 950, fontSize: '0.7rem', textTransform: 'uppercase', color: (formData.amount - formData.paidAmount) > 0 ? '#fb923c' : '#0d9488' }}>
+                          {(formData.amount - formData.paidAmount) < 0 ? 'Projected Credit' : 'Revised Balance'}
+                        </p>
+                        <p style={{ fontWeight: 950, fontSize: '1.25rem', color: (formData.amount - formData.paidAmount) > 0 ? '#fb923c' : '#0d9488' }}>
+                          ₹{Math.abs(formData.amount - formData.paidAmount).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

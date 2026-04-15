@@ -1,13 +1,13 @@
 'use client'
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import DataTable from '@/components/DataTable';
-import { usePCMSStore } from '@/store/useStore';
 import api from '@/services/api';
-import LoadingSpinner from '@/components/LoadingSpinner';
+import Loading from '@/components/Loading';
+import DataTable from '@/components/DataTable';
 import { Plus, UserPlus, Filter, Download } from 'lucide-react';
 import HasPermission from '@/components/HasPermission';
 import { usePermission } from '@/hooks/usePermission';
+import { usePCMSStore } from '@/store/useStore';
 
 interface Patient {
   _id: string;
@@ -50,24 +50,22 @@ export default function PatientsPage() {
         limit: pageSize.toString()
       });
       if (searchQuery) params.append('search', searchQuery);
-      
+
       // Append filters dynamically
       Object.entries(activeFilters).forEach(([key, values]) => {
         if (values && values.length > 0) {
-            params.append(key, values[0]); // Using single value for simplicity as backend only expects string, not array
+          params.append(key, values[0]);
         }
       });
 
       const res = await api.get(`/patients?${params.toString()}`);
-      
+
       if (res.data && typeof res.data.total !== 'undefined') {
-          // New Paginated Backend
-          setPatients(Array.isArray(res.data) ? res.data : (res.data?.data || []));
-          setTotalRecords(res.data.total);
+        setPatients(Array.isArray(res.data) ? res.data : (res.data?.data || []));
+        setTotalRecords(res.data.total);
       } else {
-          // Fallback to legacy parsing if backend hasn't been updated yet
-          setPatients(Array.isArray(res.data) ? res.data : (res.data?.data || []));
-          setTotalRecords(res.data.length);
+        setPatients(Array.isArray(res.data) ? res.data : (res.data?.data || []));
+        setTotalRecords(res.data.length);
       }
     } catch (err) {
       console.error('🚫 Registry Error | Failed to fetch clinic patients:', err);
@@ -106,16 +104,16 @@ export default function PatientsPage() {
     );
   };
 
-  const columns = [
-    { 
-      header: 'ID', 
+  const columnsData = useMemo(() => [
+    {
+      header: 'ID',
       sortKey: 'patientId' as keyof Patient,
       key: (p: Patient) => (
         <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)' }}>{p.patientId}</span>
       )
     },
-    { 
-      header: 'PATIENT NAME', 
+    {
+      header: 'PATIENT NAME',
       sortKey: 'name' as keyof Patient,
       key: (p: Patient) => (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -124,8 +122,8 @@ export default function PatientsPage() {
         </div>
       )
     },
-    { 
-      header: 'CONTACT', 
+    {
+      header: 'CONTACT',
       key: (p: Patient) => (
         <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>{p.phone}</span>
       )
@@ -147,15 +145,6 @@ export default function PatientsPage() {
       )
     },
     {
-      header: 'CREATED DATE',
-      sortKey: 'createdAt' as keyof Patient,
-      key: (p: Patient) => (
-        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-          {new Date(p.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-        </span>
-      )
-    },
-    {
       header: 'CREATED BY',
       key: (p: Patient) => (
         <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)', opacity: 0.8 }}>
@@ -163,20 +152,31 @@ export default function PatientsPage() {
         </span>
       )
     }
-  ];
+  ], []);
 
-  const filterableFields = [
+  const filterableFields = useMemo(() => [
     {
       label: 'Gender',
       key: 'gender' as keyof Patient,
       options: ['Male', 'Female', 'Other']
     }
-  ];
+  ], []);
 
-  if (localLoading) return <LoadingSpinner />;
+  const paginationConfig = useMemo(() => ({
+    totalRecords,
+    currentPage,
+    pageSize,
+    onPageChange: setCurrentPage,
+    onSearchChange: (s: string) => { setSearchQuery(s); setCurrentPage(1); },
+    onFilterChange: (f: any) => { setActiveFilters(f); setCurrentPage(1); }
+  }), [totalRecords, currentPage, pageSize]);
+
+  const patientsForTable = useMemo(() => 
+    patients.map(p => ({ ...p, id: p._id })), 
+  [patients]);
 
   return (
-    <div className="patients-container animate-fade-in">
+    <div className="patients-container animate-fade-in" style={{ padding: '2rem' }}>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
@@ -190,38 +190,21 @@ export default function PatientsPage() {
             Real-time management of clinical records for your practice.
           </p>
         </div>
-        
+
         <div style={{ display: 'flex', gap: '1rem' }}>
-          <button
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.6rem', 
-              background: 'white', 
-              color: 'var(--text-main)', 
-              padding: '0.8rem 1.25rem', 
-              borderRadius: 'var(--radius-md)', 
-              fontWeight: 700, 
-              fontSize: '0.85rem',
-              border: '1px solid var(--border-subtle)'
-            }}
-          >
-            <Download size={18} /> Export
-          </button>
-          
           <HasPermission permission="patients:create">
             <button
               onClick={() => router.push('/patients/add')}
               className="glass-interactive"
-              style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '0.6rem', 
-                background: 'var(--primary)', 
-                color: 'white', 
-                padding: '0.8rem 1.75rem', 
-                borderRadius: 'var(--radius-md)', 
-                fontWeight: 700, 
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.6rem',
+                background: 'var(--primary)',
+                color: 'white',
+                padding: '0.8rem 1.75rem',
+                borderRadius: 'var(--radius-md)',
+                fontWeight: 700,
                 fontSize: '0.85rem',
                 boxShadow: '0 10px 20px -5px rgba(15, 118, 110, 0.3)'
               }}
@@ -232,9 +215,12 @@ export default function PatientsPage() {
         </div>
       </div>
 
+      {localLoading ? (
+        <Loading />
+      ) : (
         <DataTable
-          data={patients.map(p => ({ ...p, id: p._id }))}
-          columns={columns}
+          data={patientsForTable}
+          columns={columnsData}
           filterableFields={filterableFields}
           searchPlaceholder="Search by name, ID or contact..."
           onView={(p) => router.push(`/patients/${p._id}`)}
@@ -248,31 +234,9 @@ export default function PatientsPage() {
           onDelete={hasPermission('patients:delete') ? handleDeletePatient : undefined}
           onAddNew={() => router.push('/patients/add')}
           addNewLabel="Register Patient"
-          customActions={(p) => (
-            <button 
-              onClick={() => router.push(`/patients/${p._id}`)}
-              className="glass-interactive"
-              style={{ 
-                padding: '0.4rem 0.8rem', 
-                borderRadius: 'var(--radius-sm)', 
-                background: 'rgba(15, 118, 110, 0.08)', 
-                color: 'var(--primary)', 
-                fontWeight: 800, 
-                fontSize: '0.7rem' 
-              }}
-            >
-              VIEW PROFILE
-            </button>
-          )}
-          serverPagination={{
-            totalRecords,
-            currentPage,
-            pageSize,
-            onPageChange: setCurrentPage,
-            onSearchChange: (s) => { setSearchQuery(s); setCurrentPage(1); },
-            onFilterChange: (f) => { setActiveFilters(f); setCurrentPage(1); }
-          }}
+          serverPagination={paginationConfig}
         />
+      )}
     </div>
   );
 }

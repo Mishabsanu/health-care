@@ -28,6 +28,7 @@ export default function CreateInvoicePage() {
     status: 'Unpaid',
     description: '',
     paidAmount: 0,
+    paymentNote: '',
   });
 
   const [items, setItems] = useState<BillingItem[]>([]);
@@ -191,9 +192,9 @@ export default function CreateInvoicePage() {
                         <span>Paid Amount</span>
                         <span>₹{Number(formData.paidAmount) || 0}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: 800, color: (totalAmount - (Number(formData.paidAmount) || 0)) > 0 ? '#fb923c' : 'white', marginTop: '0.5rem' }}>
-                        <span>BALANCE</span>
-                        <span>₹{totalAmount - (Number(formData.paidAmount) || 0)}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: 800, color: (totalAmount - (Number(formData.paidAmount) || 0)) > 0 ? '#fb923c' : (totalAmount - (Number(formData.paidAmount) || 0)) < 0 ? '#10b981' : 'white', marginTop: '0.5rem' }}>
+                        <span>{(totalAmount - (Number(formData.paidAmount) || 0)) < 0 ? 'CREDIT / ADVANCE' : 'BALANCE'}</span>
+                        <span>₹{Math.abs(totalAmount - (Number(formData.paidAmount) || 0)).toLocaleString()}</span>
                     </div>
                 </div>
             </div>
@@ -210,6 +211,10 @@ export default function CreateInvoicePage() {
                  <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-muted)' }}>AMOUNT PAID NOW (₹)</label>
                     <input type="number" value={formData.paidAmount} onChange={(e) => setFormData({...formData, paidAmount: Number(e.target.value)})} style={{ width: '100%', padding: '0.75rem', border: '1.5px solid var(--primary)', borderRadius: 'var(--radius-sm)', fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }} placeholder="0.00" />
+                 </div>
+                 <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-muted)' }}>PAYMENT NOTE</label>
+                    <input type="text" value={formData.paymentNote} onChange={(e) => setFormData({...formData, paymentNote: e.target.value})} style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }} placeholder="e.g. Partial for surgery / Monthly Advance" />
                  </div>
                  <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-muted)' }}>INITIAL STATUS</label>

@@ -95,25 +95,6 @@ export default function DataTable<T extends { id: string }>({
     }
   }, [isFilterOpen, activeFilters]);
 
-  // Sync to Backend if requested — ONLY on user interaction or actual state change
-  useEffect(() => {
-    if (serverPagination && !isFirstRender.current) {
-      serverPagination.onSearchChange(searchTerm);
-    }
-  }, [searchTerm, serverPagination]);
-
-  useEffect(() => {
-    if (serverPagination && !isFirstRender.current) {
-      serverPagination.onFilterChange(activeFilters);
-    }
-  }, [activeFilters, serverPagination]);
-
-  useEffect(() => {
-    if (serverPagination && !isFirstRender.current) {
-      serverPagination.onPageChange(currentPage);
-    }
-  }, [currentPage, serverPagination]);
-
   // Mark first render as complete
   useEffect(() => {
     isFirstRender.current = false;
@@ -136,6 +117,42 @@ export default function DataTable<T extends { id: string }>({
     }
   }, [serverPagination?.externalSearch, searchTerm]);
 
+  // 🛰️ Internal State Tracking for Server Callbacks (Prevention of Loops)
+  const lastEmittedSearch = useRef(searchTerm);
+  const lastEmittedFilters = useRef(JSON.stringify(activeFilters));
+  const lastEmittedPage = useRef(currentPage);
+
+  // Sync to Backend if requested — ONLY on actual state change
+  useEffect(() => {
+    if (!serverPagination || isFirstRender.current) return;
+    
+    if (lastEmittedSearch.current !== searchTerm) {
+        lastEmittedSearch.current = searchTerm;
+        serverPagination.onSearchChange(searchTerm);
+    }
+  }, [searchTerm, serverPagination]);
+
+  useEffect(() => {
+    if (!serverPagination || isFirstRender.current) return;
+    
+    const filterString = JSON.stringify(activeFilters);
+    if (lastEmittedFilters.current !== filterString) {
+        lastEmittedFilters.current = filterString;
+        serverPagination.onFilterChange(activeFilters);
+    }
+  }, [activeFilters, serverPagination]);
+
+  useEffect(() => {
+    if (!serverPagination || isFirstRender.current) return;
+    
+    if (lastEmittedPage.current !== currentPage) {
+        lastEmittedPage.current = currentPage;
+        serverPagination.onPageChange(currentPage);
+    }
+  }, [currentPage, serverPagination]);
+
+
+
   // -------------------------------------------------------------------
   // LOGIC | Data Processing Center
   // -------------------------------------------------------------------
@@ -146,16 +163,22 @@ export default function DataTable<T extends { id: string }>({
     let result = [...data];
 
     // Recursive search helper
-    const searchInObject = (obj: any, term: string): boolean => {
-      if (!obj) return false;
+    // Recursive search helper with safety
+    const searchInObject = (obj: any, term: string, depth = 0, seen = new WeakSet()): boolean => {
+      if (!obj || depth > 4) return false;
       if (typeof obj === 'string' || typeof obj === 'number') {
         return String(obj).toLowerCase().includes(term.toLowerCase());
       }
-      if (Array.isArray(obj)) {
-        return obj.some(item => searchInObject(item, term));
-      }
+      
+      // Prevent circularity or excessive complexity
       if (typeof obj === 'object') {
-        return Object.values(obj).some(val => searchInObject(val, term));
+        if (seen.has(obj)) return false;
+        seen.add(obj);
+
+        if (Array.isArray(obj)) {
+          return obj.some(item => searchInObject(item, term, depth + 1, seen));
+        }
+        return Object.values(obj).some(val => searchInObject(val, term, depth + 1, seen));
       }
       return false;
     };
@@ -166,7 +189,8 @@ export default function DataTable<T extends { id: string }>({
         const inColumns = columns.some(col => {
             if (col.searchable === false) return false;
             const val = resolveValue(item, col.key);
-            return String(val || '').toLowerCase().includes(searchTerm.toLowerCase());
+            if (typeof val !== 'string' && typeof val !== 'number') return false;
+            return String(val).toLowerCase().includes(searchTerm.toLowerCase());
         });
         return inColumns || searchInObject(item, searchTerm);
       });
@@ -277,6 +301,7 @@ export default function DataTable<T extends { id: string }>({
           <input 
             type="text" 
             autoComplete="off"
+            suppressHydrationWarning
             placeholder={searchPlaceholder}
             value={searchTerm}
             onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}

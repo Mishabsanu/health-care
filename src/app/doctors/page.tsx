@@ -1,10 +1,10 @@
 'use client'
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import DataTable from '@/components/DataTable';
 import { usePCMSStore } from '@/store/useStore';
 import api from '@/services/api';
-import LoadingSpinner from '@/components/LoadingSpinner';
+import Loading from '@/components/Loading';
 
 interface Doctor {
   _id: string;
@@ -28,7 +28,6 @@ export default function DoctorsPage() {
     try {
       await api.delete(`/doctors/${doctor._id}`);
       showToast('Specialist successfully removed from registry.', 'success');
-      // Refresh list
       await fetchDoctors();
     } catch (err) {
       console.error('🚫 Registry Error | Deletion failed:', err);
@@ -56,10 +55,15 @@ export default function DoctorsPage() {
     fetchDoctors(!hasLoaded);
   }, []);
 
-  const columns = [
+  const doctorsForTable = useMemo(() => 
+    doctors.map(d => ({ ...d, id: d._id })), 
+  [doctors]);
+
+  const columns = useMemo(() => [
     { header: 'SPECIALIST NAME', key: 'name' as keyof Doctor, style: { fontWeight: 600, color: 'var(--primary)' } },
     { 
       header: 'CLINICAL CATEGORY', 
+      searchable: false,
       key: (d: Doctor) => (
         <span style={{ 
           background: 'rgba(15, 118, 110, 0.1)', 
@@ -76,6 +80,7 @@ export default function DoctorsPage() {
     { header: 'CONTACT', key: 'phone' as keyof Doctor, style: { fontSize: '0.9rem' } },
     { 
       header: 'STATUS', 
+      searchable: false,
       key: (d: Doctor) => (
         <span style={{ 
           background: d.status === 'Available' ? '#dcfce7' : '#f1f5f9',
@@ -91,33 +96,44 @@ export default function DoctorsPage() {
     },
     {
       header: 'CREATED BY',
+      searchable: false,
       key: (d: Doctor) => (
         <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)' }}>
           {d.createdBy?.name?.toUpperCase() || 'SYSTEM'}
         </span>
       )
     },
-  ];
-
-  if (localLoading) return <LoadingSpinner />;
+  ], []);
 
   return (
-    <div className="doctors-container animate-fade-in">
+    <div className="doctors-container animate-fade-in" style={{ padding: '2rem' }}>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.8rem', letterSpacing: '-0.01em' }}>Specialist <span className="gradient-text">Registry</span></h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Manage clinical personnel, certifications, and operational status.</p>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.01em', margin: 0 }}>Specialist <span className="gradient-text">Registry</span></h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>Manage clinical personnel, certifications, and operational status.</p>
         </div>
         <button 
           onClick={() => router.push('/doctors/add')}
-          style={{ background: 'var(--primary)', color: 'white', padding: '0.8rem 1.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600 }}
+          className="glass-interactive"
+          style={{ 
+            background: 'var(--primary)', 
+            color: 'white', 
+            padding: '0.8rem 1.5rem', 
+            borderRadius: 'var(--radius-md)', 
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            boxShadow: '0 10px 20px -5px rgba(13, 148, 136, 0.3)'
+          }}
         >
           Add Specialist
         </button>
       </div>
 
+      {localLoading ? (
+        <Loading />
+      ) : (
         <DataTable 
-          data={doctors.map(d => ({ ...d, id: d._id }))}
+          data={doctorsForTable}
           columns={columns}
           searchPlaceholder="Search specialists by name or category..."
           onView={(d) => router.push(`/doctors/${d._id}`)}
@@ -125,23 +141,8 @@ export default function DoctorsPage() {
           onDelete={handleDeleteDoctor}
           onAddNew={() => router.push('/doctors/add')}
           addNewLabel="Add Specialist"
-          customActions={(d) => (
-            <button 
-              onClick={() => router.push(`/doctors/${d._id}`)}
-              className="glass-interactive"
-              style={{ 
-                padding: '0.4rem 0.8rem', 
-                borderRadius: 'var(--radius-sm)', 
-                background: 'rgba(15, 118, 110, 0.08)', 
-                color: 'var(--primary)', 
-                fontWeight: 800, 
-                fontSize: '0.7rem' 
-              }}
-            >
-              VIEW PROFILE
-            </button>
-          )}
         />
+      )}
     </div>
   );
 }
