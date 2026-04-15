@@ -38,6 +38,7 @@ export default function Loading({ fullPage = false }: LoadingProps) {
             alt="AKOD Logo" 
             width={75} 
             height={75} 
+            style={{ width: 'auto', height: 'auto' }}
             className="object-contain animate-subtle-bounce"
             priority
           />

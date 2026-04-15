@@ -171,6 +171,22 @@ export default function UsersPage() {
         onDelete={hasPermission('users:delete') ? handleDeleteUser : undefined}
         onAddNew={() => router.push('/users/add')}
         addNewLabel="Onboard User"
+        customActions={(u) => (
+          <button 
+            onClick={() => router.push(`/users/${u._id}`)}
+            className="glass-interactive"
+            style={{ 
+              padding: '0.4rem 0.8rem', 
+              borderRadius: 'var(--radius-sm)', 
+              background: 'rgba(15, 118, 110, 0.08)', 
+              color: 'var(--primary)', 
+              fontWeight: 800, 
+              fontSize: '0.7rem' 
+            }}
+          >
+            VIEW PROFILE
+          </button>
+        )}
         filterableFields={[
           { label: 'Status', key: 'status' as keyof User, options: ['Active', 'Inactive'] }
         ]}

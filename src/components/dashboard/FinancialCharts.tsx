@@ -8,9 +8,14 @@ import {
 const COLORS = ['#0f766e', '#0ea5e9', '#6366f1', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 export const RevenueExpenseChart = ({ data }: { data: any[] }) => {
+  const [isMounted, setIsMounted] = React.useState(false);
+  React.useEffect(() => setIsMounted(true), []);
+
+  if (!isMounted) return <div style={{ width: '100%', height: 350 }} />;
+
   return (
-    <div style={{ width: '100%', height: 350 }}>
-      <ResponsiveContainer width="100%" height="100%">
+    <div style={{ width: '100%', height: 350, position: 'relative' }}>
+      <ResponsiveContainer width="100%" height={350} minWidth={0} minHeight={0}>
         <AreaChart
           data={data}
           margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
@@ -74,9 +79,14 @@ export const RevenueExpenseChart = ({ data }: { data: any[] }) => {
 };
 
 export const ExpenseCategoryChart = ({ data }: { data: any[] }) => {
+  const [isMounted, setIsMounted] = React.useState(false);
+  React.useEffect(() => setIsMounted(true), []);
+
+  if (!isMounted) return <div style={{ width: '100%', height: 350 }} />;
+
   return (
-    <div style={{ width: '100%', height: 350 }}>
-      <ResponsiveContainer width="100%" height="100%">
+    <div style={{ width: '100%', height: 350, position: 'relative' }}>
+      <ResponsiveContainer width="100%" height={350} minWidth={0} minHeight={0}>
         <PieChart>
           <Pie
             data={data}

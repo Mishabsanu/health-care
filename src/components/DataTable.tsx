@@ -276,6 +276,7 @@ export default function DataTable<T extends { id: string }>({
           <Search size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', opacity: 0.6 }} />
           <input 
             type="text" 
+            autoComplete="off"
             placeholder={searchPlaceholder}
             value={searchTerm}
             onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}

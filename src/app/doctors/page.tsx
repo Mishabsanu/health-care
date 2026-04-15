@@ -125,6 +125,22 @@ export default function DoctorsPage() {
           onDelete={handleDeleteDoctor}
           onAddNew={() => router.push('/doctors/add')}
           addNewLabel="Add Specialist"
+          customActions={(d) => (
+            <button 
+              onClick={() => router.push(`/doctors/${d._id}`)}
+              className="glass-interactive"
+              style={{ 
+                padding: '0.4rem 0.8rem', 
+                borderRadius: 'var(--radius-sm)', 
+                background: 'rgba(15, 118, 110, 0.08)', 
+                color: 'var(--primary)', 
+                fontWeight: 800, 
+                fontSize: '0.7rem' 
+              }}
+            >
+              VIEW PROFILE
+            </button>
+          )}
         />
     </div>
   );

@@ -146,6 +146,7 @@ export default function RegisterPatientPage() {
               <User size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('name') ? '#ef4444' : 'var(--text-muted)', opacity: isError('name') ? 0.8 : 0.5 }} />
               <input 
                 name="name"
+                autoComplete="off"
                 disabled={loading} 
                 type="text" 
                 className={`input-premium ${isError('name') ? 'input-error' : ''}`}
@@ -164,6 +165,7 @@ export default function RegisterPatientPage() {
               <Smartphone size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('phone') ? '#ef4444' : 'var(--text-muted)', opacity: isError('phone') ? 0.8 : 0.5 }} />
               <input 
                 name="phone"
+                autoComplete="off"
                 disabled={loading} 
                 type="text" 
                 className={`input-premium ${isError('phone') ? 'input-error' : ''}`}
@@ -184,6 +186,7 @@ export default function RegisterPatientPage() {
                  <Mail size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('email') ? '#ef4444' : 'var(--text-muted)', opacity: 0.5 }} />
                  <input 
                    name="email"
+                   autoComplete="off"
                    disabled={loading} 
                    type="email" 
                    className={`input-premium ${isError('email') ? 'input-error' : ''}`}
@@ -202,6 +205,7 @@ export default function RegisterPatientPage() {
                  <Briefcase size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
                  <input 
                    name="occupation"
+                   autoComplete="off"
                    disabled={loading} 
                    type="text" 
                    className="input-premium" 
@@ -218,6 +222,7 @@ export default function RegisterPatientPage() {
             <label className="label-premium">Age <span style={{ color: '#ef4444' }}>*</span></label>
             <input 
               name="age"
+              autoComplete="off"
               disabled={loading} 
               type="number" 
               className={`input-premium ${isError('age') ? 'input-error' : ''}`}
@@ -249,6 +254,7 @@ export default function RegisterPatientPage() {
               <MapPin size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('address') ? '#ef4444' : 'var(--text-muted)', opacity: isError('address') ? 0.8 : 0.5 }} />
               <input 
                 name="address"
+                autoComplete="off"
                 disabled={loading} 
                 type="text" 
                 className={`input-premium ${isError('address') ? 'input-error' : ''}`}
@@ -284,6 +290,7 @@ export default function RegisterPatientPage() {
               <Stethoscope size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
               <input 
                 name="referredBy"
+                autoComplete="off"
                 disabled={loading} 
                 type="text" 
                 className="input-premium" 
@@ -331,6 +338,7 @@ export default function RegisterPatientPage() {
             <label className="label-premium">Medical Complaint</label>
             <textarea 
               name="reasonForVisit"
+              autoComplete="off"
               disabled={loading} 
               className="textarea-premium" 
               style={{ height: '80px' }} 
@@ -368,6 +376,7 @@ export default function RegisterPatientPage() {
                   <Scale size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
                   <input 
                     name="weight"
+                    autoComplete="off"
                     disabled={loading} 
                     type="number" 
                     className="input-premium" 
@@ -384,6 +393,7 @@ export default function RegisterPatientPage() {
                   <Ruler size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
                   <input 
                     name="height"
+                    autoComplete="off"
                     disabled={loading} 
                     type="number" 
                     className="input-premium" 
@@ -407,6 +417,7 @@ export default function RegisterPatientPage() {
             <label className="label-premium">Initial Assessment Notes</label>
             <textarea 
               name="initialTreatment"
+              autoComplete="off"
               disabled={loading} 
               className="textarea-premium" 
               style={{ height: '100px' }} 
@@ -436,7 +447,8 @@ export default function RegisterPatientPage() {
             <label className="label-premium">Final Registry Remarks</label>
             <textarea
               name="remarks"
-              className="textarea-premium"
+              autoComplete="off"
+              className="textarea-premium" 
               placeholder="Add final clinical context..."
               value={formik.values.remarks}
               onChange={formik.handleChange}

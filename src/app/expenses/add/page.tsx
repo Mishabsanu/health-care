@@ -5,7 +5,7 @@ import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
-import { Wallet, Calendar, Tag, CreditCard, CheckCircle2, ChevronLeft } from 'lucide-react';
+import { Wallet, Calendar, Tag, CreditCard, CheckCircle2, ChevronLeft, Building, FileText, Upload, X, FileCheck } from 'lucide-react';
 
 const validationSchema = Yup.object().shape({
   date: Yup.string().required('Expense date is required'),
@@ -14,13 +14,15 @@ const validationSchema = Yup.object().shape({
     .required('Amount is required')
     .positive('Amount must be greater than 0'),
   category: Yup.string().required('Category is required'),
-  description: Yup.string().trim().required('Description is required'),
   paymentMethod: Yup.string().required('Payment method is required'),
   status: Yup.string().required('Status is required'),
+  supplierName: Yup.string().trim().required('Supplier/Company name is required'),
+  invoiceNumber: Yup.string().trim(),
+  documentUrl: Yup.string(),
 });
 
 const categories = ['Rent', 'Salaries', 'Supplies', 'Utilities', 'Maintenance', 'Marketing', 'Others'];
-const paymentMethods = ['UPI', 'Cash', 'Card', 'Bank Transfer'];
+const paymentMethods = ['UPI', 'Cash', 'Card', 'Bank Transfer', 'CHEQUE'];
 
 export default function AddExpensePage() {
   const router = useRouter();
@@ -34,6 +36,9 @@ export default function AddExpensePage() {
       description: '',
       paymentMethod: 'Cash',
       status: 'Paid',
+      supplierName: '',
+      invoiceNumber: '',
+      documentUrl: '',
     },
     validationSchema,
     onSubmit: async (values) => {
@@ -85,6 +90,43 @@ export default function AddExpensePage() {
         </div>
 
         <form onSubmit={formik.handleSubmit}>
+          {/* 🏢 Supplier & Reference System */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2.5rem', background: '#f8fafc', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
+              <div>
+                <label className="label-premium">Supplier / Company Name <span style={{ color: '#ef4444' }}>*</span></label>
+                <div style={{ position: 'relative' }}>
+                  <Building size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', opacity: 0.5 }} />
+                  <input
+                    name="supplierName"
+                    autoComplete="off"
+                    type="text"
+                    className={`input-premium ${isErr('supplierName') ? 'input-error' : ''}`}
+                    style={{ paddingLeft: '3.5rem' }}
+                    placeholder="e.g. MedSource Supplies Ltd"
+                    value={formik.values.supplierName}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                  />
+                </div>
+                <ErrMsg name="supplierName" />
+              </div>
+              <div>
+                <label className="label-premium">Invoice Number / ID <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>(Optional)</span></label>
+                <div style={{ position: 'relative' }}>
+                  <FileText size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', opacity: 0.5 }} />
+                  <input
+                    name="invoiceNumber"
+                    autoComplete="off"
+                    type="text"
+                    className="input-premium"
+                    style={{ paddingLeft: '3.5rem' }}
+                    placeholder="e.g. INV/2024/089"
+                    value={formik.values.invoiceNumber}
+                    onChange={formik.handleChange}
+                  />
+                </div>
+              </div>
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
             <div>
               <label className="label-premium">Expense Date <span style={{ color: '#ef4444' }}>*</span></label>
@@ -140,50 +182,85 @@ export default function AddExpensePage() {
 
           <div style={{ marginBottom: '2.5rem' }}>
             <label className="label-premium">Description <span style={{ color: '#ef4444' }}>*</span></label>
-            <textarea
-              name="description"
-              className={`textarea-premium ${isErr('description') ? 'input-error' : ''}`}
-              style={{ minHeight: '120px', fontSize: '1rem', borderColor: isErr('description') ? '#ef4444' : '' }}
-              placeholder="Specify the purpose of this clinical expenditure..."
-              value={formik.values.description}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-            />
-            <ErrMsg name="description" />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '3rem' }}>
-            <div>
-              <label className="label-premium">Payment Method <span style={{ color: '#ef4444' }}>*</span></label>
-              <div style={{ position: 'relative' }}>
-                <CreditCard size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', opacity: 0.5 }} />
-                <select
-                  name="paymentMethod"
-                  className="input-premium"
-                  style={{ paddingLeft: '3.5rem' }}
-                  value={formik.values.paymentMethod}
-                  onChange={formik.handleChange}
-                >
-                  {paymentMethods.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
+          {/* ☁️ Cloudinary Receipt Upload */}
+          <div style={{ marginBottom: '3rem' }}>
+              <label className="label-premium">Receipt / Document Attachment</label>
+              <div style={{ 
+                  border: '2px dashed var(--border-subtle)', 
+                  borderRadius: '16px', 
+                  padding: '2rem', 
+                  textAlign: 'center',
+                  background: formik.values.documentUrl ? '#f0fdf4' : '#fafafa',
+                  transition: 'all 0.3s ease'
+              }}>
+                  {formik.values.documentUrl ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
+                          <div style={{ width: '48px', height: '48px', background: '#22c55e', color: 'white', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <FileCheck size={24} />
+                          </div>
+                          <div style={{ textAlign: 'left' }}>
+                              <p style={{ fontSize: '0.9rem', fontWeight: 800, margin: 0, color: '#166534' }}>Document Attached</p>
+                              <a href={formik.values.documentUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 700, textDecoration: 'underline' }}>View Receipt</a>
+                          </div>
+                          <button 
+                            type="button" 
+                            onClick={() => formik.setFieldValue('documentUrl', '')}
+                            style={{ marginLeft: '1rem', color: '#ef4444', padding: '0.5rem', borderRadius: '50%', background: '#fee2e2' }}
+                          >
+                            <X size={16} />
+                          </button>
+                      </div>
+                  ) : (
+                      <div style={{ position: 'relative' }}>
+                          <Upload size={32} style={{ color: 'var(--primary)', opacity: 0.3, marginBottom: '0.75rem' }} />
+                          <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', margin: 0 }}>Upload digital receipt or clinical invoice</p>
+                          <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', opacity: 0.7, marginTop: '0.25rem' }}>PNG, JPG or PDF up to 5MB</p>
+                          <input 
+                              type="file" 
+                              accept="image/*,.pdf"
+                              style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                              onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+
+                                  try {
+                                      setIsSyncing(true);
+                                      // 1. Get Signature
+                                      const { data: signData } = await api.get('/upload/sign');
+                                      
+                                      // 2. Upload to Cloudinary
+                                      const formData = new FormData();
+                                      formData.append('file', file);
+                                      formData.append('api_key', signData.apiKey);
+                                      formData.append('timestamp', signData.timestamp);
+                                      formData.append('signature', signData.signature);
+                                      formData.append('folder', signData.folder);
+
+                                      const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${signData.cloudName}/auto/upload`, {
+                                          method: 'POST',
+                                          body: formData
+                                      });
+                                      
+                                      const resJson = await cloudRes.json();
+                                      if (resJson.secure_url) {
+                                          formik.setFieldValue('documentUrl', resJson.secure_url);
+                                          showToast('✅ Document uploaded successfully.', 'success');
+                                      } else {
+                                          throw new Error('Upload failed');
+                                      }
+                                  } catch (err) {
+                                      console.error('Cloudinary Error:', err);
+                                      showToast('🚫 Upload Failed | Verify Cloudinary credentials.', 'error');
+                                  } finally {
+                                      setIsSyncing(false);
+                                  }
+                              }}
+                          />
+                      </div>
+                  )}
               </div>
-            </div>
-            <div>
-              <label className="label-premium">Status <span style={{ color: '#ef4444' }}>*</span></label>
-              <div style={{ position: 'relative' }}>
-                <CheckCircle2 size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', opacity: 0.5 }} />
-                <select
-                  name="status"
-                  className="input-premium"
-                  style={{ paddingLeft: '3.5rem' }}
-                  value={formik.values.status}
-                  onChange={formik.handleChange}
-                >
-                  <option value="Paid">Paid</option>
-                  <option value="Pending">Pending</option>
-                </select>
-              </div>
-            </div>
           </div>
 
           <div style={{ display: 'flex', gap: '1.5rem', marginTop: '4rem' }}>

@@ -248,6 +248,22 @@ export default function PatientsPage() {
           onDelete={hasPermission('patients:delete') ? handleDeletePatient : undefined}
           onAddNew={() => router.push('/patients/add')}
           addNewLabel="Register Patient"
+          customActions={(p) => (
+            <button 
+              onClick={() => router.push(`/patients/${p._id}`)}
+              className="glass-interactive"
+              style={{ 
+                padding: '0.4rem 0.8rem', 
+                borderRadius: 'var(--radius-sm)', 
+                background: 'rgba(15, 118, 110, 0.08)', 
+                color: 'var(--primary)', 
+                fontWeight: 800, 
+                fontSize: '0.7rem' 
+              }}
+            >
+              VIEW PROFILE
+            </button>
+          )}
           serverPagination={{
             totalRecords,
             currentPage,

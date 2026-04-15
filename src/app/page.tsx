@@ -21,6 +21,7 @@ import {
 
 export default function Dashboard() {
   const { isLoading } = usePCMSStore();
+  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
   const [filter, setFilter] = useState('Today'); // 'Today', 'Tomorrow', 'Week', 'Month', 'Year', 'All', 'Custom'
   const [statsData, setStatsData] = useState<any>(null);
@@ -62,6 +63,10 @@ export default function Dashboard() {
   };
 
   const filterParams = getFilterParams();
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     const fetchSummary = async () => {
@@ -145,9 +150,9 @@ export default function Dashboard() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
         {/* ⚡ Operational Quick-Stats (Click Stats) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
           <SummaryCard title="Total Patients" value={statsData?.summary?.totalPatients ?? '—'} icon={Users} color="#0d9488" onClick={() => router.push('/patients')} />
-          <SummaryCard title="Period Bookings" value={statsData?.summary?.totalAppointments ?? '—'} icon={Calendar} color="#6366f1" onClick={() => router.push('/appointments')} />
+          {/* <SummaryCard title="Period Bookings" value={statsData?.summary?.totalAppointments ?? '—'} icon={Calendar} color="#6366f1" onClick={() => router.push('/appointments')} /> */}
           <SummaryCard title="Revenue (Paid)" value={`₹${(statsData?.summary?.totalRevenue || 0).toLocaleString()}`} icon={IndianRupee} color="#10b981" onClick={() => router.push('/billing')} />
           <SummaryCard title="Pending Amount" value={`₹${(statsData?.summary?.totalPending || 0).toLocaleString()}`} icon={ActivityIcon} color="#f59e0b" onClick={() => router.push('/billing')} />
         </div>
@@ -186,7 +191,8 @@ export default function Dashboard() {
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 1.5fr', gap: '4rem', alignItems: 'center' }}>
                 {/* 🎨 Section A: Modern Doughnut Distribution */}
                 <div style={{ height: '320px', position: 'relative' }}>
-                    <ResponsiveContainer width="100%" height="100%">
+                    {isMounted && (
+                      <ResponsiveContainer width="100%" height={320} minWidth={0} minHeight={0}>
                         <PieChart>
                             <Pie
                                 data={statsData?.doctorWorkload || []}
@@ -224,7 +230,8 @@ export default function Dashboard() {
                                 }}
                             />
                         </PieChart>
-                    </ResponsiveContainer>
+                      </ResponsiveContainer>
+                    )}
                     <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
                         <div style={{ fontSize: '1.8rem', fontWeight: 950, color: 'var(--text-main)', lineHeight: 1 }}>{statsData?.summary?.totalAppointments || 0}</div>
                         <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '0.25rem' }}>Total Sessions</div>

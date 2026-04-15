@@ -5,7 +5,7 @@ import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
-import { Package, Tag, Hash, BarChart3, CheckCircle2, ChevronLeft, Info } from 'lucide-react';
+import { Package, Tag, Hash, BarChart3, CheckCircle2, ChevronLeft, Info, Truck } from 'lucide-react';
 
 const validationSchema = Yup.object().shape({
   name: Yup.string().trim().required('Item name is required'),
@@ -30,11 +30,24 @@ const validationSchema = Yup.object().shape({
   supplier: Yup.string(),
 });
 
-const categories = ['Equipment', 'Consumables', 'Medicines', 'Stationery', 'Others'];
+const categories = ['Products','Equipment', 'Consumables', 'Medicines', 'Stationery', 'Others'];
 
 export default function AddInventoryPage() {
   const router = useRouter();
   const { setIsSyncing, showToast } = usePCMSStore();
+  const [uniqueSuppliers, setUniqueSuppliers] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    const fetchSuppliers = async () => {
+      try {
+        const res = await api.get('/inventory/suppliers/unique');
+        setUniqueSuppliers(res.data || []);
+      } catch (err) {
+        console.error('Failed to fetch suppliers:', err);
+      }
+    };
+    fetchSuppliers();
+  }, []);
 
   const formik = useFormik({
     initialValues: {
@@ -112,11 +125,12 @@ export default function AddInventoryPage() {
               <Package size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', opacity: 0.5 }} />
               <input
                 name="name"
+                autoComplete="off"
                 type="text"
                 className={`input-premium ${isErr('name') ? 'input-error' : ''}`}
                 style={{ paddingLeft: '3.5rem', borderColor: isErr('name') ? '#ef4444' : '' }}
                 placeholder="e.g., Nitrile Examination Gloves - Medium"
-                value={formik.values.name}
+                value={formik.values.name || ''}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
               />
@@ -125,19 +139,20 @@ export default function AddInventoryPage() {
             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Info size={12} /> Specific naming helps in clinical audits.</p>
           </div>
 
-          {/* SKU & Category */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+          {/* SKU, Category & Supplier */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
             <div>
               <label className="label-premium">SKU / Catalog ID <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 500 }}>(Optional)</span></label>
               <div style={{ position: 'relative' }}>
                 <Hash size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', opacity: 0.5 }} />
                 <input
                   name="sku"
+                  autoComplete="off"
                   type="text"
                   className="input-premium"
                   style={{ paddingLeft: '3.5rem' }}
                   placeholder="REF-GLOV-001"
-                  value={formik.values.sku}
+                  value={formik.values.sku || ''}
                   onChange={formik.handleChange}
                 />
               </div>
@@ -150,11 +165,31 @@ export default function AddInventoryPage() {
                   name="category"
                   className="input-premium"
                   style={{ paddingLeft: '3.5rem' }}
-                  value={formik.values.category}
+                  value={formik.values.category || ''}
                   onChange={formik.handleChange}
                 >
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
+              </div>
+            </div>
+            <div>
+              <label className="label-premium">Preferred Supplier</label>
+              <div style={{ position: 'relative' }}>
+                <Truck size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', opacity: 0.5 }} />
+                <input
+                  name="supplier"
+                  autoComplete="off"
+                  list="suppliers-list"
+                  type="text"
+                  className="input-premium"
+                  style={{ paddingLeft: '3.5rem' }}
+                  placeholder="MedSource Health..."
+                  value={formik.values.supplier || ''}
+                  onChange={formik.handleChange}
+                />
+                <datalist id="suppliers-list">
+                  {uniqueSuppliers.map(s => <option key={s} value={s} />)}
+                </datalist>
               </div>
             </div>
           </div>
@@ -165,11 +200,12 @@ export default function AddInventoryPage() {
               <label className="label-premium">Initial Quantity <span style={{ color: '#ef4444' }}>*</span></label>
               <input
                 name="quantity"
+                autoComplete="off"
                 type="number"
                 className={`input-premium ${isErr('quantity') ? 'input-error' : ''}`}
                 style={{ fontWeight: 800, textAlign: 'center', borderColor: isErr('quantity') ? '#ef4444' : '' }}
                 placeholder="0"
-                value={formik.values.quantity}
+                value={formik.values.quantity ?? ''}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 min="0"
@@ -180,10 +216,11 @@ export default function AddInventoryPage() {
               <label className="label-premium">Unit <span style={{ color: '#ef4444' }}>*</span></label>
               <input
                 name="unit"
+                autoComplete="off"
                 type="text"
                 className={`input-premium ${isErr('unit') ? 'input-error' : ''}`}
                 placeholder="e.g., Boxes, pcs"
-                value={formik.values.unit}
+                value={formik.values.unit || ''}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
               />
@@ -195,10 +232,11 @@ export default function AddInventoryPage() {
               </label>
               <input
                 name="reorderLevel"
+                autoComplete="off"
                 type="number"
                 className={`input-premium ${isErr('reorderLevel') ? 'input-error' : ''}`}
                 placeholder="5"
-                value={formik.values.reorderLevel}
+                value={formik.values.reorderLevel ?? ''}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 min="0"
@@ -219,7 +257,7 @@ export default function AddInventoryPage() {
                   className="input-premium"
                   style={{ paddingLeft: '3.5rem', fontWeight: 800 }}
                   placeholder="0.00"
-                  value={formik.values.purchasePrice}
+                  value={formik.values.purchasePrice ?? ''}
                   onChange={formik.handleChange}
                   min="0"
                 />
@@ -236,7 +274,7 @@ export default function AddInventoryPage() {
                   className="input-premium"
                   style={{ paddingLeft: '3.5rem', fontWeight: 800, color: '#10b981' }}
                   placeholder="0.00"
-                  value={formik.values.salePrice}
+                  value={formik.values.salePrice ?? ''}
                   onChange={formik.handleChange}
                   min="0"
                 />
@@ -245,22 +283,6 @@ export default function AddInventoryPage() {
             </div>
           </div>
 
-          {/* Supplier */}
-          <div style={{ marginBottom: '3rem' }}>
-            <label className="label-premium">Preferred Supplier <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 500 }}>(Optional)</span></label>
-            <div style={{ position: 'relative' }}>
-              <BarChart3 size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', opacity: 0.5 }} />
-              <input
-                name="supplier"
-                type="text"
-                className="input-premium"
-                style={{ paddingLeft: '3.5rem' }}
-                placeholder="MedSource Health Solutions"
-                value={formik.values.supplier}
-                onChange={formik.handleChange}
-              />
-            </div>
-          </div>
 
           <div style={{ display: 'flex', gap: '1.5rem', marginTop: '4rem' }}>
             <button type="button" onClick={() => router.back()} style={{ flex: 1, padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '2px solid var(--border-subtle)', fontWeight: 700, color: 'var(--text-muted)', fontSize: '1rem' }}>

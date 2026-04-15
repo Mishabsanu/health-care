@@ -32,6 +32,27 @@ export default function ClinicalWrapper({ children }: { children: React.ReactNod
     };
 
     syncSession();
+
+    // ── SECURITY | Disable Global Autocomplete ──
+    const disableAutocomplete = () => {
+      const inputs = document.querySelectorAll('input');
+      const forms = document.querySelectorAll('form');
+      inputs.forEach(input => {
+        if (!input.getAttribute('autocomplete')) {
+          input.setAttribute('autocomplete', 'off');
+        }
+      });
+      forms.forEach(form => {
+        if (!form.getAttribute('autocomplete')) {
+          form.setAttribute('autocomplete', 'off');
+        }
+      });
+    };
+
+    disableAutocomplete();
+    // Also run after a short delay to catch dynamically rendered fields
+    const timer = setTimeout(disableAutocomplete, 500);
+    return () => clearTimeout(timer);
   }, [pathname, user, fetchInitialData, router]);
 
   if (pathname === '/login') return <>{children}</>;
@@ -47,15 +68,19 @@ export default function ClinicalWrapper({ children }: { children: React.ReactNod
           <div className="top-loader-bar" />
         </div>
       )}
-      <Sidebar />
+      <div className="no-print">
+        <Sidebar />
+      </div>
       <main className="content-area">
-        <Header />
+        <div className="no-print">
+          <Header />
+        </div>
         <div key={user?.id || 'global'} className="page-content animate-fade-in">
             {children}
         </div>
 
         {/* ── Global Footer ── */}
-        <footer style={{
+        <footer className="no-print" style={{
           borderTop: '1px solid var(--border-subtle)',
           padding: '1.25rem 2.5rem',
           display: 'flex',

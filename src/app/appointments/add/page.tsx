@@ -238,6 +238,7 @@ export default function BookAppointmentPage() {
               <Calendar size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('date') ? '#ef4444' : 'var(--text-muted)', opacity: 0.5 }} />
               <input 
                 name="date"
+                autoComplete="off"
                 type="date" 
                 className={`input-premium ${isError('date') ? 'input-error' : ''}`}
                 style={{ paddingLeft: '2.75rem' }} 
@@ -254,6 +255,7 @@ export default function BookAppointmentPage() {
               <Clock size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('time') ? '#ef4444' : 'var(--text-muted)', opacity: 0.5 }} />
               <input 
                 name="time"
+                autoComplete="off"
                 type="time" 
                 className={`input-premium ${isError('time') ? 'input-error' : ''}`}
                 style={{ paddingLeft: '2.75rem' }} 
@@ -286,6 +288,7 @@ export default function BookAppointmentPage() {
             <label className="label-premium">Conclusions / Clinical Notes</label>
             <textarea
               name="description"
+              autoComplete="off"
               className="textarea-premium"
               placeholder="Add clinical notes..."
               value={formik.values.description}

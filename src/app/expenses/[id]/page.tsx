@@ -190,9 +190,27 @@ export default function ExpenseDetailsPage() {
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, lineHeight: 1.6, margin: 0 }}>
                This expenditure has been recorded in the branch ledger. It is synchronized with the quarterly financial reconciliation report.
             </p>
-            <button className="glass-interactive" style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--border-subtle)', fontSize: '0.8rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-               <ExternalLink size={14} /> VIEW FULL LEDGER
-            </button>
+            {expense.documentUrl ? (
+              <div style={{ border: '1.5px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--background-soft)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <FileText size={18} style={{ color: 'var(--primary)' }} />
+                      <span style={{ fontSize: '0.85rem', fontWeight: 800 }}>Digital Receipt</span>
+                  </div>
+                  <a 
+                    href={expense.documentUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="glass-interactive"
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--border-subtle)', fontSize: '0.8rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'white' }}
+                  >
+                    <ExternalLink size={14} /> VIEW ATTACHMENT
+                  </a>
+              </div>
+            ) : (
+              <button disabled className="glass-interactive" style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--border-subtle)', fontSize: '0.8rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', opacity: 0.5 }}>
+                 <ExternalLink size={14} /> NO ATTACHMENT
+              </button>
+            )}
           </div>
 
           <div style={{ padding: '1.5rem', borderRadius: 'var(--radius-md)', background: 'rgba(15, 118, 110, 0.05)', border: '1px dashed var(--primary)' }}>

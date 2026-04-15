@@ -17,7 +17,7 @@ const validationSchema = Yup.object().shape({
   description: Yup.string(),
 });
 
-const categories = ['Consultation', 'Therapy', 'Assessment', 'Rehabilitation', 'Emergency'];
+const categories = ['Products','Consultation', 'Therapy', 'Assessment', 'Rehabilitation', 'Emergency'];
 
 export default function AddServicePage() {
   const router = useRouter();

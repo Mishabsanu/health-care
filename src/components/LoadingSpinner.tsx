@@ -112,7 +112,7 @@ const LoadingSpinner: React.FC = () => {
                     alt="AKOD Logo" 
                     width={80} 
                     height={80} 
-                    style={{ objectFit: 'contain' }}
+                    style={{ objectFit: 'contain', width: 'auto', height: 'auto' }}
                     priority
                 />
             </div>

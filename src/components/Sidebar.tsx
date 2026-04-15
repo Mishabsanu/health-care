@@ -80,7 +80,9 @@ export default function Sidebar() {
             alt="AKOD TECH Logo"
             width={100}
             height={100}
-            style={{ borderRadius: '10px', objectFit: 'cover' }}
+            priority
+            loading="eager"
+            style={{ borderRadius: '10px', objectFit: 'cover', width: 'auto', height: 'auto' }}
           />
           <div>
             <h1 style={{ fontSize: '1.15rem', letterSpacing: '-0.02em', fontWeight: 800, margin: 0, color: 'white' }}>

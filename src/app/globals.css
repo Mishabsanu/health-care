@@ -580,3 +580,14 @@ button {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--primary-dark);
 }
+
+/* 🖨️ Direct Print System */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: white !important;
+  }
+}

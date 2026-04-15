@@ -40,7 +40,7 @@ export default function InventoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
 
-  const categories = ['Equipment', 'Consumables', 'Medicines', 'Stationery', 'Others'];
+  const categories = ['Products', 'Equipment', 'Consumables', 'Medicines', 'Stationery', 'Others'];
 
   const fetchInventory = async (isInitial = false) => {
     if (isInitial && !hasLoaded) setLoading(true);

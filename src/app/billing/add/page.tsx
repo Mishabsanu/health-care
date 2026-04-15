@@ -26,7 +26,8 @@ export default function CreateInvoicePage() {
     tax: 0,
     method: 'UPI',
     status: 'Unpaid',
-    description: ''
+    description: '',
+    paidAmount: 0,
   });
 
   const [items, setItems] = useState<BillingItem[]>([]);
@@ -186,6 +187,14 @@ export default function CreateInvoicePage() {
                         <span>TOTAL</span>
                         <span>₹{totalAmount}</span>
                     </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginTop: '0.5rem', opacity: 0.8 }}>
+                        <span>Paid Amount</span>
+                        <span>₹{Number(formData.paidAmount) || 0}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: 800, color: (totalAmount - (Number(formData.paidAmount) || 0)) > 0 ? '#fb923c' : 'white', marginTop: '0.5rem' }}>
+                        <span>BALANCE</span>
+                        <span>₹{totalAmount - (Number(formData.paidAmount) || 0)}</span>
+                    </div>
                 </div>
             </div>
 
@@ -197,6 +206,10 @@ export default function CreateInvoicePage() {
                         <option value="Cash">Cash</option>
                         <option value="Card">Clinical Card Terminal</option>
                     </select>
+                 </div>
+                 <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-muted)' }}>AMOUNT PAID NOW (₹)</label>
+                    <input type="number" value={formData.paidAmount} onChange={(e) => setFormData({...formData, paidAmount: Number(e.target.value)})} style={{ width: '100%', padding: '0.75rem', border: '1.5px solid var(--primary)', borderRadius: 'var(--radius-sm)', fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }} placeholder="0.00" />
                  </div>
                  <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-muted)' }}>INITIAL STATUS</label>

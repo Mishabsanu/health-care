@@ -7,19 +7,27 @@ import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
 import { generateInvoicePDF } from '@/utils/pdfGenerator';
 import { CheckCircle2, Printer } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 interface Invoice {
   _id: string;
   id: string; // Dynamic clinical ID e.g. INV-2024-0001
-  patientId: { name: string; phone?: string };
+  patientId: { 
+    _id: string;
+    patientId: string; // clinical ID
+    name: string; 
+    phone?: string 
+  };
   date: string;
   items: any[];
   subtotal: number;
   discount: number;
   tax: number;
   amount: number;
+  paidAmount: number;
+  balanceAmount: number;
   status: 'Paid' | 'Unpaid' | 'Partially Paid';
   createdBy?: { name: string };
 }
@@ -133,7 +141,24 @@ export default function BillingPage() {
     },
     { 
       header: 'PATIENT', 
-      key: (i: Invoice) => i.patientId?.name || 'Unknown',
+      key: (i: Invoice) => (
+        <Link 
+          href={`/patients/${i.patientId?._id}`}
+          onClick={(e) => e.stopPropagation()}
+          className="patient-link"
+          style={{ 
+            color: 'var(--primary)', 
+            fontWeight: 800, 
+            textDecoration: 'none',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.1rem'
+          }}
+        >
+          <span style={{ fontSize: '0.9rem', letterSpacing: '-0.01em' }}>{i.patientId?.name || 'Unknown'}</span>
+          <span style={{ fontSize: '0.65rem', opacity: 0.5, fontWeight: 900 }}>{i.patientId?.patientId || 'NO ID'}</span>
+        </Link>
+      ),
       style: { fontWeight: 600 } 
     },
     { 
@@ -148,11 +173,23 @@ export default function BillingPage() {
       ) 
     },
     { 
+      header: 'BALANCE', 
+      key: (i: Invoice) => (
+        <span style={{ 
+          fontWeight: 800, 
+          fontSize: '0.95rem', 
+          color: (i.balanceAmount || 0) > 0 ? '#fb923c' : 'inherit' 
+        }}>
+          ₹{(i.balanceAmount || 0).toLocaleString()}
+        </span>
+      ) 
+    },
+    { 
       header: 'STATUS', 
       key: (i: Invoice) => (
         <span style={{ 
-          background: i.status === 'Paid' ? '#dcfce7' : i.status === 'Unpaid' ? '#fee2e2' : '#fef9c3',
-          color: i.status === 'Paid' ? '#166534' : i.status === 'Unpaid' ? '#991b1b' : '#854d0e',
+          background: i.status === 'Paid' ? '#dcfce7' : i.status === 'Unpaid' ? '#fee2e2' : '#ffedd5',
+          color: i.status === 'Paid' ? '#166534' : i.status === 'Unpaid' ? '#991b1b' : '#9a3412',
           padding: '0.3rem 0.8rem', 
           borderRadius: '1rem', 
           fontSize: '0.7rem', 

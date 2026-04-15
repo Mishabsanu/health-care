@@ -69,9 +69,19 @@ export default function PayrollPage() {
 
   // Attendance Detail State
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
+  const [showPayslipModal, setShowPayslipModal] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<PayrollRecord | null>(null);
   const [attendanceDetail, setAttendanceDetail] = useState<Record<number, AttendanceDay>>({});
   const [detailLoading, setDetailLoading] = useState(false);
+
+  // Payslip Wizard State
+  const [payslipData, setPayslipData] = useState({
+    basicSalary: 0,
+    allowance: 0,
+    deduction: 0,
+    bonus: 0,
+    note: ''
+  });
 
   const months = [
     { label: 'January', value: '01' }, { label: 'February', value: '02' }, { label: 'March', value: '03' },
@@ -190,51 +200,64 @@ export default function PayrollPage() {
     document.body.removeChild(link);
   };
 
-  const handleProcessPayment = async (staff: PayrollRecord) => {
+  const openPayslipWizard = (staff: PayrollRecord) => {
+    setSelectedStaff(staff);
+    setPayslipData({
+      basicSalary: staff.salaryDetails.basicSalary || 0,
+      allowance: staff.salaryDetails.allowance || 0,
+      deduction: staff.salaryDetails.deduction || 0,
+      bonus: 0,
+      note: ''
+    });
+    setShowPayslipModal(true);
+  };
+
+  const handleProcessPayment = async () => {
+    if (!selectedStaff) return;
     if (isFuturePeriod()) {
         showToast('Cannot process payments for future months.', 'error');
         return;
     }
 
-    const { netSalary } = staff.salaryDetails;
-    const { totalHours, overtimeHours, salaryConfig } = staff;
+    const { basicSalary, allowance, deduction, bonus, note } = payslipData;
+    const netSalary = (basicSalary + allowance + bonus) - deduction;
 
-    if (netSalary <= 0) {
-      showToast('Calculated salary is zero. Verify attendance logs.', 'info');
+    if (netSalary <= 0 && bonus === 0) {
+      showToast('Calculated salary is zero. Please verify configurations.', 'error');
+      return;
     }
 
-    const breakdown = `
-      Period: ${selectedMonth}/${selectedYear}
-      Calculated Net: ₹${netSalary.toLocaleString()}
-      (${staff.workedDays} Days | ${totalHours}h Normal | ${overtimeHours}h OT)
-    `;
+    try {
+      const count = Math.floor(Math.random() * 9000) + 1000;
+      await api.post('/expenses', {
+        id: `EXP-SAL-${count}`,
+        date: new Date().toISOString().split('T')[0],
+        amount: netSalary,
+        category: 'Salaries',
+        description: `Salary Disbursement | ${selectedStaff.name} | Period: ${selectedMonth}-${selectedYear} | ${selectedStaff.workedDays} Days. ${note}`,
+        paymentMethod: 'Bank Transfer',
+        status: 'Paid',
+        staffId: selectedStaff._id
+      });
 
-    showConfirm(
-      'Initialize Salary Disbursement',
-      `Process salary disbursement for ${staff.name}?\n\n${breakdown}`,
-      async () => {
-        try {
-          const count = Math.floor(Math.random() * 9000) + 1000;
-          await api.post('/expenses', {
-            id: `EXP-SAL-${count}`,
-            date: new Date().toISOString().split('T')[0], // Use current date for payout
-            amount: netSalary,
-            category: 'Salaries',
-            description: `Salary Disbursement | ${staff.name} | Period: ${selectedMonth}-${selectedYear} | ${staff.workedDays} Days`,
-            paymentMethod: 'Bank Transfer',
-            status: 'Paid',
-            staffId: staff._id
-          });
-          showToast(`Salary processed for ${staff.name}`, 'success');
-          fetchPayroll();
-        } catch (err: any) {
-          console.error('🚫 Financial Error | Payment failed:', err);
-          const detail = err.response?.data?.message || 'Salary disbursement failed.';
-          showToast(detail, 'error');
-        }
-      },
-      false
-    );
+      // Also update the staff's salary details if they were previously 0
+      if (selectedStaff.salaryDetails.basicSalary === 0 && basicSalary > 0) {
+        await api.put(`/users/${selectedStaff._id}`, {
+          salaryDetails: {
+            basicSalary,
+            allowance,
+            deduction
+          }
+        });
+      }
+
+      showToast(`Salary processed for ${selectedStaff.name}`, 'success');
+      setShowPayslipModal(false);
+      fetchPayroll();
+    } catch (err: any) {
+      console.error('🚫 Financial Error | Payment failed:', err);
+      showToast('Salary disbursement failed.', 'error');
+    }
   };
 
   const columns = [
@@ -399,7 +422,7 @@ export default function PayrollPage() {
           }}
           customActions={(staff: PayrollRecord) => (
             <button 
-                onClick={() => handleProcessPayment(staff)}
+                onClick={() => openPayslipWizard(staff)}
                 disabled={staff.paymentStatus === 'Paid' || isFuturePeriod()}
                 style={{ 
                     padding: '0.5rem 1rem', 
@@ -416,7 +439,7 @@ export default function PayrollPage() {
                 }}
             >
                 <ArrowUpRight size={14} /> 
-                {isFuturePeriod() ? 'NOT OPEN' : (staff.paymentStatus === 'Paid' ? 'DISBURSED' : 'PAY SALARY')}
+                {isFuturePeriod() ? 'NOT OPEN' : (staff.paymentStatus === 'Paid' ? 'DISBURSED' : (staff.salaryDetails.basicSalary === 0 ? 'SET SALARY & PAY' : 'GENERATE PAYSLIP'))}
             </button>
           )}
         />
@@ -501,6 +524,85 @@ export default function PayrollPage() {
                         </div>
                       </>
                   )}
+              </div>
+          </div>
+      )}
+
+      {/* 🧾 Payslip Generation Modal */}
+      {showPayslipModal && selectedStaff && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.9)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 110, padding: '2rem' }}>
+              <div className="card-premium animate-scale-up clinical-form-wide" style={{ width: '100%', maxWidth: '800px', padding: '3rem', maxHeight: '90vh', overflow: 'auto' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem' }}>
+                      <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                          <div style={{ width: '60px', height: '60px', borderRadius: '1.5rem', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Banknote size={32} />
+                          </div>
+                          <div>
+                              <h2 style={{ fontSize: '1.75rem', fontWeight: 950, letterSpacing: '-0.02em' }}>Generate <span className="gradient-text">Payslip</span></h2>
+                              <p style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Reviewing disbursement for {selectedStaff.name} • {selectedMonth}/{selectedYear}</p>
+                          </div>
+                      </div>
+                      <button onClick={() => setShowPayslipModal(false)} className="glass-interactive" style={{ padding: '0.75rem', borderRadius: '50%', color: 'var(--text-muted)' }}><X size={24} /></button>
+                  </div>
+
+                  <div className="clinical-form-grid">
+                      {/* Section: Attendance Context */}
+                      <div className="col-12" style={{ padding: '1.5rem', background: 'rgba(15, 118, 110, 0.04)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(15, 118, 110, 0.1)', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                         <div style={{ display: 'flex', gap: '2rem' }}>
+                            <div>
+                               <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Working Days</div>
+                               <div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{selectedStaff.workedDays} Days</div>
+                            </div>
+                            <div>
+                               <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Calculated Reg. Hours</div>
+                               <div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{selectedStaff.totalHours}h</div>
+                            </div>
+                         </div>
+                         <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Configured Type</div>
+                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary)' }}>{selectedStaff.salaryConfig.type} Basis</div>
+                         </div>
+                      </div>
+
+                      {/* Section: Financial Inputs */}
+                      <div className="col-4">
+                          <label className="label-premium">Basic Salary (Monthly) {selectedStaff.salaryDetails.basicSalary === 0 && <span style={{ color: '#ef4444' }}>*</span>}</label>
+                          <input type="number" className="input-premium" value={payslipData.basicSalary} onChange={(e) => setPayslipData({...payslipData, basicSalary: Number(e.target.value)})} placeholder="0.00" />
+                      </div>
+                      <div className="col-4">
+                          <label className="label-premium">Allowances</label>
+                          <input type="number" className="input-premium" value={payslipData.allowance} onChange={(e) => setPayslipData({...payslipData, allowance: Number(e.target.value)})} placeholder="0" />
+                      </div>
+                      <div className="col-4">
+                          <label className="label-premium">Deductions</label>
+                          <input type="number" className="input-premium" value={payslipData.deduction} onChange={(e) => setPayslipData({...payslipData, deduction: Number(e.target.value)})} placeholder="0" />
+                      </div>
+
+                      <div className="col-6">
+                          <label className="label-premium" style={{ color: '#10b981' }}>Bonus / Incentives</label>
+                          <input type="number" className="input-premium" style={{ borderColor: '#10b981' }} value={payslipData.bonus} onChange={(e) => setPayslipData({...payslipData, bonus: Number(e.target.value)})} placeholder="Enter bonus if applicable" />
+                      </div>
+                      <div className="col-6">
+                          <label className="label-premium">Payment Remarks</label>
+                          <input type="text" className="input-premium" value={payslipData.note} onChange={(e) => setPayslipData({...payslipData, note: e.target.value})} placeholder="e.g. Performance Bonus included" />
+                      </div>
+
+                      {/* Breakdown Footer */}
+                      <div className="col-12" style={{ marginTop: '2.5rem' }}>
+                         <div style={{ background: 'var(--primary)', padding: '2rem', borderRadius: 'var(--radius-lg)', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 20px 40px -10px rgba(13, 148, 136, 0.4)' }}>
+                            <div>
+                               <div style={{ fontSize: '0.85rem', fontWeight: 700, opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Net Disbursement Amount</div>
+                               <div style={{ fontSize: '2.5rem', fontWeight: 950 }}>₹{(payslipData.basicSalary + payslipData.allowance + payslipData.bonus - payslipData.deduction).toLocaleString()}</div>
+                            </div>
+                            <button 
+                                onClick={handleProcessPayment}
+                                style={{ padding: '1rem 3rem', borderRadius: 'var(--radius-md)', background: 'white', color: 'var(--primary)', fontWeight: 900, fontSize: '1rem', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                            >
+                                CONFIRM & DISBURSE
+                            </button>
+                         </div>
+                      </div>
+                  </div>
               </div>
           </div>
       )}

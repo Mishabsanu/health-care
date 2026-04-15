@@ -13,7 +13,11 @@ import {
   Info,
   Truck,
   Layers,
-  BarChart3
+  BarChart3,
+  Plus,
+  History,
+  User,
+  X
 } from 'lucide-react';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
@@ -25,20 +29,45 @@ export default function InventoryDetailsPage() {
   const { showToast } = usePCMSStore();
   const [loading, setLoading] = useState(true);
   const [item, setItem] = useState<any>(null);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [uniqueSuppliers, setUniqueSuppliers] = useState<string[]>([]);
+  const [showRestockModal, setShowRestockModal] = useState(false);
+  const [restockForm, setRestockForm] = useState({
+    quantityAdded: '',
+    supplierName: '',
+    purchasePrice: '',
+    salePrice: ''
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  const fetchData = async () => {
+    try {
+      const [itemRes, logsRes, suppliersRes] = await Promise.all([
+        api.get(`/inventory/${id}`),
+        api.get(`/inventory/${id}/logs`),
+        api.get('/inventory/suppliers/unique')
+      ]);
+      setItem(itemRes.data);
+      setLogs(logsRes.data);
+      setUniqueSuppliers(suppliersRes.data);
+      
+      // Initialize form with current prices
+      setRestockForm({
+        quantityAdded: '',
+        supplierName: itemRes.data.supplier || '',
+        purchasePrice: itemRes.data.purchasePrice || '',
+        salePrice: itemRes.data.salePrice || ''
+      });
+    } catch (err) {
+      console.error('🚫 Registry Error | Failed to fetch record:', err);
+      showToast('Failed to load item profile.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchItem = async () => {
-      try {
-        const res = await api.get(`/inventory/${id}`);
-        setItem(res.data);
-      } catch (err) {
-        console.error('🚫 Registry Error | Failed to fetch inventory item:', err);
-        showToast('Failed to load item profile.', 'error');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchItem();
+    fetchData();
   }, [id, showToast]);
 
   if (loading) return <LoadingSpinner />;
@@ -48,6 +77,24 @@ export default function InventoryDetailsPage() {
       🚫 INVENTORY ITEM NOT FOUND
     </div>
   );
+
+  const handleRestock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restockForm.quantityAdded || !restockForm.supplierName) return;
+
+    setSubmitting(true);
+    try {
+      await api.post(`/inventory/${id}/restock`, restockForm);
+      showToast('✅ Stock replenishment successful.', 'success');
+      setShowRestockModal(false);
+      fetchData(); // Refresh all data
+    } catch (err) {
+      console.error('🚫 Operational Error | Restock failed:', err);
+      showToast('Restock failed.', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const isLowStock = item.quantity <= item.reorderLevel;
 
@@ -66,23 +113,42 @@ export default function InventoryDetailsPage() {
           <h1 style={{ fontSize: '1.8rem', letterSpacing: '-0.01em' }}>Item <span className="gradient-text">Specifications</span></h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Detailed breakdown of stock levels, procurement pricing, and sales performance.</p>
         </div>
-        <button
-          onClick={() => router.push(`/inventory/${id}/edit`)}
-          className="glass-interactive"
-          style={{ 
-            padding: '0.85rem 2rem', 
-            borderRadius: 'var(--radius-md)', 
-            background: 'var(--primary)', 
-            color: 'white', 
-            fontWeight: 800, 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '0.75rem',
-            boxShadow: '0 10px 20px -5px rgba(13, 148, 136, 0.4)'
-          }}
-        >
-          <Edit size={18} /> EDIT SPECIFICATIONS
-        </button>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button
+            onClick={() => setShowRestockModal(true)}
+            className="glass-interactive"
+            style={{ 
+              padding: '0.85rem 2rem', 
+              borderRadius: 'var(--radius-md)', 
+              background: 'white', 
+              border: '2.5px solid var(--primary)',
+              color: 'var(--primary)', 
+              fontWeight: 800, 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.75rem'
+            }}
+          >
+            <Plus size={18} /> ADD STOCK
+          </button>
+          <button
+            onClick={() => router.push(`/inventory/${id}/edit`)}
+            className="glass-interactive"
+            style={{ 
+              padding: '0.85rem 2rem', 
+              borderRadius: 'var(--radius-md)', 
+              background: 'var(--primary)', 
+              color: 'white', 
+              fontWeight: 800, 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.75rem',
+              boxShadow: '0 10px 20px -5px rgba(13, 148, 136, 0.4)'
+            }}
+          >
+            <Edit size={18} /> EDIT
+          </button>
+        </div>
       </div>
 
       <div className="clinical-form-grid">
@@ -191,6 +257,149 @@ export default function InventoryDetailsPage() {
           </div>
         </div>
       </div>
+
+      {/* 📜 STOCK HISTORY LEDGER */}
+      <div className="clinical-form-card animate-fade-in" style={{ marginTop: '2.5rem', padding: '2rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(15, 118, 110, 0.1)', color: 'var(--primary)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <History size={24} />
+          </div>
+          <div>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 950, margin: 0 }}>Stock Admission <span className="gradient-text">Log</span></h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, fontWeight: 600 }}>Historical procurement and inventory adjustment history.</p>
+          </div>
+        </div>
+
+        {logs.length > 0 ? (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid var(--border-subtle)', textAlign: 'left' }}>
+                  <th style={{ padding: '1rem', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>DATE</th>
+                  <th style={{ padding: '1rem', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>SUPPLIER</th>
+                  <th style={{ padding: '1rem', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>QTY ADDED</th>
+                  <th style={{ padding: '1rem', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>COST PRICE</th>
+                  <th style={{ padding: '1rem', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>AUTHOR</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map((log) => (
+                  <tr key={log._id} style={{ borderBottom: '1px solid var(--border-subtle)' }} className="table-row-hover">
+                    <td style={{ padding: '1.25rem 1rem', fontSize: '0.85rem', fontWeight: 700 }}>
+                      {new Date(log.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </td>
+                    <td style={{ padding: '1.25rem 1rem', fontSize: '0.9rem', fontWeight: 800, color: 'var(--primary)' }}>
+                      {log.supplierName}
+                    </td>
+                    <td style={{ padding: '1.25rem 1rem', fontSize: '0.9rem', fontWeight: 900 }}>
+                      +{log.quantityAdded} <small style={{ fontWeight: 600, opacity: 0.5 }}>{item.unit}</small>
+                    </td>
+                    <td style={{ padding: '1.25rem 1rem', fontSize: '0.9rem', fontWeight: 800 }}>
+                      ₹{log.purchasePrice?.toLocaleString()}
+                    </td>
+                    <td style={{ padding: '1.25rem 1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: '#f1f5f9', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--primary)' }}>
+                          <User size={14} />
+                        </div>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 800, opacity: 0.7 }}>{log.createdBy?.name || 'SYSTEM'}</span>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '5rem', opacity: 0.3 }}>
+            <History size={60} style={{ margin: '0 auto 1.5rem' }} />
+            <p style={{ fontWeight: 800 }}>NO RECENT STOCK ADMISSIONS FOUND</p>
+          </div>
+        )}
+      </div>
+
+      {/* 📦 RESTOCK MODAL */}
+      {showRestockModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(12px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div className="card-premium animate-fade-in" style={{ width: '95%', maxWidth: '600px', padding: '3.5rem', background: 'white', position: 'relative' }}>
+            <button 
+                onClick={() => setShowRestockModal(false)}
+                style={{ position: 'absolute', right: '2rem', top: '2rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
+                <X size={24} />
+            </button>
+            
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '2.5rem' }}>
+                <Plus size={24} style={{ color: 'var(--primary)' }} />
+                <h2 style={{ fontSize: '1.8rem', fontWeight: 950, margin: 0 }}>Stock <span className="gradient-text">Replenishment</span></h2>
+            </div>
+            
+            <form onSubmit={handleRestock}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+                  <div>
+                    <label className="label-premium">QUANTITY TO ADD <span style={{ color: '#ef4444' }}>*</span></label>
+                    <input 
+                        required 
+                        type="number" 
+                        placeholder="0"
+                        className="input-premium"
+                        value={restockForm.quantityAdded}
+                        onChange={(e) => setRestockForm({ ...restockForm, quantityAdded: e.target.value })}
+                        style={{ fontWeight: 900, textAlign: 'center' }}
+                    />
+                  </div>
+                  <div>
+                    <label className="label-premium">SUPPLIER NAME <span style={{ color: '#ef4444' }}>*</span></label>
+                    <input 
+                        required 
+                        list="suppliers-list"
+                        placeholder="Type or select supplier..."
+                        className="input-premium"
+                        value={restockForm.supplierName}
+                        onChange={(e) => setRestockForm({ ...restockForm, supplierName: e.target.value })}
+                        style={{ fontWeight: 700 }}
+                    />
+                    <datalist id="suppliers-list">
+                        {uniqueSuppliers.map(s => <option key={s} value={s} />)}
+                    </datalist>
+                  </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '3rem' }}>
+                  <div>
+                    <label className="label-premium">PURCHASE PRICE (₹) <span style={{ color: '#ef4444' }}>*</span></label>
+                    <input 
+                        required 
+                        type="number" 
+                        className="input-premium"
+                        value={restockForm.purchasePrice}
+                        onChange={(e) => setRestockForm({ ...restockForm, purchasePrice: e.target.value })}
+                        style={{ fontWeight: 800, color: 'var(--primary)' }}
+                    />
+                  </div>
+                  <div>
+                    <label className="label-premium">SALE PRICE (₹) <span style={{ color: '#ef4444' }}>*</span></label>
+                    <input 
+                        required 
+                        type="number" 
+                        className="input-premium"
+                        value={restockForm.salePrice}
+                        onChange={(e) => setRestockForm({ ...restockForm, salePrice: e.target.value })}
+                        style={{ fontWeight: 800, color: '#10b981' }}
+                    />
+                  </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1.5rem' }}>
+                  <button type="button" onClick={() => setShowRestockModal(false)} style={{ flex: 1, padding: '1rem', borderRadius: 'var(--radius-md)', fontWeight: 800, color: 'var(--text-muted)' }}>CANCEL</button>
+                  <button type="submit" disabled={submitting} style={{ flex: 2, padding: '1rem', borderRadius: 'var(--radius-md)', background: 'var(--primary)', color: 'white', fontWeight: 950, fontSize: '1rem', boxShadow: '0 10px 20px -5px rgba(13, 148, 136, 0.4)' }}>
+                      {submitting ? 'PROCESSING...' : 'AUTHORIZE ADMISSION'}
+                  </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

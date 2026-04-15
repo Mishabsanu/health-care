@@ -26,12 +26,21 @@ export default function UserDetailsPage() {
   const { showToast } = usePCMSStore();
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState<any>(null);
+  const [attendanceSummary, setAttendanceSummary] = useState<any>(null);
+  const [salaries, setSalaries] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'info' | 'attendance' | 'salaries'>('info');
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchProfileData = async () => {
       try {
-        const res = await api.get(`/users/${id}`);
-        setUserData(res.data);
+        const [userRes, attendanceRes, salariesRes] = await Promise.all([
+          api.get(`/users/${id}`),
+          api.get(`/payroll/staff/${id}/attendance`),
+          api.get(`/expenses?category=Salaries&search=${id}`) // Searching by ID in description or staffId
+        ]);
+        setUserData(userRes.data);
+        setAttendanceSummary(attendanceRes.data);
+        setSalaries(Array.isArray(salariesRes.data) ? salariesRes.data : salariesRes.data?.data || []);
       } catch (err) {
         console.error('🚫 Registry Error | Failed to fetch user profile:', err);
         showToast('Failed to load system user profile.', 'error');
@@ -39,7 +48,7 @@ export default function UserDetailsPage() {
         setLoading(false);
       }
     };
-    fetchUser();
+    fetchProfileData();
   }, [id, showToast]);
 
   if (loading) return <LoadingSpinner />;
@@ -62,28 +71,76 @@ export default function UserDetailsPage() {
           >
             <ArrowLeft size={16} /> Staff Registry
           </button>
-          <h1 style={{ fontSize: '1.8rem', letterSpacing: '-0.01em' }}>Identity & <span className="gradient-text">Authorization</span></h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Detailed breakdown of system user credentials, clinical roles, and authorization profiles.</p>
+          <h1 style={{ fontSize: '1.8rem', letterSpacing: '-0.01em' }}>Specialist <span className="gradient-text">Intelligence Hub</span></h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Comprehensive breakdown of clinical credentials, attendance logs, and financial records.</p>
         </div>
-        <button
-          onClick={() => router.push(`/users/${id}/edit`)}
-          className="glass-interactive"
-          style={{
-            padding: '0.85rem 2rem',
-            borderRadius: 'var(--radius-md)',
-            background: 'var(--primary)',
-            color: 'white',
-            fontWeight: 800,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            boxShadow: '0 10px 20px -5px rgba(13, 148, 136, 0.4)'
-          }}
-        >
-          <Edit size={18} /> EDIT AUTHORIZATION
-        </button>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button
+            onClick={() => setActiveTab('info')}
+            className={`glass-interactive ${activeTab === 'info' ? 'active-tab' : ''}`}
+            style={{
+              padding: '0.75rem 1.5rem',
+              borderRadius: 'var(--radius-md)',
+              background: activeTab === 'info' ? 'var(--primary)' : 'white',
+              color: activeTab === 'info' ? 'white' : 'var(--text-main)',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              border: '1.5px solid var(--border-subtle)'
+            }}
+          >
+            IDENTITY
+          </button>
+          <button
+            onClick={() => setActiveTab('attendance')}
+            className={`glass-interactive ${activeTab === 'attendance' ? 'active-tab' : ''}`}
+            style={{
+              padding: '0.75rem 1.5rem',
+              borderRadius: 'var(--radius-md)',
+              background: activeTab === 'attendance' ? 'var(--primary)' : 'white',
+              color: activeTab === 'attendance' ? 'white' : 'var(--text-main)',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              border: '1.5px solid var(--border-subtle)'
+            }}
+          >
+            ATTENDANCE
+          </button>
+          <button
+            onClick={() => setActiveTab('salaries')}
+            className={`glass-interactive ${activeTab === 'salaries' ? 'active-tab' : ''}`}
+            style={{
+              padding: '0.75rem 1.5rem',
+              borderRadius: 'var(--radius-md)',
+              background: activeTab === 'salaries' ? 'var(--primary)' : 'white',
+              color: activeTab === 'salaries' ? 'white' : 'var(--text-main)',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              border: '1.5px solid var(--border-subtle)'
+            }}
+          >
+            PAYSLIPS
+          </button>
+          <button
+            onClick={() => router.push(`/users/${id}/edit`)}
+            className="glass-interactive"
+            style={{
+              padding: '0.75rem 1.5rem',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--primary)',
+              color: 'white',
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              fontSize: '0.8rem'
+            }}
+          >
+            <Edit size={16} /> EDIT
+          </button>
+        </div>
       </div>
 
+      {activeTab === 'info' && (
       <div className="clinical-form-grid">
 
         {/* LEFT COLUMN: Identity & Role */}
@@ -196,6 +253,90 @@ export default function UserDetailsPage() {
           </div>
         </div>
       </div>
+      )}
+
+      {activeTab === 'attendance' && (
+        <div className="attendance-report animate-scale-up">
+           <div className="clinical-form-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+                <div>
+                   <h3 style={{ fontSize: '1.4rem', fontWeight: 900 }}>Attendance <span className="gradient-text">Transcript</span></h3>
+                   <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600 }}>Monthly operational persistence and clinical presence.</p>
+                </div>
+                <div style={{ display: 'flex', gap: '2rem' }}>
+                   <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 950, color: '#10b981' }}>{attendanceSummary?.summary?.totalPresent || 0}</div>
+                      <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)' }}>DAYS PRESENT</div>
+                   </div>
+                   <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 950, color: 'var(--primary)' }}>{attendanceSummary?.summary?.totalDays || 0}</div>
+                      <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)' }}>MAPPING PERIOD</div>
+                   </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.75rem' }}>
+                {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map(day => (
+                    <div key={day} style={{ textAlign: 'center', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.05em', paddingBottom: '0.5rem' }}>{day}</div>
+                ))}
+                {attendanceSummary?.days && Object.entries(attendanceSummary.days).map(([day, data]: [string, any]) => (
+                    <div key={day} style={{ 
+                        aspectRatio: '1', 
+                        borderRadius: 'var(--radius-sm)', 
+                        border: '1px solid var(--border-subtle)', 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        background: data.status === 'Present' ? 'rgba(16, 185, 129, 0.05)' : data.isSunday ? 'rgba(0,0,0,0.02)' : 'rgba(239, 68, 68, 0.02)',
+                        position: 'relative'
+                    }}>
+                        <span style={{ fontSize: '0.6rem', fontWeight: 900, position: 'absolute', top: '5px', left: '7px', opacity: 0.3 }}>{day}</span>
+                        {data.status === 'Present' ? (
+                            <CheckCircle2 size={16} style={{ color: '#10b981' }} />
+                        ) : (
+                            <Activity size={16} style={{ color: data.isSunday ? 'var(--text-muted)' : '#ef4444', opacity: 0.3 }} />
+                        )}
+                    </div>
+                ))}
+              </div>
+           </div>
+        </div>
+      )}
+
+      {activeTab === 'salaries' && (
+        <div className="salaries-report animate-scale-up">
+           <div className="clinical-form-card">
+              <h3 style={{ fontSize: '1.4rem', fontWeight: 900, marginBottom: '2rem' }}>Salary <span className="gradient-text">Disbursement Ledger</span></h3>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {salaries.length === 0 ? (
+                  <div style={{ padding: '4rem', textAlign: 'center', border: '2px dashed var(--border-subtle)', borderRadius: 'var(--radius-lg)', color: 'var(--text-muted)', fontWeight: 700 }}>
+                     No salary disbursement records found for this specialist.
+                  </div>
+                ) : (
+                  salaries.map((s, idx) => (
+                    <div key={idx} style={{ padding: '1.5rem', borderRadius: 'var(--radius-md)', background: '#f8fafc', border: '1.5px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                          <div style={{ width: '45px', height: '45px', borderRadius: 'var(--radius-sm)', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                             <Banknote size={24} />
+                          </div>
+                          <div>
+                             <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>₹{s.amount?.toLocaleString()}</div>
+                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>{s.description}</div>
+                          </div>
+                       </div>
+                       <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--primary)' }}>{new Date(s.date).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</div>
+                          <div style={{ fontSize: '0.65rem', fontWeight: 900, color: '#10b981', mt: '0.2rem' }}>SUCCESSFULLY DISBURSED</div>
+                       </div>
+                    </div>
+                  ))
+                )}
+              </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 }

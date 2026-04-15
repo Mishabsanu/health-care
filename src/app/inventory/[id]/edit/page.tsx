@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
-import { Package, Tag, Hash, BarChart3, CheckCircle2, ChevronLeft, Trash2, Info, MapPin } from 'lucide-react';
+import { Package, Tag, Hash, BarChart3, CheckCircle2, ChevronLeft, Trash2, Info, MapPin, Truck } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function EditInventoryPage() {
@@ -24,14 +24,20 @@ export default function EditInventoryPage() {
     salePrice: 0,
     supplier: ''
   });
+  const [uniqueSuppliers, setUniqueSuppliers] = useState<string[]>([]);
 
   const categories = ['Equipment', 'Consumables', 'Medicines', 'Stationery', 'Others'];
 
   useEffect(() => {
-    const fetchItem = async () => {
+    const fetchData = async () => {
       try {
-        const res = await api.get(`/inventory/${id}`);
-        const item = res.data;
+        const [itemRes, suppliersRes] = await Promise.all([
+            api.get(`/inventory/${id}`),
+            api.get('/inventory/suppliers/unique')
+        ]);
+        const item = itemRes.data;
+        setUniqueSuppliers(suppliersRes.data || []);
+        
         if (item) {
           setFormData({
             name: item.name,
@@ -46,7 +52,7 @@ export default function EditInventoryPage() {
           });
         }
       } catch (err: any) {
-        console.error('Failed to fetch inventory item:', err);
+        console.error('Failed to fetch data:', err);
         const msg = err.response?.data?.message || 'Access denied or record missing.';
         showToast(msg, 'error');
         router.push('/inventory');
@@ -54,8 +60,11 @@ export default function EditInventoryPage() {
         setFetching(false);
       }
     };
-    fetchItem();
+    fetchData();
   }, [id, router, showToast]);
+
+  // Update categories to include Products
+  const categoriesList = ['Products', 'Equipment', 'Consumables', 'Medicines', 'Stationery', 'Others'];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,7 +145,7 @@ export default function EditInventoryPage() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
             <div>
               <label className="label-premium">SKU / Catalog ID</label>
               <div style={{ position: 'relative' }}>
@@ -150,8 +159,25 @@ export default function EditInventoryPage() {
                 <Tag size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', opacity: 0.5 }} />
                 <select required className="input-premium" style={{ paddingLeft: '3.5rem' }} value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
                   <option value="" disabled>Select Category</option>
-                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                  {categoriesList.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
+              </div>
+            </div>
+            <div>
+              <label className="label-premium">Supplier</label>
+              <div style={{ position: 'relative' }}>
+                <Truck size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', opacity: 0.5 }} />
+                <input 
+                    type="text" 
+                    list="suppliers-list"
+                    className="input-premium" 
+                    style={{ paddingLeft: '3.5rem' }} 
+                    value={formData.supplier} 
+                    onChange={e => setFormData({...formData, supplier: e.target.value})} 
+                />
+                <datalist id="suppliers-list">
+                    {uniqueSuppliers.map(s => <option key={s} value={s} />)}
+                </datalist>
               </div>
             </div>
           </div>
@@ -192,13 +218,6 @@ export default function EditInventoryPage() {
             </div>
           </div>
 
-          <div style={{ marginBottom: '3rem' }}>
-            <label className="label-premium">Supplier</label>
-            <div style={{ position: 'relative' }}>
-              <BarChart3 size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', opacity: 0.5 }} />
-              <input type="text" className="input-premium" style={{ paddingLeft: '3.5rem' }} value={formData.supplier} onChange={e => setFormData({...formData, supplier: e.target.value})} />
-            </div>
-          </div>
 
           <div style={{ display: 'flex', gap: '1.5rem', marginTop: '4rem' }}>
             <button

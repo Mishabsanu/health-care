@@ -18,6 +18,9 @@ interface Expense {
   description: string;
   paymentMethod: string;
   status: 'Paid' | 'Pending';
+  supplierName: string;
+  invoiceNumber?: string;
+  documentUrl?: string;
   createdBy?: { _id: string; name: string };
 }
 
@@ -99,8 +102,8 @@ export default function ExpensesPage() {
   const columns = [
     { header: 'EXPENSE #', key: 'id' as keyof Expense, style: { fontWeight: 700, color: 'var(--primary)' } },
     { header: 'DATE', key: (e: Expense) => new Date(e.date).toLocaleDateString(), sortKey: 'date' as keyof Expense },
-    { header: 'CATEGORY', key: 'category' as keyof Expense, style: { fontWeight: 600 } },
-    { header: 'DESCRIPTION', key: 'description' as keyof Expense },
+    { header: 'SUPPLIER', key: 'supplierName' as keyof Expense, style: { fontWeight: 600 } },
+    { header: 'CATEGORY', key: 'category' as keyof Expense, style: { fontWeight: 500, fontSize: '0.85rem' } },
     { 
       header: 'AMOUNT', 
       key: (e: Expense) => (
@@ -135,6 +138,22 @@ export default function ExpensesPage() {
           {e.createdBy?.name?.toUpperCase() || 'SYSTEM'}
         </span>
       )
+    },
+    {
+      header: 'DOC',
+      key: (e: Expense) => e.documentUrl ? (
+        <a 
+          href={e.documentUrl} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          title="View Attachment"
+          style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={(ev) => ev.stopPropagation()}
+        >
+          <FileText size={18} />
+        </a>
+      ) : <span style={{ opacity: 0.2 }}>-</span>,
+      style: { textAlign: 'center' }
     }
   ];
 

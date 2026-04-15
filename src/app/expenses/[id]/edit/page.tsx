@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
-import { Wallet, Calendar, Tag, CreditCard, CheckCircle2, ChevronLeft, Trash2, MapPin } from 'lucide-react';
+import { Wallet, Calendar, Tag, CreditCard, CheckCircle2, ChevronLeft, Trash2, MapPin, Building, FileText, Upload, X, FileCheck, ExternalLink } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function EditExpensePage() {
@@ -19,11 +19,14 @@ export default function EditExpensePage() {
     category: '',
     description: '',
     paymentMethod: '',
-    status: ''
+    status: '',
+    supplierName: '',
+    invoiceNumber: '',
+    documentUrl: ''
   });
 
   const categories = ['Rent', 'Salaries', 'Supplies', 'Utilities', 'Maintenance', 'Marketing', 'Others'];
-  const paymentMethods = ['UPI', 'Cash', 'Card', 'Bank Transfer'];
+  const paymentMethods = ['UPI', 'Cash', 'Card', 'Bank Transfer', 'CHEQUE'];
 
   useEffect(() => {
     const fetchExpense = async () => {
@@ -37,7 +40,10 @@ export default function EditExpensePage() {
             category: expense.category,
             description: expense.description,
             paymentMethod: expense.paymentMethod,
-            status: expense.status
+            status: expense.status,
+            supplierName: expense.supplierName || '',
+            invoiceNumber: expense.invoiceNumber || '',
+            documentUrl: expense.documentUrl || ''
           });
         }
       } catch (err: any) {
@@ -123,6 +129,40 @@ export default function EditExpensePage() {
         </div>
 
         <form onSubmit={handleSubmit}>
+          {/* 🏢 Supplier & Reference System */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2.5rem', background: '#f8fafc', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
+              <div>
+                <label className="label-premium">Supplier / Company Name <span style={{ color: '#ef4444' }}>*</span></label>
+                <div style={{ position: 'relative' }}>
+                  <Building size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', opacity: 0.5 }} />
+                  <input
+                    required
+                    autoComplete="off"
+                    type="text"
+                    className="input-premium"
+                    style={{ paddingLeft: '3.5rem' }}
+                    placeholder="e.g. MedSource Supplies Ltd"
+                    value={formData.supplierName}
+                    onChange={e => setFormData({...formData, supplierName: e.target.value})}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="label-premium">Invoice Number / ID <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>(Optional)</span></label>
+                <div style={{ position: 'relative' }}>
+                  <FileText size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', opacity: 0.5 }} />
+                  <input
+                    autoComplete="off"
+                    type="text"
+                    className="input-premium"
+                    style={{ paddingLeft: '3.5rem' }}
+                    placeholder="e.g. INV/2024/089"
+                    value={formData.invoiceNumber}
+                    onChange={e => setFormData({...formData, invoiceNumber: e.target.value})}
+                  />
+                </div>
+              </div>
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
             <div>
               <label className="label-premium">Expense Date</label>
@@ -178,6 +218,85 @@ export default function EditExpensePage() {
                 </select>
               </div>
             </div>
+          </div>
+
+          {/* ☁️ Cloudinary Receipt Upload */}
+          <div style={{ marginBottom: '3rem' }}>
+              <label className="label-premium">Receipt / Document Attachment</label>
+              <div style={{ 
+                  border: '2px dashed var(--border-subtle)', 
+                  borderRadius: '16px', 
+                  padding: '2rem', 
+                  textAlign: 'center',
+                  background: formData.documentUrl ? '#f0fdf4' : '#fafafa',
+                  transition: 'all 0.3s ease'
+              }}>
+                  {formData.documentUrl ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
+                          <div style={{ width: '48px', height: '48px', background: '#22c55e', color: 'white', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <FileCheck size={24} />
+                          </div>
+                          <div style={{ textAlign: 'left' }}>
+                              <p style={{ fontSize: '0.9rem', fontWeight: 800, margin: 0, color: '#166534' }}>Document Attached</p>
+                              <a href={formData.documentUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 700, textDecoration: 'underline' }}>View Receipt</a>
+                          </div>
+                          <button 
+                            type="button" 
+                            onClick={() => setFormData({...formData, documentUrl: ''})}
+                            style={{ marginLeft: '1rem', color: '#ef4444', padding: '0.5rem', borderRadius: '50%', background: '#fee2e2' }}
+                          >
+                            <X size={16} />
+                          </button>
+                      </div>
+                  ) : (
+                      <div style={{ position: 'relative' }}>
+                          <Upload size={32} style={{ color: 'var(--primary)', opacity: 0.3, marginBottom: '0.75rem' }} />
+                          <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', margin: 0 }}>Upload digital receipt or clinical invoice</p>
+                          <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', opacity: 0.7, marginTop: '0.25rem' }}>PNG, JPG or PDF up to 5MB</p>
+                          <input 
+                              type="file" 
+                              accept="image/*,.pdf"
+                              style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                              onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+
+                                  try {
+                                      setIsSyncing(true);
+                                      // 1. Get Signature
+                                      const { data: signData } = await api.get('/upload/sign');
+                                      
+                                      // 2. Upload to Cloudinary
+                                      const formDataUpload = new FormData();
+                                      formDataUpload.append('file', file);
+                                      formDataUpload.append('api_key', signData.apiKey);
+                                      formDataUpload.append('timestamp', signData.timestamp);
+                                      formDataUpload.append('signature', signData.signature);
+                                      formDataUpload.append('folder', signData.folder);
+
+                                      const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${signData.cloudName}/auto/upload`, {
+                                          method: 'POST',
+                                          body: formDataUpload
+                                      });
+                                      
+                                      const resJson = await cloudRes.json();
+                                      if (resJson.secure_url) {
+                                          setFormData(prev => ({ ...prev, documentUrl: resJson.secure_url }));
+                                          showToast('✅ Document uploaded successfully.', 'success');
+                                      } else {
+                                          throw new Error('Upload failed');
+                                      }
+                                  } catch (err) {
+                                      console.error('Cloudinary Error:', err);
+                                      showToast('🚫 Upload Failed | Verify Cloudinary credentials.', 'error');
+                                  } finally {
+                                      setIsSyncing(false);
+                                  }
+                              }}
+                          />
+                      </div>
+                  )}
+              </div>
           </div>
 
           <div style={{ display: 'flex', gap: '1.5rem', marginTop: '4rem' }}>

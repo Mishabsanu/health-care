@@ -1,12 +1,12 @@
 'use client'
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import ClinicalSearchSelect from '@/components/ClinicalSearchSelect';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
-import ClinicalSearchSelect from '@/components/ClinicalSearchSelect';
-import { ChevronRight, Printer, Save, Trash2, Plus, Info, Calendar, Search, UserCheck, User, MapPin, Phone, ShieldCheck, MessageSquare, Receipt } from 'lucide-react';
 import { generateInvoicePDF } from '@/utils/pdfGenerator';
-import LoadingSpinner from '@/components/LoadingSpinner';
+import { Calendar, ChevronRight, MessageSquare, Plus, Printer, Receipt, Save, ShieldCheck, Trash2, User } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function GenerateInvoicePage() {
   const router = useRouter();
@@ -17,14 +17,15 @@ export default function GenerateInvoicePage() {
   const [inventory, setInventory] = useState<any[]>([]);
   const [itemSearch, setItemSearch] = useState('');
   const [activeSearchRow, setActiveSearchRow] = useState<number | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   const { user, showToast } = usePCMSStore();
   const [formData, setFormData] = useState({
     patientId: '',
     appointmentId: '',
     date: new Date().toISOString().split('T')[0],
-    serviceItems: [{ name: '', price: '' as any, serviceId: '' }],
-    inventoryItems: [] as { name: string, quantity: number, price: number, inventoryId: string, stock?: number }[],
+    serviceItems: [{ name: '', price: '' as any, serviceId: '', description: '' }],
+    inventoryItems: [] as { name: string, quantity: number, price: number, inventoryId: string, stock?: number, description?: string }[],
     status: 'Unpaid',
     discount: '' as any,
     amount: 0,
@@ -45,6 +46,7 @@ export default function GenerateInvoicePage() {
 
   useEffect(() => {
     fetchData();
+    setIsMounted(true);
   }, []);
 
   useEffect(() => {
@@ -110,10 +112,10 @@ export default function GenerateInvoicePage() {
     try {
       const selectedPatient = patients.find(p => p._id === formData.patientId);
       const allItems = [
-        ...formData.serviceItems.filter(i => i.name).map(i => ({ 
-          ...i, 
+        ...formData.serviceItems.filter(i => i.name).map(i => ({
+          ...i,
           price: Number(i.price) || 0,
-          quantity: 1 
+          quantity: 1
         })),
         ...formData.inventoryItems.map(i => ({
           ...i,
@@ -152,9 +154,9 @@ export default function GenerateInvoicePage() {
   if (loading && !isPreview) return <LoadingSpinner />;
 
   return (
-    <div className="animate-fade-in" style={{ paddingBottom: '5rem', maxWidth: '1400px', margin: '0 auto' }}>
+    <div className="animate-fade-in" style={{ paddingBottom: '5rem', width: '100%', maxWidth: '100%', padding: '0 2rem' }}>
       {/* 🚀 Simple Header */}
-      <div style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '1.5rem' }}>
+      <div className="no-print" style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '1.5rem' }}>
         <div>
           <button
             type="button"
@@ -170,13 +172,13 @@ export default function GenerateInvoicePage() {
 
         {!isPreview && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            <Calendar size={16} /> {new Date().toLocaleDateString(undefined, { dateStyle: 'long' })}
+            <Calendar size={16} /> {isMounted ? new Date().toLocaleDateString(undefined, { dateStyle: 'long' }) : '...'}
           </div>
         )}
       </div>
 
       {!isPreview ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 420px', gap: '3rem', alignItems: 'flex-start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 450px', gap: '3rem', alignItems: 'flex-start' }}>
 
           {/* 🛠️ Main Entry Area */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
@@ -248,7 +250,7 @@ export default function GenerateInvoicePage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
 
               {/* Clinical Procedures Section */}
-              <div style={{ background: 'white', borderRadius: '24px', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border-subtle)', overflow: 'hidden' }}>
+              <div style={{ background: 'white', borderRadius: '24px', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border-subtle)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1.25rem 2rem', background: 'rgba(15, 118, 110, 0.03)', borderBottom: '1px solid var(--border-subtle)' }}>
                   <ShieldCheck size={20} style={{ color: 'var(--primary)' }} />
                   <h3 style={{ fontSize: '0.9rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.05em', margin: 0 }}>CLINICAL PROCEDURES</h3>
@@ -259,6 +261,7 @@ export default function GenerateInvoicePage() {
                     <thead>
                       <tr style={{ borderBottom: '2.5px solid var(--text-main)' }}>
                         <th style={{ textAlign: 'left', padding: '0.8rem', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Procedure Name</th>
+                        <th style={{ textAlign: 'left', padding: '0.8rem', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Specification</th>
                         <th style={{ textAlign: 'right', padding: '0.8rem', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-muted)', width: '180px' }}>Fee (₹)</th>
                         <th style={{ width: '50px' }}></th>
                       </tr>
@@ -270,7 +273,7 @@ export default function GenerateInvoicePage() {
                             <input
                               required type="text" className="input-premium" placeholder="Type to search service..."
                               style={{ fontSize: '0.9rem', background: '#f8fafc' }}
-                              value={item.name}
+                              value={item.name || ''}
                               onFocus={() => { setActiveSearchRow(999 + idx); setItemSearch(''); }}
                               onChange={(e) => {
                                 const newItems = [...formData.serviceItems];
@@ -281,9 +284,10 @@ export default function GenerateInvoicePage() {
                             />
                             {activeSearchRow === (999 + idx) && (
                               <div className="glass-premium animate-fade-in" style={{
-                                position: 'absolute', top: '100%', left: '0.8rem', right: '0.8rem', zIndex: 100,
-                                borderRadius: '12px', maxHeight: '200px', overflowY: 'auto',
-                                boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid var(--border-subtle)', background: 'white', marginTop: '4px'
+                                position: 'absolute', top: '100%', left: '0.8rem', right: '0.8rem', zIndex: 1000,
+                                borderRadius: '16px', maxHeight: '300px', overflowY: 'auto',
+                                boxShadow: '0 20px 40px rgba(0,0,0,0.15)', border: '1px solid var(--border-subtle)',
+                                background: 'white', marginTop: '8px', padding: '0.5rem'
                               }}>
                                 {services.filter(s => !itemSearch || s.name.toLowerCase().includes(itemSearch.toLowerCase())).map(s => (
                                   <div key={s._id} onClick={() => {
@@ -291,16 +295,27 @@ export default function GenerateInvoicePage() {
                                     newItems[idx] = { name: s.name, price: s.price, serviceId: s._id };
                                     setFormData({ ...formData, serviceItems: newItems });
                                     setActiveSearchRow(null);
-                                  }} className="table-row-hover" style={{ padding: '0.8rem', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ fontWeight: 700, fontSize: '0.8rem' }}>{s.name}</span>
-                                    <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)' }}>₹{s.price}</span>
+                                  }} className="table-row-hover" style={{ padding: '1rem', borderRadius: '10px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                    <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>{s.name}</span>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--primary)', background: 'rgba(15, 118, 110, 0.05)', padding: '4px 10px', borderRadius: '6px' }}>₹{s.price}</span>
                                   </div>
                                 ))}
+                                {services.filter(s => !itemSearch || s.name.toLowerCase().includes(itemSearch.toLowerCase())).length === 0 && (
+                                  <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>No matching procedures found</div>
+                                )}
                               </div>
                             )}
                           </td>
                           <td style={{ padding: '1rem 0.8rem' }}>
-                            <input required type="number" className="input-premium" style={{ textAlign: 'right', fontWeight: 800 }} value={item.price} onChange={(e) => {
+                            <input type="text" className="input-premium" placeholder="e.g. Left Knee..."
+                              style={{ fontSize: '0.85rem' }} value={item.description || ''} onChange={(e) => {
+                                const newItems = [...formData.serviceItems];
+                                newItems[idx].description = e.target.value;
+                                setFormData({ ...formData, serviceItems: newItems });
+                              }} />
+                          </td>
+                          <td style={{ padding: '1rem 0.8rem' }}>
+                            <input required type="number" className="input-premium" style={{ textAlign: 'right', fontWeight: 800 }} value={item.price ?? 0} onChange={(e) => {
                               const newItems = [...formData.serviceItems];
                               newItems[idx].price = e.target.value;
                               setFormData({ ...formData, serviceItems: newItems });
@@ -317,14 +332,14 @@ export default function GenerateInvoicePage() {
                       ))}
                     </tbody>
                   </table>
-                  <button type="button" onClick={() => setFormData({ ...formData, serviceItems: [...formData.serviceItems, { name: '', price: 0, serviceId: '' }] })} style={{ marginTop: '1.25rem', color: 'var(--primary)', fontWeight: 800, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', cursor: 'pointer' }}>
+                  <button type="button" onClick={() => setFormData({ ...formData, serviceItems: [...formData.serviceItems, { name: '', price: 0, serviceId: '', description: '' }] })} style={{ marginTop: '1.25rem', color: 'var(--primary)', fontWeight: 800, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', cursor: 'pointer' }}>
                     <Plus size={14} /> ADD ANOTHER PROCEDURE
                   </button>
                 </div>
               </div>
 
               {/* Medical Add-ons Section */}
-              <div style={{ background: 'white', borderRadius: '24px', boxShadow: 'var(--shadow-lg)', border: '1px solid #fce7f3', overflow: 'hidden' }}>
+              <div style={{ background: 'white', borderRadius: '24px', boxShadow: 'var(--shadow-lg)', border: '1px solid #fce7f3' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1.25rem 2rem', background: 'rgba(236, 72, 153, 0.03)', borderBottom: '1px solid #fce7f3' }}>
                   <Plus size={20} style={{ color: '#ec4899' }} />
                   <h3 style={{ fontSize: '0.9rem', fontWeight: 900, color: '#ec4899', letterSpacing: '0.05em', margin: 0 }}>MEDICAL ADD-ONS (INVENTORY)</h3>
@@ -335,6 +350,7 @@ export default function GenerateInvoicePage() {
                     <thead>
                       <tr style={{ borderBottom: '2.5px solid #ec4899' }}>
                         <th style={{ textAlign: 'left', padding: '0.8rem', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Inventory Asset</th>
+                        <th style={{ textAlign: 'left', padding: '0.8rem', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Specification</th>
                         <th style={{ textAlign: 'center', padding: '0.8rem', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-muted)', width: '80px' }}>Qty</th>
                         <th style={{ textAlign: 'right', padding: '0.8rem', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-muted)', width: '140px' }}>Price (₹)</th>
                         <th style={{ width: '50px' }}></th>
@@ -347,7 +363,7 @@ export default function GenerateInvoicePage() {
                             <input
                               required type="text" className="input-premium" placeholder="Type to search item..."
                               style={{ fontSize: '0.9rem', background: '#fdf2f8' }}
-                              value={item.name}
+                              value={item.name || ''}
                               onFocus={() => { setActiveSearchRow(800 + idx); setItemSearch(''); }}
                               onChange={(e) => {
                                 const newItems = [...formData.inventoryItems];
@@ -358,9 +374,10 @@ export default function GenerateInvoicePage() {
                             />
                             {activeSearchRow === (800 + idx) && (
                               <div className="glass-premium animate-fade-in" style={{
-                                position: 'absolute', top: '100%', left: '0.8rem', right: '0.8rem', zIndex: 100,
-                                borderRadius: '12px', maxHeight: '200px', overflowY: 'auto',
-                                boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #fce7f3', background: 'white', marginTop: '4px'
+                                position: 'absolute', top: '100%', left: '0.8rem', right: '0.8rem', zIndex: 1000,
+                                borderRadius: '16px', maxHeight: '300px', overflowY: 'auto',
+                                boxShadow: '0 20px 40px rgba(0,0,0,0.15)', border: '1px solid #fce7f3',
+                                background: 'white', marginTop: '8px', padding: '0.5rem'
                               }}>
                                 {inventory.filter(i => !itemSearch || i.name.toLowerCase().includes(itemSearch.toLowerCase())).map(i => (
                                   <div key={i._id} onClick={() => {
@@ -369,26 +386,37 @@ export default function GenerateInvoicePage() {
                                     newItems[idx] = { name: i.name, quantity: 1, price: i.salePrice || i.pricePerUnit || 0, inventoryId: i._id, stock: i.quantity };
                                     setFormData({ ...formData, inventoryItems: newItems });
                                     setActiveSearchRow(null);
-                                  }} className="table-row-hover" style={{ padding: '0.8rem', cursor: i.quantity > 0 ? 'pointer' : 'not-allowed', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  }} className="table-row-hover" style={{ padding: '1rem', borderRadius: '10px', cursor: i.quantity > 0 ? 'pointer' : 'not-allowed', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                                     <div>
-                                      <p style={{ fontWeight: 800, fontSize: '0.8rem', margin: 0 }}>{i.name}</p>
-                                      <p style={{ fontSize: '0.65rem', color: i.quantity <= 5 ? '#ef4444' : 'var(--text-muted)', fontWeight: 800, margin: 0 }}>Stock: {i.quantity}</p>
+                                      <p style={{ fontWeight: 800, fontSize: '0.95rem', margin: 0 }}>{i.name}</p>
+                                      <p style={{ fontSize: '0.75rem', color: i.quantity <= 5 ? '#ef4444' : 'var(--text-muted)', fontWeight: 800, margin: 0 }}>Stock: {i.quantity}</p>
                                     </div>
-                                    <span style={{ fontWeight: 900, color: '#ec4899', fontSize: '0.75rem' }}>₹{i.salePrice || i.pricePerUnit}</span>
+                                    <span style={{ fontWeight: 900, color: '#ec4899', fontSize: '0.85rem', background: 'rgba(236, 72, 153, 0.05)', padding: '4px 10px', borderRadius: '6px' }}>₹{i.salePrice || i.pricePerUnit}</span>
                                   </div>
                                 ))}
+                                {inventory.filter(i => !itemSearch || i.name.toLowerCase().includes(itemSearch.toLowerCase())).length === 0 && (
+                                  <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>No matching inventory items found</div>
+                                )}
                               </div>
                             )}
                           </td>
                           <td style={{ padding: '1rem 0.8rem' }}>
-                            <input required type="number" className="input-premium" style={{ textAlign: 'center', fontWeight: 800 }} value={item.quantity} onChange={(e) => {
+                            <input type="text" className="input-premium" placeholder="Batch/Exp..."
+                              style={{ fontSize: '0.85rem' }} value={item.description || ''} onChange={(e) => {
+                                const newItems = [...formData.inventoryItems];
+                                newItems[idx].description = e.target.value;
+                                setFormData({ ...formData, inventoryItems: newItems });
+                              }} />
+                          </td>
+                          <td style={{ padding: '1rem 0.8rem' }}>
+                            <input required type="number" className="input-premium" style={{ textAlign: 'center', fontWeight: 800 }} value={item.quantity ?? 1} onChange={(e) => {
                               const newItems = [...formData.inventoryItems];
                               newItems[idx].quantity = Number(e.target.value);
                               setFormData({ ...formData, inventoryItems: newItems });
                             }} />
                           </td>
                           <td style={{ padding: '1rem 0.8rem' }}>
-                            <input required type="number" className="input-premium" style={{ textAlign: 'right', fontWeight: 800 }} value={item.price} onChange={(e) => {
+                            <input required type="number" className="input-premium" style={{ textAlign: 'right', fontWeight: 800 }} value={item.price ?? 0} onChange={(e) => {
                               const newItems = [...formData.inventoryItems];
                               newItems[idx].price = Number(e.target.value);
                               setFormData({ ...formData, inventoryItems: newItems });
@@ -403,7 +431,7 @@ export default function GenerateInvoicePage() {
                       ))}
                     </tbody>
                   </table>
-                  <button type="button" onClick={() => setFormData({ ...formData, inventoryItems: [...formData.inventoryItems, { name: '', quantity: 1, price: 0, inventoryId: '', stock: 0 }] })} style={{ marginTop: '1.25rem', color: '#ec4899', fontWeight: 800, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', cursor: 'pointer' }}>
+                  <button type="button" onClick={() => setFormData({ ...formData, inventoryItems: [...formData.inventoryItems, { name: '', quantity: 1, price: 0, inventoryId: '', stock: 0, description: '' }] })} style={{ marginTop: '1.25rem', color: '#ec4899', fontWeight: 800, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', cursor: 'pointer' }}>
                     <Plus size={14} /> ADD ANOTHER ITEM
                   </button>
                 </div>
@@ -421,7 +449,7 @@ export default function GenerateInvoicePage() {
                 className="textarea-premium"
                 placeholder="Enter clinical notes or specialized instructions..."
                 style={{ width: '100%', minHeight: '120px', borderRadius: '12px' }}
-                value={formData.remarks}
+                value={formData.remarks || ''}
                 onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
               />
             </div>
@@ -448,11 +476,11 @@ export default function GenerateInvoicePage() {
                   <span style={{ color: 'white' }}>₹{totalInventory.toLocaleString()}</span>
                 </div>
                 <div style={{ marginBottom: '1.5rem', marginTop: '0.5rem' }}>
-                  <label style={{ fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--primary-light)', display: 'block', marginBottom: '0.5rem' }}>Discount Adjustment (₹)</label>
+                  <label style={{ fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--primary-light)', display: 'block', marginBottom: '0.5rem' }}>Discount (₹)</label>
                   <input
                     type="number" className="input-premium"
                     style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontWeight: 800, fontSize: '0.9rem', borderRadius: '10px' }}
-                    value={formData.discount} placeholder="0" onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
+                    value={formData.discount ?? 0} placeholder="0" onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
                   />
                 </div>
               </div>
@@ -485,20 +513,43 @@ export default function GenerateInvoicePage() {
         </div>
       ) : (
         <div className="animate-slide-up" style={{ maxWidth: '900px', margin: '0 auto' }}>
-          <div style={{ background: 'white', boxShadow: '0 40px 80px -20px rgba(0,0,0,0.15)', borderRadius: '32px', overflow: 'hidden' }}>
-            {/* 📋 Digital Receipt Preview */}
+          <style jsx global>{`
+            @media print {
+              #printable-bill {
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                width: 100% !important;
+                position: absolute;
+                left: 0;
+                top: 0;
+              }
+              .no-print {
+                display: none !important;
+              }
+              .main-wrapper, .content-area, .page-content {
+                padding: 0 !important;
+                margin: 0 !important;
+                display: block !important;
+              }
+            }
+          `}</style>
+          <div id="printable-bill" style={{ background: 'white', boxShadow: '0 40px 80px -20px rgba(0,0,0,0.15)', borderRadius: '32px', overflow: 'hidden' }}>
+
             <div style={{ padding: '3rem 4rem', borderBottom: '1.5px dashed #f1f5f9' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                  <img src="/logo.jpeg" style={{ width: '56px', height: '56px', borderRadius: '14px', objectFit: 'cover' }} alt="Clinic Logo" />
-                  <div>
+                <div>
+                  <p style={{ fontSize: '0.55rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Clinic Information</p>
+                  <p style={{ fontWeight: 900, fontSize: '1.15rem', color: '#0f172a', marginBottom: '0.25rem' }}>PHYSIO 4</p>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 650 }}>Edavanna Central • Kerala - 676541</p>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 650 }}>Phone: 7298448844</p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', textAlign: 'right' }}>
+                  <div style={{ textAlign: 'right' }}>
                     <h3 style={{ fontSize: '1.5rem', fontWeight: 950, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>PHYSIO 4</h3>
                     <p style={{ fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>Clinic Bill Preview</p>
                   </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontSize: '0.6rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.2rem' }}>Issue Date</p>
-                  <p style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0f172a', margin: 0 }}>{new Date(formData.date).toLocaleDateString()}</p>
+                  <img src="/logo.jpeg" style={{ width: '56px', height: '56px', borderRadius: '14px', objectFit: 'cover' }} alt="Clinic Logo" />
                 </div>
               </div>
             </div>
@@ -506,43 +557,46 @@ export default function GenerateInvoicePage() {
             <div style={{ padding: '3.5rem 4rem' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', marginBottom: '3.5rem' }}>
                 <div>
-                  <p style={{ fontSize: '0.55rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Clinic Information</p>
-                  <p style={{ fontWeight: 900, fontSize: '1.15rem', color: '#0f172a', marginBottom: '0.25rem' }}>PHYSIO 4</p>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 650 }}>Edavanna Central • 976441</p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontSize: '0.55rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Patient Information</p>
-                  <p style={{ fontWeight: 950, fontSize: '1.4rem', color: '#0f172a', marginBottom: '0.3rem', textTransform: 'capitalize' }}>{selectedPatient?.name}</p>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 750 }}>ID: {selectedPatient?.patientId} • {selectedPatient?.phone}</p>
-                </div>
-              </div>
+                  <p style={{ fontSize: '0.55rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Bill To</p>
+                  <p style={{ fontWeight: 900, fontSize: '1.15rem', color: '#0f172a', marginBottom: '0.25rem' }}></p>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', padding: '1.75rem 0', borderTop: '1.5px solid #f1f5f9', borderBottom: '1.5px solid #f1f5f9', marginBottom: '3.5rem', alignItems: 'center' }}>
-                <div>
-                  <p style={{ fontSize: '0.55rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>Authorized Authority</p>
-                  <p style={{ fontWeight: 950, fontSize: '1.05rem', color: 'var(--primary)', letterSpacing: '0.02em', margin: 0 }}>JAMAL NGADI</p>
+
+                  <p style={{ fontWeight: 950, fontSize: '1.4rem', color: '#0f172a', marginBottom: '0.3rem', textTransform: 'capitalize' }}>{selectedPatient?.name}</p>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 750 }}>{selectedPatient?.phone}</p><p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 650 }}></p>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 750 }}>ID: {selectedPatient?.patientId}</p><p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 650 }}></p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontSize: '0.55rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>Bill Number</p>
-                  <span style={{ fontSize: '1.05rem', fontWeight: 950, color: 'var(--primary)', fontFamily: 'monospace' }}>BILL-2026-####</span>
+                  <p style={{ fontSize: '0.55rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>Invoice Details</p>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Invoice # : </span>
+                    <span style={{ fontSize: '1.05rem', fontWeight: 950, color: 'var(--primary)', fontFamily: 'monospace' }}>INV-1001</span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Issue Date : </span>
+                    <span style={{ fontWeight: 800, fontSize: '1rem', color: '#0f172a' }}>{new Date(formData.date).toLocaleDateString()}</span>
+                  </div>
                 </div>
               </div>
 
               <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '3rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '2.5px solid #0f172a' }}>
-                    <th style={{ textAlign: 'left', padding: '1rem 0', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Clinical Specification</th>
-                    <th style={{ textAlign: 'right', padding: '1rem 0', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', width: '120px' }}>Charge</th>
+                    <th style={{ textAlign: 'left', padding: '1rem 0', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase' }}>S.NO</th>
+                    <th style={{ textAlign: 'left', padding: '1rem 0', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Description</th>
+                    <th style={{ textAlign: 'right', padding: '1rem 0', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', width: '120px' }}>Amount</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {[...formData.serviceItems.filter(i => i.name).map(i => ({ ...i, quantity: 1 })), ...formData.inventoryItems].map((item, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  {[...formData.serviceItems.filter(i => i.name).map(i => ({ ...i, quantity: 1 })), ...formData.inventoryItems].map((item, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '1.25rem 0', width: '50px', verticalAlign: 'top', fontWeight: 800, color: 'var(--text-muted)', fontSize: '0.85rem' }}>{(idx + 1).toString().padStart(2, '0')}</td>
                       <td style={{ padding: '1.25rem 0' }}>
                         <p style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem', margin: 0 }}>{item.name}</p>
-                        {item.quantity > 1 && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Quantity: {item.quantity}</span>}
+                        {item.description && <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.2rem 0 0' }}>Spec: {item.description}</p>}
+                       
+                        {item.quantity > 1 && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Qty: {item.quantity}</span>}
                       </td>
-                      <td style={{ padding: '1.25rem 0', textAlign: 'right', fontWeight: 900, color: '#0f172a' }}>₹{(item.price * item.quantity).toLocaleString()}</td>
+                      <td style={{ padding: '1.25rem 0', textAlign: 'right', fontWeight: 900, color: '#0f172a', verticalAlign: 'top' }}>₹{(item.price * item.quantity).toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -555,7 +609,7 @@ export default function GenerateInvoicePage() {
                     <span>₹{(formData.amount + Number(formData.discount || 0)).toLocaleString()}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontSize: '0.85rem', color: '#ef4444', fontWeight: 600 }}>
-                    <span>Adjustment</span>
+                    <span>Discount</span>
                     <span>- ₹{Number(formData.discount || 0).toLocaleString()}</span>
                   </div>
                   <div style={{ borderTop: '2px solid #0f172a', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -566,7 +620,7 @@ export default function GenerateInvoicePage() {
               </div>
             </div>
 
-            <div style={{ background: '#f8fafc', padding: '2.5rem 4rem', display: 'flex', justifyContent: 'flex-end', gap: '1.5rem' }}>
+            <div className="no-print" style={{ background: '#f8fafc', padding: '2.5rem 4rem', display: 'flex', justifyContent: 'flex-end', gap: '1.5rem' }}>
               <button
                 type="button"
                 onClick={() => setIsPreview(false)}
@@ -576,26 +630,7 @@ export default function GenerateInvoicePage() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                    const allItems = [
-                      ...formData.serviceItems.filter(i => i.name).map(i => ({ name: i.name, price: Number(i.price), quantity: 1 })),
-                      ...formData.inventoryItems.map(i => ({ name: i.name, price: Number(i.price), quantity: Number(i.quantity) }))
-                    ];
-                    generateInvoicePDF({
-                      id: 'DRAFT',
-                      patientName: selectedPatient?.name || 'Unknown Patient',
-                      patientPhone: selectedPatient?.phone,
-                      date: formData.date,
-                      items: allItems as any,
-                      subtotal: formData.amount + Number(formData.discount || 0),
-                      discount: Number(formData.discount || 0),
-                      tax: 0,
-                      amount: formData.amount,
-                      clinicName: 'Physio 4',
-                      clinicAddress: 'Edavanna Central, Malappuram',
-                      clinicPhone: '976441'
-                    });
-                }}
+                onClick={() => window.print()}
                 style={{ padding: '0.9rem 2.5rem', borderRadius: '10px', background: '#f1f5f9', border: '1.5px solid #cbd5e1', fontWeight: 800, color: '#1e293b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.6rem' }}
               >
                 <Printer size={18} /> Print Bill
@@ -606,7 +641,7 @@ export default function GenerateInvoicePage() {
                 onClick={handleAuthorize}
                 style={{ padding: '0.9rem 3.5rem', borderRadius: '10px', background: 'var(--bg-sidebar)', color: 'white', fontWeight: 900, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.8rem', boxShadow: '0 10px 20px rgba(15, 23, 42, 0.2)' }}
               >
-                {loading ? 'Processing...' : <><Save size={20} /> Authorize & Save</>}
+                {loading ? 'Processing...' : <><Save size={20} />Save</>}
               </button>
             </div>
           </div>
