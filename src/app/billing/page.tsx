@@ -6,7 +6,7 @@ import { usePermission } from '@/hooks/usePermission';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
 import { generateInvoicePDF } from '@/utils/pdfGenerator';
-import { CheckCircle2, Printer } from 'lucide-react';
+import { Banknote, CheckCircle2, Printer, Wallet, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
@@ -39,6 +39,15 @@ export default function BillingPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [localLoading, setLocalLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
+
+  // Quick Pay State
+  const [quickPayInvoice, setQuickPayInvoice] = useState<Invoice | null>(null);
+  const [paymentData, setPaymentData] = useState({
+      amount: '',
+      method: 'Cash',
+      note: ''
+  });
+  const [submittingPayment, setSubmittingPayment] = useState(false);
 
   // Backend Pagination State
   const [totalRecords, setTotalRecords] = useState(0);
@@ -112,6 +121,33 @@ export default function BillingPage() {
     } catch (err) {
       console.error('🚫 Financial Error | Failed to update invoice status:', err);
       showToast('Status update failed.', 'error');
+    }
+  };
+
+  const handleQuickPayment = async () => {
+    if (!quickPayInvoice || !paymentData.amount || Number(paymentData.amount) <= 0) {
+        return showToast('Please enter a valid payment amount.', 'error');
+    }
+
+    setSubmittingPayment(true);
+    try {
+        const res = await api.post(`/invoices/${quickPayInvoice._id}/payments`, {
+            amount: Number(paymentData.amount),
+            method: paymentData.method,
+            note: paymentData.note || 'Quick Settlement',
+            date: new Date().toISOString().split('T')[0]
+        });
+        
+        // Update local state for immediate feedback
+        setInvoices(prev => prev.map(inv => inv._id === quickPayInvoice._id ? res.data : inv));
+        showToast(`✅ Payment of ₹${paymentData.amount} recorded for ${res.data.id}`, 'success');
+        setQuickPayInvoice(null);
+        setPaymentData({ amount: '', method: 'Cash', note: '' });
+    } catch (err) {
+        console.error('🚫 Ledger Error | Failed to record quick payment:', err);
+        showToast('Settlement failed. Please try again.', 'error');
+    } finally {
+        setSubmittingPayment(false);
     }
   };
 
@@ -317,6 +353,33 @@ export default function BillingPage() {
                   </button>
                 )}
 
+                {/* 💳 Quick Pay Shortcut */}
+                {inv.status !== 'Paid' && (
+                  <button
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      setQuickPayInvoice(inv);
+                      setPaymentData(prev => ({ ...prev, amount: inv.balanceAmount.toString() }));
+                    }}
+                    title="Quick Settlement"
+                    className="glass-interactive"
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '1.5px solid #fb923c',
+                      background: 'white',
+                      color: '#fb923c',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Wallet size={18} />
+                  </button>
+                )}
+
                 {/* ✅ Mark Paid — only for unpaid/partial invoices */}
                 {inv.status !== 'Paid' && (
                   <HasPermission permission="billing:edit">
@@ -360,6 +423,104 @@ export default function BillingPage() {
           ]}
           serverPagination={paginationConfig}
         />
+
+        {/* 💳 QUICK PAYMENT MODAL */}
+        {quickPayInvoice && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '2rem' }}>
+                <div className="card-premium animate-scale-up" style={{ width: '100%', maxWidth: '450px', padding: '2.5rem', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 40px 80px -20px rgba(0,0,0,0.5)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <div style={{ width: '45px', height: '45px', borderRadius: '12px', background: 'linear-gradient(135deg, #fb923c 0%, #ea580c 100%)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 16px rgba(234, 88, 12, 0.3)' }}>
+                                <Banknote size={22} />
+                            </div>
+                            <div>
+                                <h3 style={{ fontSize: '1.1rem', fontWeight: 950, margin: 0 }}>Quick <span style={{ color: '#fb923c' }}>Settlement</span></h3>
+                                <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800 }}>Invoice: <span style={{ color: 'var(--primary)' }}>{quickPayInvoice.id}</span></p>
+                            </div>
+                        </div>
+                        <button onClick={() => setQuickPayInvoice(null)} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#64748b', cursor: 'pointer', width: '30px', height: '30px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <X size={18} />
+                        </button>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+                        <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
+                                <label style={{ fontSize: '0.65rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Payment Amount</label>
+                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#fb923c' }}>Due: ₹{quickPayInvoice.balanceAmount.toLocaleString()}</span>
+                            </div>
+                            <div style={{ position: 'relative' }}>
+                                <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 900, color: 'var(--primary)', fontSize: '1.25rem' }}>₹</span>
+                                <input 
+                                    autoFocus
+                                    type="number" 
+                                    style={{ width: '100%', padding: '1rem 1rem 1rem 2.2rem', borderRadius: '14px', border: '2px solid var(--primary)', background: '#f0fdfa', fontSize: '1.5rem', fontWeight: 950, color: 'var(--text-main)', outline: 'none' }}
+                                    value={paymentData.amount}
+                                    onChange={(e) => setPaymentData({...paymentData, amount: e.target.value})}
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style={{ fontSize: '0.65rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.6rem' }}>Payment Method</label>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
+                                {['Cash', 'UPI', 'Card'].map(m => (
+                                    <button
+                                        key={m}
+                                        type="button"
+                                        onClick={() => setPaymentData({...paymentData, method: m})}
+                                        style={{ 
+                                            padding: '0.75rem', 
+                                            borderRadius: '10px', 
+                                            border: '2px solid',
+                                            borderColor: paymentData.method === m ? 'var(--primary)' : 'var(--border-subtle)',
+                                            background: paymentData.method === m ? '#f0fdfa' : 'white',
+                                            color: paymentData.method === m ? 'var(--primary)' : 'var(--text-muted)',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 800,
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        {m.toUpperCase()}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                            <button 
+                                onClick={() => setQuickPayInvoice(null)}
+                                style={{ flex: 1, padding: '1.1rem', borderRadius: '14px', background: '#f8fafc', border: '1px solid var(--border-subtle)', fontWeight: 800, color: '#64748b', cursor: 'pointer' }}
+                            >
+                                CANCEL
+                            </button>
+                            <button 
+                                onClick={handleQuickPayment}
+                                disabled={submittingPayment}
+                                style={{ 
+                                    flex: 2, 
+                                    padding: '1.1rem', 
+                                    borderRadius: '14px', 
+                                    background: 'var(--primary)', 
+                                    color: 'white', 
+                                    fontWeight: 950, 
+                                    border: 'none', 
+                                    cursor: 'pointer',
+                                    boxShadow: '0 10px 25px -5px rgba(13, 148, 136, 0.4)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.6rem'
+                                }}
+                            >
+                                {submittingPayment ? 'SAVING...' : <><CheckCircle2 size={18} /> CONFIRM</>}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
     </div>
   );
 }

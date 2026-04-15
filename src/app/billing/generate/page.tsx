@@ -34,6 +34,7 @@ export default function GenerateInvoicePage() {
     paymentNote: '',
     method: 'UPI'
   });
+  const [previousDebt, setPreviousDebt] = useState(0);
 
   const fetchData = async () => {
     try {
@@ -82,7 +83,24 @@ export default function GenerateInvoicePage() {
           console.error('🚫 Registry Sync Error:', err);
         }
       };
+
+      const fetchPreviousDebt = async () => {
+        try {
+          const res = await api.get(`/invoices?search=${formData.patientId}`);
+          const allInvoices = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+          const totalDebt = allInvoices
+            .filter((inv: any) => (inv.patientId?._id === formData.patientId || inv.patientId === formData.patientId) && inv.status !== 'Paid')
+            .reduce((sum: number, inv: any) => sum + (Number(inv.balanceAmount) || 0), 0);
+          setPreviousDebt(totalDebt);
+        } catch (err) {
+          console.error('🚫 Debt Fetch Error:', err);
+        }
+      };
+
       syncAppointment();
+      fetchPreviousDebt();
+    } else {
+        setPreviousDebt(0);
     }
   }, [formData.patientId, showToast]);
 
@@ -471,6 +489,20 @@ export default function GenerateInvoicePage() {
                   <p style={{ fontSize: '0.55rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase' }}>Live Ledger</p>
                 </div>
               </div>
+
+              {previousDebt > 0 && (
+                <div style={{ padding: '1rem', background: 'rgba(251, 146, 60, 0.1)', borderRadius: '16px', border: '1px solid rgba(251, 146, 60, 0.2)', marginBottom: '2rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                            <p style={{ fontSize: '0.6rem', fontWeight: 900, color: '#fb923c', textTransform: 'uppercase', marginBottom: '0.2rem' }}>Previous Outstanding</p>
+                            <p style={{ fontSize: '1.25rem', fontWeight: 950, color: '#fb923c', margin: 0 }}>₹{previousDebt.toLocaleString()}</p>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                            <p style={{ fontSize: '0.55rem', fontWeight: 700, color: '#94a3b8', lineHeight: 1.4 }}>Unpaid dues from<br/>prior sessions</p>
+                        </div>
+                    </div>
+                </div>
+              )}
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#94a3b8', fontWeight: 600 }}>
