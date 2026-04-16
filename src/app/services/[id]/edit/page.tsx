@@ -73,16 +73,25 @@ export default function EditServicePage() {
   if (loading) return <LoadingSpinner />;
 
   return (
-    <div className="edit-service-container animate-fade-in clinical-form-wide" style={{ paddingBottom: '7rem' }}>
-      <div style={{ marginBottom: '3rem' }}>
+    <div className="edit-service-container animate-fade-in clinical-form-wide" style={{ padding: '2rem 2.5rem', paddingBottom: '7rem' }}>
+      <div style={{ marginBottom: '3.5rem' }}>
         <button 
           onClick={() => router.back()} 
-          style={{ marginBottom: '1.5rem', color: 'var(--primary)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, background: 'rgba(15, 118, 110, 0.08)', padding: '0.5rem 1rem', borderRadius: 'var(--radius-sm)' }}
+          className="glass-interactive"
+          style={{ marginBottom: '1.5rem', color: 'var(--primary)', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800, background: 'rgba(15, 118, 110, 0.08)', padding: '0.5rem 1.25rem', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer' }}
         >
           <ArrowLeft size={16} /> Registry Dashboard
         </button>
-        <h1 style={{ fontSize: '1.8rem', letterSpacing: '-0.01em' }}>Modify Clinical <span className="gradient-text">Modality</span></h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Adjust modality profiling and session rates.</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+          <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--primary)' }} />
+          <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '0.1em' }}>SERVICE CATALOG</span>
+        </div>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>
+          Modify Clinical <span className="gradient-text">Modality</span>
+        </h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>
+          Adjust modality profiling and session rates for your service catalog.
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="clinical-form-card" style={{ opacity: saving ? 0.7 : 1 }}>

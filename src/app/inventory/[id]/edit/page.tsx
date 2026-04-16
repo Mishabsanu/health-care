@@ -102,37 +102,46 @@ export default function EditInventoryPage() {
   if (fetching) return <LoadingSpinner />;
 
   return (
-    <div className="animate-fade-in" style={{ paddingBottom: '5rem' }}>
-      <div style={{ marginBottom: '3rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+    <div className="edit-inventory-container animate-fade-in clinical-form-wide" style={{ padding: '2rem 2.5rem', paddingBottom: '7rem' }}>
+      <div style={{ marginBottom: '3.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
-            <button
+          <button
             onClick={() => router.back()}
-            style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
-            >
-            <ChevronLeft size={16} /> Back to Inventory
-            </button>
-            <h1 style={{ fontSize: '2.25rem', fontWeight: 700, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
+            className="glass-interactive"
+            style={{ marginBottom: '1.5rem', color: 'var(--primary)', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800, background: 'rgba(15, 118, 110, 0.08)', padding: '0.5rem 1.25rem', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer' }}
+          >
+            <ChevronLeft size={16} /> Registry Dashboard
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--primary)' }} />
+            <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '0.1em' }}>STOCK REGISTRY</span>
+          </div>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>
             Modify <span className="gradient-text">Stock Record</span>
-            </h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: '0.5rem' }}>
-            Update the registry data for this clinical item.
-            </p>
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>
+            Update the registry data for this clinical item and sync with central supply.
+          </p>
         </div>
         <button 
-            type="button" 
-            onClick={handleDelete}
-            style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, fontSize: '0.9rem', paddingBottom: '0.5rem' }}
+          type="button" 
+          onClick={handleDelete}
+          className="glass-interactive"
+          style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800, fontSize: '0.8rem', border: 'none', background: 'rgba(239, 68, 68, 0.08)', padding: '0.6rem 1.25rem', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
         >
-            <Trash2 size={18} /> Delete Item
+          <Trash2 size={16} /> DELETE RECORD
         </button>
       </div>
 
-      <div className="clinical-form-card" style={{ margin: '0 auto', padding: '3rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem', background: 'rgba(15, 118, 110, 0.05)', padding: '1rem', borderRadius: 'var(--radius-sm)', borderLeft: '4px solid var(--primary)' }}>
-          <Package size={24} style={{ color: 'var(--primary)' }} />
-          <div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>Clinical Record Modification</h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>Syncing changes with central supply vault.</p>
+      <div className="clinical-form-card" style={{ opacity: loading ? 0.7 : 1 }}>
+        <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: 'var(--radius-sm)', marginBottom: '2.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', borderLeft: '4px solid var(--primary)', fontWeight: 600 }}>
+           Registry Reference: <strong style={{ color: 'var(--primary)' }}>{id}</strong> • Verified Clinical Supply File
+        </div>
+
+        <div className="clinical-form-grid">
+          <div className="col-12" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', background: 'linear-gradient(90deg, rgba(15, 118, 110, 0.05) 0%, transparent 100%)', padding: '0.75rem 1.25rem', borderRadius: 'var(--radius-sm)', borderLeft: '4px solid var(--primary)' }}>
+            <Package size={20} style={{ color: 'var(--primary)' }} />
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Stock <span className="gradient-text">Modification</span></h3>
           </div>
         </div>
 

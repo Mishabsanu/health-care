@@ -100,7 +100,7 @@ export default function GenerateInvoicePage() {
       syncAppointment();
       fetchPreviousDebt();
     } else {
-        setPreviousDebt(0);
+      setPreviousDebt(0);
     }
   }, [formData.patientId, showToast]);
 
@@ -178,47 +178,42 @@ export default function GenerateInvoicePage() {
   if (loading && !isPreview) return <LoadingSpinner />;
 
   return (
-    <div className="animate-fade-in" style={{ paddingBottom: '5rem', width: '100%', maxWidth: '100%', padding: '0 2rem' }}>
-      {/* 🚀 Simple Header */}
-      <div className="no-print" style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '1.5rem' }}>
-        <div>
-          <button
-            type="button"
-            onClick={() => isPreview ? setIsPreview(false) : router.back()}
-            style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}
-          >
-            ← {isPreview ? 'Back to Form' : 'Back to Registry'}
-          </button>
-          <h1 style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.03em', lineHeight: 1 }}>
-            {isPreview ? 'Verify' : 'Create'} <span className="gradient-text">Clinical Bill</span>
-          </h1>
+    <div className="generate-invoice-container animate-fade-in clinical-form-wide" style={{ padding: '2rem 2.5rem', paddingBottom: '7rem' }}>
+      <div style={{ marginBottom: '3.5rem' }}>
+        <button
+          onClick={() => router.back()}
+          className="glass-interactive"
+          style={{ marginBottom: '1.5rem', color: 'var(--primary)', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800, background: 'rgba(15, 118, 110, 0.08)', padding: '0.5rem 1.25rem', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer' }}
+        >
+          <Receipt size={16} /> Revenue Dashboard
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+          <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--primary)' }} />
+          <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '0.1em' }}>REVENUE & BILLING</span>
         </div>
-
-        {!isPreview && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            <Calendar size={16} /> {isMounted ? new Date().toLocaleDateString(undefined, { dateStyle: 'long' }) : '...'}
-          </div>
-        )}
+        <h1 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>
+          Generate <span className="gradient-text">Clinical Invoice</span>
+        </h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>
+          Initialize a new financial transaction for clinical services and procurement.
+        </p>
       </div>
-
       {!isPreview ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 450px', gap: '3rem', alignItems: 'flex-start' }}>
-
-          {/* 🛠️ Main Entry Area */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-
-            {/* 1. Patient Selection Card */}
-            <div className="luxury-card" style={{ padding: '2.5rem', background: 'white', borderRadius: '24px', boxShadow: 'var(--shadow-lg)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-                <div style={{ width: '42px', height: '42px', background: 'rgba(15, 118, 110, 0.1)', color: 'var(--primary)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <User size={20} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: 850, letterSpacing: '-0.02em', margin: 0 }}>Patient Information</h3>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Select patient from registry to initiate bill</p>
-                </div>
+        <div className="animate-slide-up" style={{ background: 'white', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: '4rem' }}>
+          
+          {/* 1. 🏥 Patient & Record Selection */}
+          <div style={{ padding: '3.5rem', borderBottom: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
+              <div style={{ width: '48px', height: '48px', background: 'rgba(15, 118, 110, 0.08)', color: 'var(--primary)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <User size={24} />
               </div>
+              <div>
+                <h3 style={{ fontSize: '1.35rem', fontWeight: 900, letterSpacing: '-0.02em', margin: 0, color: '#0f172a' }}>Patient Selection</h3>
+                <p style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginTop: '0.2rem' }}>Assign clinical profile to this revenue record</p>
+              </div>
+            </div>
 
+            <div style={{ maxWidth: '700px' }}>
               <ClinicalSearchSelect
                 options={patients}
                 value={formData.patientId}
@@ -229,381 +224,306 @@ export default function GenerateInvoicePage() {
                 renderOption={(p) => (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--bg-sidebar)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
-                        {p.name?.[0]}
-                      </div>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--bg-sidebar)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>{p.name?.[0]}</div>
                       <div>
-                        <p style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '0.9rem' }}>{p.name}</p>
-                        <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>{p.phone} • #{p.patientId}</p>
+                        <p style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem' }}>{p.name}</p>
+                        <p style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>{p.phone} • #{p.patientId}</p>
                       </div>
                     </div>
                   </div>
                 )}
               />
-
-              {selectedPatient && (
-                <div className="animate-fade-in" style={{
-                  marginTop: '2rem', padding: '2rem', borderRadius: '16px',
-                  background: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)',
-                  color: 'white', position: 'relative', overflow: 'hidden',
-                  boxShadow: '0 10px 25px -5px rgba(13, 148, 136, 0.3)'
-                }}>
-                  <div style={{ position: 'absolute', top: '-10%', right: '-5%', opacity: 0.1, transform: 'rotate(15deg)' }}>
-                    <ShieldCheck size={160} />
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 1 }}>
-                    <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-                      <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'white', color: 'var(--primary)', border: '4px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.75rem', fontWeight: 900 }}>
-                        {selectedPatient.name[0]}
-                      </div>
-                      <div>
-                        <h4 style={{ fontSize: '1.25rem', fontWeight: 900, margin: 0, letterSpacing: '-0.02em' }}>{selectedPatient.name}</h4>
-                        <p style={{ fontSize: '0.85rem', color: '#ccfbf1', margin: '0.2rem 0 0', fontWeight: 600 }}>Clinical ID: <span style={{ color: 'white', fontWeight: 800 }}>{selectedPatient.patientId}</span></p>
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#99f6e4', textTransform: 'uppercase', marginBottom: '0.3rem', letterSpacing: '0.05em' }}>Contact Number</p>
-                      <p style={{ fontWeight: 800, fontSize: '1.1rem', margin: 0 }}>{selectedPatient.phone}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* 2. Ledger - Inline Clinical Sections */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-
-              {/* Clinical Procedures Section */}
-              <div style={{ background: 'white', borderRadius: '24px', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border-subtle)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1.25rem 2rem', background: 'rgba(15, 118, 110, 0.03)', borderBottom: '1px solid var(--border-subtle)' }}>
-                  <ShieldCheck size={20} style={{ color: 'var(--primary)' }} />
-                  <h3 style={{ fontSize: '0.9rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.05em', margin: 0 }}>CLINICAL PROCEDURES</h3>
-                </div>
-
-                <div style={{ padding: '2rem' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '2.5px solid var(--text-main)' }}>
-                        <th style={{ textAlign: 'left', padding: '0.8rem', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Procedure Name</th>
-                        <th style={{ textAlign: 'left', padding: '0.8rem', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Specification</th>
-                        <th style={{ textAlign: 'right', padding: '0.8rem', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-muted)', width: '180px' }}>Fee (₹)</th>
-                        <th style={{ width: '50px' }}></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {formData.serviceItems.map((item, idx) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '1rem 0.8rem', position: 'relative' }}>
-                            <input
-                              required type="text" className="input-premium" placeholder="Type to search service..."
-                              style={{ fontSize: '0.9rem', background: '#f8fafc' }}
-                              value={item.name || ''}
-                              onFocus={() => { setActiveSearchRow(999 + idx); setItemSearch(''); }}
-                              onChange={(e) => {
-                                const newItems = [...formData.serviceItems];
-                                newItems[idx].name = e.target.value;
-                                setFormData({ ...formData, serviceItems: newItems });
-                                setItemSearch(e.target.value);
-                              }}
-                            />
-                            {activeSearchRow === (999 + idx) && (
-                              <div className="glass-premium animate-fade-in" style={{
-                                position: 'absolute', top: '100%', left: '0.8rem', right: '0.8rem', zIndex: 1000,
-                                borderRadius: '16px', maxHeight: '300px', overflowY: 'auto',
-                                boxShadow: '0 20px 40px rgba(0,0,0,0.15)', border: '1px solid var(--border-subtle)',
-                                background: 'white', marginTop: '8px', padding: '0.5rem'
-                              }}>
-                                {services.filter(s => !itemSearch || s.name.toLowerCase().includes(itemSearch.toLowerCase())).map(s => (
-                                  <div key={s._id} onClick={() => {
-                                    const newItems = [...formData.serviceItems];
-                                    newItems[idx] = { name: s.name, price: s.price, serviceId: s._id, description: '' };
-                                    setFormData({ ...formData, serviceItems: newItems });
-                                    setActiveSearchRow(null);
-                                  }} className="table-row-hover" style={{ padding: '1rem', borderRadius: '10px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                    <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>{s.name}</span>
-                                    <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--primary)', background: 'rgba(15, 118, 110, 0.05)', padding: '4px 10px', borderRadius: '6px' }}>₹{s.price}</span>
-                                  </div>
-                                ))}
-                                {services.filter(s => !itemSearch || s.name.toLowerCase().includes(itemSearch.toLowerCase())).length === 0 && (
-                                  <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>No matching procedures found</div>
-                                )}
-                              </div>
-                            )}
-                          </td>
-                          <td style={{ padding: '1rem 0.8rem' }}>
-                            <input type="text" className="input-premium" placeholder="e.g. Left Knee..."
-                              style={{ fontSize: '0.85rem' }} value={item.description || ''} onChange={(e) => {
-                                const newItems = [...formData.serviceItems];
-                                newItems[idx].description = e.target.value;
-                                setFormData({ ...formData, serviceItems: newItems });
-                              }} />
-                          </td>
-                          <td style={{ padding: '1rem 0.8rem' }}>
-                            <input required type="number" className="input-premium" style={{ textAlign: 'right', fontWeight: 800 }} value={item.price ?? 0} onChange={(e) => {
-                              const newItems = [...formData.serviceItems];
-                              newItems[idx].price = e.target.value;
-                              setFormData({ ...formData, serviceItems: newItems });
-                            }} />
-                          </td>
-                          <td style={{ padding: '1rem 0.8rem', textAlign: 'right' }}>
-                            {formData.serviceItems.length > 1 && (
-                              <button type="button" onClick={() => setFormData({ ...formData, serviceItems: formData.serviceItems.filter((_, i) => i !== idx) })} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>
-                                <Trash2 size={18} />
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <button type="button" onClick={() => setFormData({ ...formData, serviceItems: [...formData.serviceItems, { name: '', price: 0, serviceId: '', description: '' }] })} style={{ marginTop: '1.25rem', color: 'var(--primary)', fontWeight: 800, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', cursor: 'pointer' }}>
-                    <Plus size={14} /> ADD ANOTHER PROCEDURE
-                  </button>
-                </div>
+            {selectedPatient && (
+              <div className="animate-fade-in" style={{
+                marginTop: '1.5rem', padding: '1.5rem 2rem', borderRadius: '16px',
+                background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+              }}>
+                 <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                   <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'white', color: 'var(--primary)', border: '3px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 900 }}>
+                     {selectedPatient.name[0]}
+                   </div>
+                   <div>
+                     <h4 style={{ fontSize: '1.15rem', fontWeight: 900, margin: 0, color: '#0f172a' }}>{selectedPatient.name}</h4>
+                     <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0.2rem 0 0', fontWeight: 700 }}>Profile ID: <span style={{ color: 'var(--primary)', fontWeight: 900 }}>#{selectedPatient.patientId}</span></p>
+                   </div>
+                 </div>
+                 <div style={{ textAlign: 'right' }}>
+                   <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.2rem', letterSpacing: '0.05em' }}>Contact</p>
+                   <p style={{ fontWeight: 900, fontSize: '1rem', color: '#0f172a', margin: 0 }}>{selectedPatient.phone}</p>
+                 </div>
               </div>
+            )}
+          </div>
 
-              {/* Medical Add-ons Section */}
-              <div style={{ background: 'white', borderRadius: '24px', boxShadow: 'var(--shadow-lg)', border: '1px solid #fce7f3' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1.25rem 2rem', background: 'rgba(236, 72, 153, 0.03)', borderBottom: '1px solid #fce7f3' }}>
-                  <Plus size={20} style={{ color: '#ec4899' }} />
-                  <h3 style={{ fontSize: '0.9rem', fontWeight: 900, color: '#ec4899', letterSpacing: '0.05em', margin: 0 }}>MEDICAL ADD-ONS (INVENTORY)</h3>
-                </div>
-
-                <div style={{ padding: '2rem' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '2.5px solid #ec4899' }}>
-                        <th style={{ textAlign: 'left', padding: '0.8rem', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Inventory Asset</th>
-                        <th style={{ textAlign: 'left', padding: '0.8rem', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Specification</th>
-                        <th style={{ textAlign: 'center', padding: '0.8rem', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-muted)', width: '80px' }}>Qty</th>
-                        <th style={{ textAlign: 'right', padding: '0.8rem', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-muted)', width: '140px' }}>Price (₹)</th>
-                        <th style={{ width: '50px' }}></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {formData.inventoryItems.map((item, idx) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '1rem 0.8rem', position: 'relative' }}>
-                            <input
-                              required type="text" className="input-premium" placeholder="Type to search item..."
-                              style={{ fontSize: '0.9rem', background: '#fdf2f8' }}
-                              value={item.name || ''}
-                              onFocus={() => { setActiveSearchRow(800 + idx); setItemSearch(''); }}
-                              onChange={(e) => {
-                                const newItems = [...formData.inventoryItems];
-                                newItems[idx].name = e.target.value;
-                                setFormData({ ...formData, inventoryItems: newItems });
-                                setItemSearch(e.target.value);
-                              }}
-                            />
-                            {activeSearchRow === (800 + idx) && (
-                              <div className="glass-premium animate-fade-in" style={{
-                                position: 'absolute', top: '100%', left: '0.8rem', right: '0.8rem', zIndex: 1000,
-                                borderRadius: '16px', maxHeight: '300px', overflowY: 'auto',
-                                boxShadow: '0 20px 40px rgba(0,0,0,0.15)', border: '1px solid #fce7f3',
-                                background: 'white', marginTop: '8px', padding: '0.5rem'
-                              }}>
-                                {inventory.filter(i => !itemSearch || i.name.toLowerCase().includes(itemSearch.toLowerCase())).map(i => (
-                                  <div key={i._id} onClick={() => {
-                                    if (i.quantity <= 0) return;
-                                    const newItems = [...formData.inventoryItems];
-                                    newItems[idx] = { name: i.name, quantity: 1, price: i.salePrice || i.pricePerUnit || 0, inventoryId: i._id, stock: i.quantity };
-                                    setFormData({ ...formData, inventoryItems: newItems });
-                                    setActiveSearchRow(null);
-                                  }} className="table-row-hover" style={{ padding: '1rem', borderRadius: '10px', cursor: i.quantity > 0 ? 'pointer' : 'not-allowed', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                    <div>
-                                      <p style={{ fontWeight: 800, fontSize: '0.95rem', margin: 0 }}>{i.name}</p>
-                                      <p style={{ fontSize: '0.75rem', color: i.quantity <= 5 ? '#ef4444' : 'var(--text-muted)', fontWeight: 800, margin: 0 }}>Stock: {i.quantity}</p>
-                                    </div>
-                                    <span style={{ fontWeight: 900, color: '#ec4899', fontSize: '0.85rem', background: 'rgba(236, 72, 153, 0.05)', padding: '4px 10px', borderRadius: '6px' }}>₹{i.salePrice || i.pricePerUnit}</span>
-                                  </div>
-                                ))}
-                                {inventory.filter(i => !itemSearch || i.name.toLowerCase().includes(itemSearch.toLowerCase())).length === 0 && (
-                                  <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>No matching inventory items found</div>
-                                )}
-                              </div>
-                            )}
-                          </td>
-                          <td style={{ padding: '1rem 0.8rem' }}>
-                            <input type="text" className="input-premium" placeholder="Batch/Exp..."
-                              style={{ fontSize: '0.85rem' }} value={item.description || ''} onChange={(e) => {
-                                const newItems = [...formData.inventoryItems];
-                                newItems[idx].description = e.target.value;
-                                setFormData({ ...formData, inventoryItems: newItems });
-                              }} />
-                          </td>
-                          <td style={{ padding: '1rem 0.8rem' }}>
-                            <input required type="number" className="input-premium" style={{ textAlign: 'center', fontWeight: 800 }} value={item.quantity ?? 1} onChange={(e) => {
-                              const newItems = [...formData.inventoryItems];
-                              newItems[idx].quantity = Number(e.target.value);
-                              setFormData({ ...formData, inventoryItems: newItems });
-                            }} />
-                          </td>
-                          <td style={{ padding: '1rem 0.8rem' }}>
-                            <input required type="number" className="input-premium" style={{ textAlign: 'right', fontWeight: 800 }} value={item.price ?? 0} onChange={(e) => {
-                              const newItems = [...formData.inventoryItems];
-                              newItems[idx].price = Number(e.target.value);
-                              setFormData({ ...formData, inventoryItems: newItems });
-                            }} />
-                          </td>
-                          <td style={{ padding: '1rem 0.8rem', textAlign: 'right' }}>
-                            <button type="button" onClick={() => setFormData({ ...formData, inventoryItems: formData.inventoryItems.filter((_, i) => i !== idx) })} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>
-                              <Trash2 size={18} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <button type="button" onClick={() => setFormData({ ...formData, inventoryItems: [...formData.inventoryItems, { name: '', quantity: 1, price: 0, inventoryId: '', stock: 0, description: '' }] })} style={{ marginTop: '1.25rem', color: '#ec4899', fontWeight: 800, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', cursor: 'pointer' }}>
-                    <Plus size={14} /> ADD ANOTHER ITEM
-                  </button>
-                </div>
+          {/* 2. 🧾 Clinical Ledger Items */}
+          <div style={{ padding: '3.5rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
+              <div style={{ width: '48px', height: '48px', background: 'white', color: '#0f172a', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ShieldCheck size={24} />
               </div>
-
+              <div>
+                <h3 style={{ fontSize: '1.35rem', fontWeight: 900, letterSpacing: '-0.02em', margin: 0, color: '#0f172a' }}>Clinical Ledger</h3>
+                <p style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginTop: '0.2rem' }}>Log clinical procedures and required medical inventory</p>
+              </div>
             </div>
 
-            {/* 3. Remarks Card */}
-            <div style={{ background: 'white', borderRadius: '24px', padding: '2rem', boxShadow: 'var(--shadow-lg)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1.25rem' }}>
-                <MessageSquare size={18} style={{ color: 'var(--primary)' }} />
-                <h4 style={{ fontWeight: 850, fontSize: '1.1rem', margin: 0 }}>Case Remarks</h4>
+            <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+              {/* Procedures Table */}
+              <div style={{ padding: '1rem 1.5rem', background: '#0f172a', color: 'white', display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                 <p style={{ fontWeight: 800, fontSize: '0.8rem', letterSpacing: '0.05em', margin: 0, textTransform: 'uppercase' }}>Clinical Procedures</p>
               </div>
-              <textarea
-                className="textarea-premium"
-                placeholder="Enter clinical notes or specialized instructions..."
-                style={{ width: '100%', minHeight: '120px', borderRadius: '12px' }}
-                value={formData.remarks || ''}
-                onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-              />
+              <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px dashed #cbd5e1' }}>
+                    <th style={{ textAlign: 'left', padding: '1.25rem 1.5rem', fontSize: '0.7rem', fontWeight: 950, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em' }}>Procedure Description</th>
+                    <th style={{ textAlign: 'left', padding: '1.25rem 1.5rem', fontSize: '0.7rem', fontWeight: 950, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em' }}>Clinical Spec</th>
+                    <th style={{ textAlign: 'right', padding: '1.25rem 1.5rem', fontSize: '0.7rem', fontWeight: 950, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em', width: '200px' }}>Fee (₹)</th>
+                    <th style={{ width: '60px' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {formData.serviceItems.map((item, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '1rem 1.5rem', position: 'relative' }}>
+                        <input required type="text" className="input-premium" placeholder="Tap to select procedure..."
+                          style={{ fontSize: '0.9rem', background: '#f8fafc', borderColor: '#e2e8f0' }}
+                          value={item.name || ''} onFocus={() => { setActiveSearchRow(999 + idx); setItemSearch(''); }}
+                          onChange={(e) => {
+                            const newItems = [...formData.serviceItems]; newItems[idx].name = e.target.value;
+                            setFormData({ ...formData, serviceItems: newItems }); setItemSearch(e.target.value);
+                          }}
+                        />
+                        {activeSearchRow === (999 + idx) && (
+                          <div className="glass-premium animate-fade-in" style={{
+                            position: 'absolute', top: '100%', left: '1.5rem', right: '0', zIndex: 1000,
+                            borderRadius: '16px', maxHeight: '300px', overflowY: 'auto',
+                            boxShadow: '0 20px 40px rgba(0,0,0,0.15)', border: '1px solid var(--border-subtle)',
+                            background: 'white', marginTop: '8px', padding: '0.5rem'
+                          }}>
+                            {services.filter(s => !itemSearch || s.name.toLowerCase().includes(itemSearch.toLowerCase())).map(s => (
+                              <div key={s._id} onClick={() => {
+                                const newItems = [...formData.serviceItems]; newItems[idx] = { name: s.name, price: s.price, serviceId: s._id, description: '' };
+                                setFormData({ ...formData, serviceItems: newItems }); setActiveSearchRow(null);
+                              }} className="table-row-hover" style={{ padding: '1rem', borderRadius: '10px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>{s.name}</span>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--primary)', background: 'rgba(15, 118, 110, 0.05)', padding: '4px 10px', borderRadius: '6px' }}>₹{s.price}</span>
+                              </div>
+                            ))}
+                            {services.filter(s => !itemSearch || s.name.toLowerCase().includes(itemSearch.toLowerCase())).length === 0 && (
+                              <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>No matching procedures found</div>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '1rem 1.5rem' }}>
+                        <input type="text" className="input-premium" placeholder="e.g. Left Knee..." style={{ fontSize: '0.9rem', background: '#f8fafc', borderColor: '#e2e8f0' }} value={item.description || ''} onChange={(e) => {
+                          const newItems = [...formData.serviceItems]; newItems[idx].description = e.target.value; setFormData({ ...formData, serviceItems: newItems });
+                        }} />
+                      </td>
+                      <td style={{ padding: '1rem 1.5rem' }}>
+                        <input required type="number" className="input-premium" style={{ textAlign: 'right', fontWeight: 800, background: '#f0fdfa', borderColor: '#ccfbf1', color: 'var(--primary)' }} value={item.price ?? 0} onChange={(e) => {
+                          const newItems = [...formData.serviceItems]; newItems[idx].price = e.target.value; setFormData({ ...formData, serviceItems: newItems });
+                        }} />
+                      </td>
+                      <td style={{ padding: '1rem 0', textAlign: 'center' }}>
+                        {formData.serviceItems.length > 1 && (
+                          <button type="button" onClick={() => setFormData({ ...formData, serviceItems: formData.serviceItems.filter((_, i) => i !== idx) })} style={{ color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer' }}>
+                            <Trash2 size={20} />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: 'white' }}>
+                 <button type="button" onClick={() => setFormData({ ...formData, serviceItems: [...formData.serviceItems, { name: '', price: 0, serviceId: '', description: '' }] })} style={{ color: 'var(--primary)', fontWeight: 900, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(15, 118, 110, 0.08)', padding: '0.75rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', letterSpacing: '0.05em' }}>
+                   <Plus size={16} /> ADD ANOTHER PROCEDURE
+                 </button>
+              </div>
+
+              {/* Add-ons Separator */}
+              <div style={{ height: '8px', background: '#f1f5f9' }}></div>
+
+              <div style={{ padding: '1rem 1.5rem', background: '#fdf2f8', color: '#be185d', display: 'flex', alignItems: 'center', gap: '0.8rem', borderTop: '1px solid #fce7f3', borderBottom: '1px solid #fce7f3' }}>
+                 <p style={{ fontWeight: 800, fontSize: '0.8rem', letterSpacing: '0.05em', margin: 0, textTransform: 'uppercase' }}>Medical Inventory Add-ons</p>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px dashed #cbd5e1' }}>
+                    <th style={{ textAlign: 'left', padding: '1.25rem 1.5rem', fontSize: '0.7rem', fontWeight: 950, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em' }}>Inventory Item</th>
+                    <th style={{ textAlign: 'left', padding: '1.25rem 1.5rem', fontSize: '0.7rem', fontWeight: 950, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em' }}>Detail</th>
+                    <th style={{ textAlign: 'center', padding: '1.25rem 1.5rem', fontSize: '0.7rem', fontWeight: 950, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em', width: '120px' }}>Quantity</th>
+                    <th style={{ textAlign: 'right', padding: '1.25rem 1.5rem', fontSize: '0.7rem', fontWeight: 950, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em', width: '180px' }}>Price (₹)</th>
+                    <th style={{ width: '60px' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {formData.inventoryItems.map((item, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '1rem 1.5rem', position: 'relative' }}>
+                        <input required type="text" className="input-premium" placeholder="Tap to select item..."
+                          style={{ fontSize: '0.9rem', background: '#f8fafc', borderColor: '#e2e8f0' }}
+                          value={item.name || ''} onFocus={() => { setActiveSearchRow(800 + idx); setItemSearch(''); }}
+                          onChange={(e) => {
+                            const newItems = [...formData.inventoryItems]; newItems[idx].name = e.target.value;
+                            setFormData({ ...formData, inventoryItems: newItems }); setItemSearch(e.target.value);
+                          }}
+                        />
+                        {activeSearchRow === (800 + idx) && (
+                          <div className="glass-premium animate-fade-in" style={{
+                            position: 'absolute', top: '100%', left: '1.5rem', right: '0', zIndex: 1000,
+                            borderRadius: '16px', maxHeight: '300px', overflowY: 'auto',
+                            boxShadow: '0 20px 40px rgba(0,0,0,0.15)', border: '1px solid #fce7f3',
+                            background: 'white', marginTop: '8px', padding: '0.5rem'
+                          }}>
+                            {inventory.filter(i => !itemSearch || i.name.toLowerCase().includes(itemSearch.toLowerCase())).map(i => (
+                              <div key={i._id} onClick={() => {
+                                if (i.quantity <= 0) return;
+                                const newItems = [...formData.inventoryItems]; newItems[idx] = { name: i.name, quantity: 1, price: i.salePrice || i.pricePerUnit || 0, inventoryId: i._id, stock: i.quantity };
+                                setFormData({ ...formData, inventoryItems: newItems }); setActiveSearchRow(null);
+                              }} className="table-row-hover" style={{ padding: '1rem', borderRadius: '10px', cursor: i.quantity > 0 ? 'pointer' : 'not-allowed', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                <div>
+                                  <p style={{ fontWeight: 800, fontSize: '0.95rem', margin: 0 }}>{i.name}</p>
+                                  <p style={{ fontSize: '0.75rem', color: i.quantity <= 5 ? '#ef4444' : '#64748b', fontWeight: 800, margin: 0 }}>Stock: {i.quantity}</p>
+                                </div>
+                                <span style={{ fontWeight: 900, color: '#ec4899', fontSize: '0.85rem', background: 'rgba(236, 72, 153, 0.05)', padding: '4px 10px', borderRadius: '6px' }}>₹{i.salePrice || i.pricePerUnit}</span>
+                              </div>
+                            ))}
+                            {inventory.filter(i => !itemSearch || i.name.toLowerCase().includes(itemSearch.toLowerCase())).length === 0 && (
+                              <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>No matching inventory records found</div>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '1rem 1.5rem' }}>
+                        <input type="text" className="input-premium" placeholder="Batch/Exp..." style={{ fontSize: '0.9rem', background: '#f8fafc', borderColor: '#e2e8f0' }} value={item.description || ''} onChange={(e) => {
+                          const newItems = [...formData.inventoryItems]; newItems[idx].description = e.target.value; setFormData({ ...formData, inventoryItems: newItems });
+                        }} />
+                      </td>
+                      <td style={{ padding: '1rem 1.5rem' }}>
+                        <input required type="number" className="input-premium" style={{ textAlign: 'center', fontWeight: 800, background: '#f8fafc', borderColor: '#e2e8f0' }} value={item.quantity ?? 1} onChange={(e) => {
+                          const newItems = [...formData.inventoryItems]; newItems[idx].quantity = Number(e.target.value); setFormData({ ...formData, inventoryItems: newItems });
+                        }} />
+                      </td>
+                      <td style={{ padding: '1rem 1.5rem' }}>
+                        <input required type="number" className="input-premium" style={{ textAlign: 'right', fontWeight: 800, background: '#fdf2f8', borderColor: '#fbcfe8', color: '#be185d' }} value={item.price ?? 0} onChange={(e) => {
+                          const newItems = [...formData.inventoryItems]; newItems[idx].price = Number(e.target.value); setFormData({ ...formData, inventoryItems: newItems });
+                        }} />
+                      </td>
+                      <td style={{ padding: '1rem 0', textAlign: 'center' }}>
+                        <button type="button" onClick={() => setFormData({ ...formData, inventoryItems: formData.inventoryItems.filter((_, i) => i !== idx) })} style={{ color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer' }}>
+                          <Trash2 size={20} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: 'white' }}>
+                 <button type="button" onClick={() => setFormData({ ...formData, inventoryItems: [...formData.inventoryItems, { name: '', quantity: 1, price: 0, inventoryId: '', stock: 0, description: '' }] })} style={{ color: '#ec4899', fontWeight: 900, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(236, 72, 153, 0.08)', padding: '0.75rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', letterSpacing: '0.05em' }}>
+                   <Plus size={16} /> ADD MEDICAL ADD-ON
+                 </button>
+              </div>
             </div>
           </div>
 
-          {/* 🧾 Live Preview Sidebar */}
-          <div style={{ position: 'sticky', top: '2rem' }}>
-            <div style={{ background: '#0f172a', borderRadius: '24px', padding: '2rem', color: 'white', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem', paddingBottom: '1.25rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                <Receipt size={20} style={{ color: 'var(--primary-light)' }} />
+          {/* 3. 💳 Payment Details & Generation */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr minmax(380px, 420px)' }}>
+             {/* Left Inputs block */}
+             <div style={{ padding: '3.5rem', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem' }}>
+                  <Receipt size={20} style={{ color: '#0f172a' }} />
+                  <h4 style={{ fontWeight: 900, fontSize: '1.15rem', color: '#0f172a', margin: 0 }}>Settlement Terms</h4>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Method of Tx</label>
+                    <select className="input-premium" style={{ background: '#f8fafc', borderColor: '#e2e8f0', fontWeight: 800 }} value={formData.method} onChange={(e) => setFormData({ ...formData, method: e.target.value })}>
+                      <option value="UPI">UPI Payment</option>
+                      <option value="Cash">Cash Transaction</option>
+                      <option value="Card">Bank Card</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Current Status</label>
+                    <select className="input-premium" style={{ background: '#f8fafc', borderColor: '#e2e8f0', fontWeight: 800, color: formData.status === 'Paid' ? '#059669' : (formData.status === 'Unpaid' ? '#e11d48' : '#ea580c') }} value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}>
+                      <option value="Unpaid">Unpaid / Due</option>
+                      <option value="Partially Paid">Partially Paid</option>
+                      <option value="Paid">Fully Paid (Settled)</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 850, margin: 0 }}>Draft <span style={{ color: 'var(--primary-light)' }}>Summary</span></h3>
-                  <p style={{ fontSize: '0.55rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase' }}>Live Ledger</p>
-                </div>
-              </div>
-
-              {previousDebt > 0 && (
-                <div style={{ padding: '1rem', background: 'rgba(251, 146, 60, 0.1)', borderRadius: '16px', border: '1px solid rgba(251, 146, 60, 0.2)', marginBottom: '2rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                            <p style={{ fontSize: '0.6rem', fontWeight: 900, color: '#fb923c', textTransform: 'uppercase', marginBottom: '0.2rem' }}>Previous Outstanding</p>
-                            <p style={{ fontSize: '1.25rem', fontWeight: 950, color: '#fb923c', margin: 0 }}>₹{previousDebt.toLocaleString()}</p>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                            <p style={{ fontSize: '0.55rem', fontWeight: 700, color: '#94a3b8', lineHeight: 1.4 }}>Unpaid dues from<br/>prior sessions</p>
-                        </div>
-                    </div>
-                </div>
-              )}
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#94a3b8', fontWeight: 600 }}>
-                  <span>Clinical Fees</span>
-                  <span style={{ color: 'white' }}>₹{totalServices.toLocaleString()}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#94a3b8', fontWeight: 600 }}>
-                  <span>Add-on Total</span>
-                  <span style={{ color: 'white' }}>₹{totalInventory.toLocaleString()}</span>
-                </div>
-                <div style={{ marginBottom: '1.5rem', marginTop: '0.5rem' }}>
-                  <label style={{ fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--primary-light)', display: 'block', marginBottom: '0.5rem' }}>Discount (₹)</label>
-                  <input
-                    type="number" className="input-premium"
-                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontWeight: 800, fontSize: '0.9rem', borderRadius: '10px' }}
-                    value={formData.discount ?? 0} placeholder="0" onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Clinical Remarks / Case Notes</label>
+                  <textarea
+                    className="input-premium"
+                    placeholder="Enter clinical notes or specialized instructions to attach to this invoice body..."
+                    style={{ width: '100%', minHeight: '100px', resize: 'vertical', background: '#f8fafc', borderColor: '#e2e8f0', lineHeight: 1.6 }}
+                    value={formData.remarks || ''}
+                    onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
                   />
                 </div>
-
-                <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1.5rem', marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  <div>
-                    <label style={{ fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--primary-light)', display: 'block', marginBottom: '0.5rem' }}>Amount Paid Now (₹)</label>
-                    <input
-                      type="number" className="input-premium"
-                      style={{ background: 'rgba(255,255,255,0.08)', border: '1.5px solid var(--primary)', color: 'white', fontWeight: 800, fontSize: '1.1rem', borderRadius: '10px', boxShadow: '0 0 15px rgba(13, 148, 136, 0.2)' }}
-                      value={formData.paidAmount} placeholder="0" onChange={(e) => setFormData({ ...formData, paidAmount: Number(e.target.value) })}
-                    />
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <div>
-                      <label style={{ fontSize: '0.55rem', fontWeight: 900, textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.4rem' }}>Method</label>
-                      <select 
-                        style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontWeight: 700, fontSize: '0.75rem', padding: '0.5rem', borderRadius: '8px' }}
-                        value={formData.method}
-                        onChange={(e) => setFormData({...formData, method: e.target.value})}
-                      >
-                        <option value="UPI" style={{ color: '#000000' }}>UPI</option>
-                        <option value="Cash" style={{ color: '#000000' }}>Cash</option>
-                        <option value="Card" style={{ color: '#000000' }}>Card</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '0.55rem', fontWeight: 900, textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.4rem' }}>Status</label>
-                      <select 
-                        style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontWeight: 700, fontSize: '0.75rem', padding: '0.5rem', borderRadius: '8px' }}
-                        value={formData.status}
-                        onChange={(e) => setFormData({...formData, status: e.target.value})}
-                      >
-                        <option value="Unpaid" style={{ color: '#000000' }}>Unpaid</option>
-                        <option value="Partially Paid" style={{ color: '#000000' }}>Partial</option>
-                        <option value="Paid" style={{ color: '#000000' }}>Fully Paid</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label style={{ fontSize: '0.55rem', fontWeight: 900, textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.4rem' }}>Payment Note</label>
-                    <input
-                      type="text" className="input-premium"
-                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontWeight: 600, fontSize: '0.7rem', borderRadius: '8px' }}
-                      value={formData.paymentNote} placeholder="e.g. Partial / Advance" onChange={(e) => setFormData({ ...formData, paymentNote: e.target.value })}
-                    />
-                  </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Short Payment Note</label>
+                  <input
+                     type="text" className="input-premium" placeholder="e.g. Partial advance received by Bank Transfer"
+                     style={{ background: '#f8fafc', borderColor: '#e2e8f0' }}
+                     value={formData.paymentNote} onChange={(e) => setFormData({ ...formData, paymentNote: e.target.value })}
+                  />
                 </div>
-              </div>
+             </div>
 
-              <div style={{ borderTop: '2px dashed rgba(255,255,255,0.1)', paddingTop: '1.5rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <p style={{ fontSize: '0.6rem', fontWeight: 950, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>Gross Total</p>
-                      <p style={{ fontSize: '1.75rem', fontWeight: 950, color: 'white', margin: 0 }}>₹{(formData.amount + Number(formData.discount || 0)).toLocaleString()}</p>
-                    </div>
-                    {formData.discount > 0 && (
-                      <div style={{ textAlign: 'right' }}>
-                        <p style={{ fontSize: '0.6rem', fontWeight: 950, color: '#ef4444', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>Savings Applied</p>
-                        <p style={{ fontSize: '1.25rem', fontWeight: 950, color: '#ef4444', margin: 0 }}>- ₹{Number(formData.discount).toLocaleString()}</p>
-                      </div>
-                    )}
-                  </div>
+             {/* Right Summary Block */}
+             <div style={{ background: '#f8fafc', padding: '3.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <p style={{ fontSize: '0.7rem', fontWeight: 950, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1.5rem' }}>Dynamic Ledger Summary</p>
 
-                  <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '16px', border: '1.5px solid rgba(255,255,255,0.1)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                      <span style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary-light)', textTransform: 'uppercase' }}>Net Payable</span>
-                      <span style={{ fontSize: '1.5rem', fontWeight: 950, color: 'white' }}>₹{formData.amount.toLocaleString()}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(15, 148, 136, 0.15)', borderRadius: '10px' }}>
-                      <span style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary-light)' }}>AMOUNT COLLECTED</span>
-                      <span style={{ fontSize: '1.25rem', fontWeight: 950, color: 'white' }}>₹{formData.paidAmount.toLocaleString()}</span>
-                    </div>
+                {previousDebt > 0 && (
+                  <div style={{ borderLeft: '4px solid #f97316', padding: '1rem', background: 'white', borderRadius: '8px', borderRight: '1px solid #e2e8f0', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', marginBottom: '2rem' }}>
+                    <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#f97316', textTransform: 'uppercase', marginBottom: '0.25rem', letterSpacing: '0.05em' }}>Previous Unpaid Balance</p>
+                    <p style={{ fontSize: '1.2rem', fontWeight: 950, color: '#c2410c', margin: 0 }}>₹{previousDebt.toLocaleString()}</p>
                   </div>
+                )}
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem' }}>
-                    <p style={{ fontSize: '0.65rem', fontWeight: 950, color: (formData.amount - formData.paidAmount) > 0 ? '#fb923c' : '#2dd4bf', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                      {(formData.amount - formData.paidAmount) < 0 ? 'Advanced / Credit' : 'Final Balance Due'}
-                    </p>
-                    <p style={{ fontSize: '1.75rem', fontWeight: 950, color: (formData.amount - formData.paidAmount) > 0 ? '#fb923c' : '#2dd4bf', margin: 0 }}>
-                      ₹{Math.abs(formData.amount - formData.paidAmount).toLocaleString()}
-                    </p>
-                  </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem', fontSize: '0.9rem', color: '#64748b', fontWeight: 700 }}>
+                  <span>Gross Session Total</span>
+                  <span style={{ color: '#0f172a', fontWeight: 900 }}>₹{(formData.amount + Number(formData.discount || 0)).toLocaleString()}</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                   <label style={{ fontSize: '0.9rem', fontWeight: 700, color: '#64748b' }}>Custom Discount</label>
+                   <div style={{ position: 'relative', width: '120px' }}>
+                     <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 900, color: '#ef4444' }}>-₹</span>
+                     <input type="number" className="input-premium" style={{ background: 'white', borderColor: '#e2e8f0', color: '#ef4444', fontWeight: 900, textAlign: 'right', paddingLeft: '2.5rem' }} value={formData.discount ?? 0} placeholder="0" onChange={(e) => setFormData({ ...formData, discount: e.target.value })} />
+                   </div>
+                </div>
+
+                <div style={{ borderTop: '2px dashed #cbd5e1', margin: '0 0 2rem 0' }}></div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                  <span style={{ fontSize: '0.95rem', fontWeight: 900, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Net Payable</span>
+                  <span style={{ fontSize: '2rem', fontWeight: 950, color: 'var(--primary)', letterSpacing: '-0.02em' }}>₹{formData.amount.toLocaleString()}</span>
+                </div>
+
+                <div style={{ padding: '1.5rem', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                   <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>Amount Collected Now</label>
+                   <div style={{ position: 'relative' }}>
+                     <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', fontSize: '1.25rem', fontWeight: 900, color: '#0f172a' }}>₹</span>
+                     <input type="number" className="input-premium" style={{ fontSize: '1.5rem', fontWeight: 950, height: '64px', paddingLeft: '2.5rem', color: '#0f172a', border: '2px solid #0f172a', background: '#f8fafc' }} value={formData.paidAmount} placeholder="0" onChange={(e) => setFormData({ ...formData, paidAmount: Number(e.target.value) })} />
+                   </div>
+
+                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0' }}>
+                     <span style={{ fontSize: '0.7rem', fontWeight: 900, color: (formData.amount - formData.paidAmount) > 0 ? '#ea580c' : '#059669', textTransform: 'uppercase' }}>
+                       {(formData.amount - formData.paidAmount) <= 0 ? 'Balance Clear' : 'Session Dues'}
+                     </span>
+                     <span style={{ fontSize: '1rem', fontWeight: 950, color: (formData.amount - formData.paidAmount) > 0 ? '#ea580c' : '#059669' }}>
+                       ₹{Math.max(0, formData.amount - formData.paidAmount).toLocaleString()}
+                     </span>
+                   </div>
                 </div>
 
                 <button
@@ -611,18 +531,17 @@ export default function GenerateInvoicePage() {
                   disabled={!formData.patientId || (totalServices === 0 && totalInventory === 0)}
                   onClick={() => { if (validateForm()) setIsPreview(true) }}
                   style={{
-                    width: '100%', marginTop: '2rem', padding: '1.1rem', borderRadius: '14px',
-                    background: 'linear-gradient(135deg, var(--primary) 0%, #0d9488 100%)', color: 'white', fontWeight: 950, fontSize: '1rem',
+                    width: '100%', marginTop: '3rem', padding: '1.25rem', borderRadius: '14px',
+                    background: '#0f172a', color: 'white', fontWeight: 900, fontSize: '1rem',
                     border: 'none', cursor: 'pointer', transition: 'all 0.3s ease',
-                    boxShadow: '0 15px 30px -5px rgba(13, 148, 136, 0.4)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
-                    letterSpacing: '0.02em'
+                    boxShadow: '0 15px 35px -5px rgba(15, 23, 42, 0.4)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem',
+                    letterSpacing: '0.05em', textTransform: 'uppercase'
                   }}
                 >
-                  <ShieldCheck size={20} /> Authorize Clinical Bill
+                  <ShieldCheck size={20} /> Preview Clinical Bill
                 </button>
-              </div>
-            </div>
+             </div>
           </div>
         </div>
       ) : (
@@ -707,7 +626,7 @@ export default function GenerateInvoicePage() {
                       <td style={{ padding: '1.25rem 0' }}>
                         <p style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem', margin: 0 }}>{item.name}</p>
                         {item.description && <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.2rem 0 0' }}>Spec: {item.description}</p>}
-                       
+
                         {item.quantity > 1 && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Qty: {item.quantity}</span>}
                       </td>
                       <td style={{ padding: '1.25rem 0', textAlign: 'right', fontWeight: 900, color: '#0f172a', verticalAlign: 'top' }}>₹{(item.price * item.quantity).toLocaleString()}</td>

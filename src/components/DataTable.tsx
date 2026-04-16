@@ -449,6 +449,7 @@ export default function DataTable<T extends { id: string }>({
                     key={idx} 
                     onClick={() => col.sortKey && handleSort(col.sortKey)}
                     style={{ 
+                      ...col.style, 
                       padding: '1.5rem 1.25rem', 
                       color: 'var(--text-muted)', 
                       fontWeight: 900, 
@@ -457,8 +458,7 @@ export default function DataTable<T extends { id: string }>({
                       letterSpacing: '0.12em',
                       cursor: col.sortKey ? 'pointer' : 'default',
                       userSelect: 'none',
-                      whiteSpace: 'nowrap',
-                      ...col.style 
+                      whiteSpace: 'nowrap'
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>

@@ -152,7 +152,7 @@ export default function UsersPage() {
   [users]);
 
   return (
-    <div className="users-container animate-fade-in" style={{ padding: '2rem 2.5rem' }}>
+    <div className="users-registry-container animate-fade-in" style={{ padding: '2rem 2.5rem' }}>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3.5rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
@@ -160,35 +160,32 @@ export default function UsersPage() {
             <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '0.1em' }}>IDENTITY & ACCESS</span>
           </div>
           <h1 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>
-            Specialists & <span className="gradient-text">Roles</span>
+            Specialist <span className="gradient-text">Registry</span>
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>
-            Manage system access, clinical roles, and administrative permissions.
+            Manage clinical specialist credentials, system access, and authorization matrices.
           </p>
         </div>
-
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <HasPermission permission="users:create">
-            <button
-              onClick={() => router.push('/users/add')}
-              className="glass-interactive"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.6rem',
-                background: 'var(--primary)',
-                color: 'white',
-                padding: '0.8rem 1.75rem',
-                borderRadius: 'var(--radius-md)',
-                fontWeight: 700,
-                fontSize: '0.85rem',
-                boxShadow: '0 10px 20px -5px rgba(15, 118, 110, 0.3)'
-              }}
-            >
-              <UserPlus size={18} /> Onboard Specialist
-            </button>
-          </HasPermission>
-        </div>
+        <HasPermission permission="users_create">
+          <button
+            onClick={() => router.push('/users/add')}
+            className="glass-interactive"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.6rem',
+              background: 'var(--primary)',
+              color: 'white',
+              padding: '0.8rem 1.75rem',
+              borderRadius: 'var(--radius-md)',
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              boxShadow: '0 10px 20px -5px rgba(15, 118, 110, 0.3)'
+            }}
+          >
+            <Plus size={18} /> Add Specialist
+          </button>
+        </HasPermission>
       </div>
 
       <DataTable

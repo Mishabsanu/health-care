@@ -119,14 +119,24 @@ export default function OnboardUserPage() {
   }
 
   return (
-    <div className="onboard-user-container animate-fade-in clinical-form-wide" style={{ paddingBottom: '5rem' }}>
-      <div style={{ marginBottom: '2.5rem' }}>
-        <button onClick={() => router.back()} style={{ marginBottom: '1rem', color: 'var(--primary)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, background: 'rgba(15,118,110,0.08)', padding: '0.5rem 1rem', borderRadius: 'var(--radius-sm)' }}>
-          <ArrowLeft size={16} /> Back to Personnel
+    <div className="onboard-user-container animate-fade-in clinical-form-wide" style={{ padding: '2rem 2.5rem', paddingBottom: '7rem' }}>
+      <div style={{ marginBottom: '3.5rem' }}>
+        <button
+          onClick={() => router.back()}
+          className="glass-interactive"
+          style={{ marginBottom: '1.5rem', color: 'var(--primary)', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800, background: 'rgba(15, 118, 110, 0.08)', padding: '0.5rem 1.25rem', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer' }}
+        >
+          <ArrowLeft size={16} /> Personnel Registry
         </button>
-        <h1 style={{ fontSize: '2.25rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Onboard <span className="gradient-text">Clinical Staff</span></h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: '0.5rem' }}>
-          Fields marked <span style={{ color: '#ef4444' }}>*</span> are required.
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+          <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--primary)' }} />
+          <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '0.1em' }}>IDENTITY & ACCESS</span>
+        </div>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>
+          Onboard <span className="gradient-text">Clinical Specialist</span>
+        </h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>
+          Initialize a new administrative and clinical profile within the central directory.
         </p>
       </div>
 

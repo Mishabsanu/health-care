@@ -10,6 +10,7 @@ import { Banknote, CheckCircle2, Printer, Wallet, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 
 interface Invoice {
   _id: string;
@@ -175,7 +176,7 @@ export default function BillingPage() {
     {
       header: 'BILL NO',
       key: 'id' as keyof Invoice,
-      style: { fontWeight: 700, color: 'var(--primary)', letterSpacing: '0.02em', fontFamily: 'monospace', fontSize: '0.85rem' }
+      style: { fontSize: '0.85rem' }
     },
     {
       header: 'PATIENT NAME',
@@ -249,7 +250,7 @@ export default function BillingPage() {
   }), [totalRecords, currentPage, pageSize]);
 
   return (
-    <div className="billing-container animate-fade-in" style={{ padding: '2rem' }}>
+    <div className="billing-container animate-fade-in" style={{ padding: '2rem 2.5rem' }}>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3.5rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
@@ -437,146 +438,156 @@ export default function BillingPage() {
         serverPagination={paginationConfig}
       />
 
-      {/* 💳 QUICK PAYMENT MODAL */}
-      {quickPayInvoice && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '2rem' }}>
-          <div className="card-premium animate-scale-up" style={{ width: '100%', maxWidth: '450px', padding: '2.5rem', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 40px 80px -20px rgba(0,0,0,0.5)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{ width: '45px', height: '45px', borderRadius: '12px', background: 'linear-gradient(135deg, #fb923c 0%, #ea580c 100%)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 16px rgba(234, 88, 12, 0.3)' }}>
-                  <Banknote size={22} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: 950, margin: 0 }}>Quick <span style={{ color: '#fb923c' }}>Settlement</span></h3>
-                  <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800 }}>Invoice: <span style={{ color: 'var(--primary)' }}>{quickPayInvoice.id}</span></p>
-                </div>
-              </div>
-              <button onClick={() => setQuickPayInvoice(null)} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#64748b', cursor: 'pointer', width: '30px', height: '30px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* 🏥 CLINICAL CONTEXT SUMMARY */}
-            <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '16px', border: '1px solid var(--border-subtle)', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+      {/* 💳 PREMIUM QUICK PAYMENT MODAL */}
+      {quickPayInvoice && typeof document !== 'undefined' && createPortal(
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.30)', backdropFilter: 'blur(4px)', zIndex: 1000, overflowY: 'auto', display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.3s ease-out' }}>
+          <div className="card-premium animate-scale-up" style={{ width: '100%', maxWidth: '580px', margin: '4rem auto', padding: '0', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.3)', boxShadow: '0 40px 80px -20px rgba(0,0,0,0.5)', borderRadius: '24px', background: '#ffffff', flexShrink: 0 }}>
+            
+            {/* Glossy Header */}
+            <div style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', padding: '2rem 2.5rem', borderBottom: '1px solid var(--border-subtle)', position: 'relative' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'linear-gradient(90deg, #f97316 0%, #fb923c 100%)' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <p style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.2rem' }}>PATIENT NAME</p>
-                  <p style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>{quickPayInvoice.patientId?.name || 'Unknown Patient'}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 16px rgba(234, 88, 12, 0.25)' }}>
+                    <Banknote size={24} strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '-0.03em', margin: 0, color: 'var(--text-main)' }}>Express <span style={{ color: '#f97316' }}>Settlement</span></h3>
+                    <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>REGISTRY: <span style={{ color: 'var(--primary)', fontWeight: 900 }}>{quickPayInvoice.id}</span></p>
+                  </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.2rem' }}>BILL DATE</p>
-                  <p style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>{new Date(quickPayInvoice.date).toLocaleDateString()}</p>
-                </div>
-              </div>
-
-              <div style={{ borderTop: '1px dashed var(--border-subtle)', paddingTop: '0.75rem' }}>
-                <p style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>ITEMIZED SUMMARY</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                  {quickPayInvoice.items?.slice(0, 3).map((item, idx) => (
-                    <span key={idx} style={{ background: 'white', border: '1px solid var(--border-subtle)', padding: '0.25rem 0.6rem', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 700, color: 'var(--primary)' }}>
-                      {item.name}
-                    </span>
-                  ))}
-                  {quickPayInvoice.items?.length > 3 && (
-                    <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', padding: '0.25rem' }}>
-                      + {quickPayInvoice.items.length - 3} more
-                    </span>
-                  )}
-                </div>
+                <button onClick={() => setQuickPayInvoice(null)} style={{ background: 'white', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)', cursor: 'pointer', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', transition: 'all 0.2s ease' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.1)'; e.currentTarget.style.color = '#ef4444'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.color = 'var(--text-muted)'; }}>
+                  <X size={18} strokeWidth={2.5} />
+                </button>
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
-                  <label style={{ fontSize: '0.65rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Payment Amount</label>
-                  <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#fb923c' }}>Due: ₹{quickPayInvoice.balanceAmount.toLocaleString()}</span>
+            <div style={{ padding: '2.5rem' }}>
+              {/* 🏥 CLINICAL CONTEXT SUMMARY CARDS */}
+              <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+                <div style={{ flex: 1, background: '#f8fafc', padding: '1rem 1.25rem', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
+                  <p style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.3rem' }}>PATIENT PROFILE</p>
+                  <p style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{quickPayInvoice.patientId?.name || 'Unknown Patient'}</p>
                 </div>
+                <div style={{ background: '#fff7ed', padding: '1rem 1.25rem', borderRadius: '16px', border: '1px solid #fed7aa', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#c2410c', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.3rem', textAlign: 'right' }}>PENDING DUE</p>
+                  <p style={{ fontSize: '1.1rem', fontWeight: 900, color: '#ea580c', margin: 0, textAlign: 'right' }}>₹{quickPayInvoice.balanceAmount.toLocaleString()}</p>
+                </div>
+              </div>
+
+              {/* DYNAMIC PAYMENT INPUT */}
+              <div style={{ marginBottom: '2rem' }}>
+                <label style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'flex', justifyContent: 'space-between', marginBottom: '0.8rem' }}>
+                  <span>Settlement Amount</span>
+                  <span style={{ color: 'var(--primary)' }}>Partial permitted</span>
+                </label>
                 <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 900, color: 'var(--primary)', fontSize: '1.25rem' }}>₹</span>
+                  <div style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', width: '32px', height: '32px', background: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', zIndex: 10 }}>
+                    <span style={{ fontWeight: 900, color: 'var(--primary)', fontSize: '1rem' }}>₹</span>
+                  </div>
                   <input
                     autoFocus
                     type="number"
-                    style={{ width: '100%', padding: '1rem 1rem 1rem 2.2rem', borderRadius: '14px', border: '2px solid var(--primary)', background: '#f0fdfa', fontSize: '1.5rem', fontWeight: 950, color: 'var(--text-main)', outline: 'none' }}
+                    style={{ width: '100%', padding: '1.25rem 1.25rem 1.25rem 4.5rem', borderRadius: '20px', border: '2px solid transparent', background: '#f0fdfa', fontSize: '1.6rem', fontWeight: 900, color: 'var(--primary)', outline: 'none', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}
+                    placeholder="0.00"
                     value={paymentData.amount}
                     onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })}
+                    onFocus={(e) => { e.target.style.borderColor = 'rgba(13, 148, 136, 0.3)'; e.target.style.background = '#e6fbf9'; e.target.style.boxShadow = '0 0 0 4px rgba(13, 148, 136, 0.1)'; }}
+                    onBlur={(e) => { e.target.style.borderColor = 'transparent'; e.target.style.background = '#f0fdfa'; e.target.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.02)'; }}
                   />
                 </div>
               </div>
 
-              <div>
-                <label style={{ fontSize: '0.65rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.6rem' }}>Payment Method</label>
+              {/* METHOD OF PAYMENT */}
+              <div style={{ marginBottom: '2.5rem' }}>
+                <label style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '0.8rem' }}>Tender Method</label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
-                  {['Cash', 'UPI', 'Card'].map(m => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setPaymentData({ ...paymentData, method: m })}
-                      style={{
-                        padding: '0.75rem',
-                        borderRadius: '10px',
-                        border: '2px solid',
-                        borderColor: paymentData.method === m ? 'var(--primary)' : 'var(--border-subtle)',
-                        background: paymentData.method === m ? '#f0fdfa' : 'white',
-                        color: paymentData.method === m ? 'var(--primary)' : 'var(--text-muted)',
-                        fontSize: '0.75rem',
-                        fontWeight: 800,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      {m.toUpperCase()}
-                    </button>
-                  ))}
+                  {['Cash', 'UPI', 'Card'].map(m => {
+                    const isActive = paymentData.method === m;
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setPaymentData({ ...paymentData, method: m })}
+                        style={{
+                          padding: '1rem 0.5rem',
+                          borderRadius: '16px',
+                          border: isActive ? '2px solid var(--primary)' : '2px solid var(--border-subtle)',
+                          background: isActive ? '#f0fdfa' : 'white',
+                          color: isActive ? 'var(--primary)' : 'var(--text-muted)',
+                          fontSize: '0.8rem',
+                          fontWeight: 900,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          boxShadow: isActive ? '0 4px 12px rgba(13, 148, 136, 0.1)' : 'none',
+                          transform: isActive ? 'scale(1.02)' : 'scale(1)'
+                        }}
+                      >
+                        {m.toUpperCase()}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* 📊 BALANCE FORECASTING */}
-              <div style={{ padding: '1rem 1.25rem', borderRadius: '12px', background: '#f8fafc', border: '1.5px solid var(--border-subtle)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)' }}>BALANCE AFTER PAYMENT</span>
-                  <span style={{
-                    fontSize: '1.1rem',
-                    fontWeight: 950,
-                    color: (quickPayInvoice.balanceAmount - Number(paymentData.amount)) > 0 ? '#fb923c' : '#10b981'
-                  }}>
-                    ₹{Math.max(0, quickPayInvoice.balanceAmount - Number(paymentData.amount)).toLocaleString()}
-                  </span>
+              {/* 📊 DYNAMIC BALANCE FORECASTING */}
+              <div style={{ padding: '1.25rem', borderRadius: '16px', background: 'linear-gradient(90deg, #f8fafc 0%, white 100%)', border: '1px solid var(--border-subtle)', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: (quickPayInvoice.balanceAmount - Number(paymentData.amount)) > 0 ? '#fb923c' : '#10b981' }} />
+                  <span style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.05em' }}>FORECAST BALANCE</span>
                 </div>
+                <span style={{
+                  fontSize: '1.3rem',
+                  fontWeight: 900,
+                  transition: 'color 0.3s ease',
+                  color: (quickPayInvoice.balanceAmount - Number(paymentData.amount)) > 0 ? '#ea580c' : '#059669'
+                }}>
+                  ₹{Math.max(0, quickPayInvoice.balanceAmount - Number(paymentData.amount)).toLocaleString()}
+                </span>
               </div>
 
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+              {/* ACTIONS */}
+              <div style={{ display: 'flex', gap: '1rem' }}>
                 <button
                   onClick={() => setQuickPayInvoice(null)}
-                  style={{ flex: 1, padding: '1.1rem', borderRadius: '14px', background: '#f8fafc', border: '1px solid var(--border-subtle)', fontWeight: 800, color: '#64748b', cursor: 'pointer' }}
+                  style={{ flex: 1, padding: '1.25rem', borderRadius: '16px', background: 'white', border: '2px solid var(--border-subtle)', fontWeight: 900, color: 'var(--text-muted)', fontSize: '0.85rem', letterSpacing: '0.05em', cursor: 'pointer', transition: 'all 0.2s ease' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = 'var(--text-main)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-muted)'; }}
                 >
-                  CANCEL
+                  ABORT
                 </button>
                 <button
                   onClick={handleQuickPayment}
                   disabled={submittingPayment}
                   style={{
                     flex: 2,
-                    padding: '1.1rem',
-                    borderRadius: '14px',
-                    background: 'var(--primary)',
+                    padding: '1.25rem',
+                    borderRadius: '16px',
+                    background: 'linear-gradient(135deg, var(--primary) 0%, #0f766e 100%)',
                     color: 'white',
-                    fontWeight: 950,
+                    fontWeight: 900,
+                    fontSize: '0.9rem',
+                    letterSpacing: '0.05em',
                     border: 'none',
                     cursor: 'pointer',
-                    boxShadow: '0 10px 25px -5px rgba(13, 148, 136, 0.4)',
+                    boxShadow: '0 10px 30px -5px rgba(13, 148, 136, 0.5)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '0.6rem'
+                    gap: '0.5rem',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transform: 'translateY(0)'
                   }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 15px 35px -5px rgba(13, 148, 136, 0.6)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 10px 30px -5px rgba(13, 148, 136, 0.5)'; }}
                 >
-                  {submittingPayment ? 'SAVING...' : <><CheckCircle2 size={18} /> CONFIRM</>}
+                  {submittingPayment ? 'AUTHORIZING...' : <><Wallet size={20} /> INITIATE SETTLEMENT</>}
                 </button>
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

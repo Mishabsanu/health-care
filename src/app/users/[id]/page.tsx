@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect, Activity } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
   ArrowLeft,
@@ -441,7 +441,7 @@ export default function UserDetailsPage() {
                     {data.status === 'Present' ? (
                       <CheckCircle2 size={14} style={{ color: '#10b981' }} />
                     ) : (
-                      <Activity size={14} style={{ color: data.isSunday ? 'var(--text-muted)' : '#ef4444', opacity: 0.3 }} />
+                      <ActivityIcon size={14} style={{ color: data.isSunday ? 'var(--text-muted)' : '#ef4444', opacity: 0.3 }} />
                     )}
                   </div>
                 );
