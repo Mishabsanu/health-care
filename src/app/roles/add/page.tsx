@@ -57,20 +57,25 @@ export default function AddRolePage() {
     formik.touched[field] && formik.errors[field];
 
   return (
-    <div className="add-role-container animate-fade-in clinical-form-wide" style={{ paddingBottom: '5rem' }}>
-      <div style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+    <div className="add-role-container animate-fade-in clinical-form-wide" style={{ padding: '2rem 2.5rem', paddingBottom: '5rem' }}>
+      <div style={{ marginBottom: '3.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <button
             onClick={() => router.back()}
-            style={{ marginBottom: '1rem', color: 'var(--primary)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, background: 'rgba(15,118,110,0.08)', padding: '0.5rem 1rem', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer' }}
+            className="glass-interactive"
+            style={{ marginBottom: '1.5rem', color: 'var(--primary)', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800, background: 'rgba(15,118,110,0.08)', padding: '0.5rem 1.25rem', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer' }}
           >
             <ArrowLeft size={16} /> Back to Registry
           </button>
-          <h1 style={{ fontSize: '2.25rem', letterSpacing: '-0.03em', fontWeight: 800 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--primary)' }} />
+            <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '0.1em' }}>PERMISSIONS MATRIX</span>
+          </div>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>
             Architect <span className="gradient-text">Clinical Role</span>
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: '0.5rem' }}>
-            Define a custom authorization matrix. Fields marked <span style={{ color: '#ef4444' }}>*</span> are required.
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>
+            Define a custom authorization matrix for clinical systems.
           </p>
         </div>
 
@@ -177,7 +182,8 @@ export default function AddRolePage() {
           <button
             type="submit"
             disabled={formik.isSubmitting}
-            style={{ padding: '0.85rem 3.5rem', borderRadius: 'var(--radius-md)', background: 'var(--primary)', color: 'white', fontWeight: 700, boxShadow: 'var(--shadow-sm)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}
+            className="glass-interactive"
+            style={{ padding: '0.85rem 3.5rem', borderRadius: 'var(--radius-md)', background: 'var(--primary)', color: 'white', fontWeight: 700, boxShadow: '0 10px 20px -5px rgba(15, 118, 110, 0.3)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}
           >
             {formik.isSubmitting ? 'Initializing...' : <><CheckCircle2 size={18} /> SAVE CLINICAL ROLE</>}
           </button>

@@ -25,7 +25,9 @@ import {
     GlassWater,
     Dumbbell,
     Leaf,
-    Activity
+    Activity,
+    BadgePercent,
+    Wallet
 } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
@@ -178,6 +180,11 @@ const bmiMeta = getBMICategory(patient.bmi || 0);
 // Latest Treatment first
 const sortedTreatments = [...(patient.treatments || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 const latestTreatment = sortedTreatments[0];
+
+// Financial Summary Calculations
+const totalBilled = invoices.reduce((sum, inv) => sum + (inv.amount || 0), 0);
+const totalPaid = invoices.reduce((sum, inv) => sum + (inv.paidAmount || 0), 0);
+const pendingBalance = totalBilled - totalPaid;
 
 return (
     <div className="patient-pro-workspace animate-fade-in" style={{ paddingBottom: '5rem' }}>
@@ -415,6 +422,113 @@ return (
                             {(!patient.habits || patient.habits.length === 0) && (
                                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '1rem', textAlign: 'center' }}>No habits recorded in clinical file.</p>
                             )}
+                        </div>
+
+                        {/* 💰 FINANCIAL HEALTH SUMMARY - MODERNIZED */}
+                        <div className="card-premium" style={{ 
+                            padding: '1.75rem', 
+                            background: 'white', 
+                            border: '1.5px solid var(--border-subtle)',
+                            boxShadow: 'var(--shadow-sm)',
+                            position: 'relative',
+                            overflow: 'hidden'
+                        }}>
+                            <div style={{ position: 'absolute', right: '-10%', top: '-10%', opacity: 0.02 }}>
+                                <BadgePercent size={120} />
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <h3 style={{ fontSize: '1rem', fontWeight: 900, margin: 0, letterSpacing: '0.02em' }}>FINANCIAL <span className="gradient-text">HEALTH</span></h3>
+                                <div style={{ padding: '6px', background: 'rgba(15, 118, 110, 0.1)', color: 'var(--primary)', borderRadius: '8px' }}>
+                                    <CreditCard size={18} />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                                    <div>
+                                        <p style={{ fontSize: '0.6rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>Revenue Contribution</p>
+                                        <p style={{ fontSize: '1.5rem', fontWeight: 950, margin: 0, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>₹{totalBilled.toLocaleString()}</p>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <p style={{ fontSize: '0.6rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>Settlement Ratio</p>
+                                        <p style={{ fontSize: '1.1rem', fontWeight: 950, color: '#10b981', margin: 0 }}>{totalBilled > 0 ? Math.round((totalPaid / totalBilled) * 100) : 100}%</p>
+                                    </div>
+                                </div>
+
+                                {/* Modern Progress Bar */}
+                                <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '10px', overflow: 'hidden' }}>
+                                    <div style={{ 
+                                        width: `${totalBilled > 0 ? Math.min((totalPaid / totalBilled) * 100, 100) : 100}%`, 
+                                        height: '100%', 
+                                        background: 'linear-gradient(90deg, #10b981 0%, #34d399 100%)',
+                                        borderRadius: '10px',
+                                        transition: 'width 1s ease-out'
+                                    }} />
+                                </div>
+
+                                <div style={{ 
+                                    background: pendingBalance > 0 ? 'rgba(234, 88, 12, 0.03)' : 'rgba(16, 185, 129, 0.03)', 
+                                    padding: '1.5rem', 
+                                    borderRadius: '16px', 
+                                    border: `1.5px dashed ${pendingBalance > 0 ? '#ffedd5' : '#dcfce7'}`,
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center'
+                                }}>
+                                    <div>
+                                        <p style={{ fontSize: '0.6rem', fontWeight: 950, color: pendingBalance > 0 ? '#9a3412' : '#166534', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.08em' }}>Pending Dues</p>
+                                        <p style={{ fontSize: '1.8rem', fontWeight: 950, color: pendingBalance > 0 ? '#ea580c' : '#10b981', margin: 0 }}>₹{pendingBalance.toLocaleString()}</p>
+                                    </div>
+                                    <div style={{ 
+                                        width: '48px', 
+                                        height: '48px', 
+                                        background: 'white', 
+                                        borderRadius: '14px', 
+                                        color: pendingBalance > 0 ? '#ea580c' : '#10b981', 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        justifyContent: 'center',
+                                        boxShadow: '0 8px 16px -4px rgba(0,0,0,0.08)' 
+                                    }}>
+                                        {pendingBalance > 0 ? <Clock size={22} /> : <CheckCircle2 size={22} />}
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                    <button 
+                                        onClick={() => setActiveTab('billing')}
+                                        style={{ 
+                                            padding: '0.85rem', 
+                                            borderRadius: '12px', 
+                                            border: '1.5px solid var(--border-subtle)', 
+                                            background: 'white', 
+                                            fontSize: '0.75rem', 
+                                            fontWeight: 800, 
+                                            color: 'var(--text-muted)', 
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        LEDGER
+                                    </button>
+                                    <button 
+                                        onClick={() => router.push(`/billing/generate?patientId=${id}`)}
+                                        style={{ 
+                                            padding: '0.85rem', 
+                                            borderRadius: '12px', 
+                                            border: 'none', 
+                                            background: pendingBalance > 0 ? '#ea580c' : 'var(--primary)', 
+                                            fontSize: '0.75rem', 
+                                            fontWeight: 900, 
+                                            color: 'white', 
+                                            cursor: 'pointer',
+                                            boxShadow: pendingBalance > 0 ? '0 10px 20px -5px rgba(234, 88, 12, 0.3)' : '0 10px 20px -5px rgba(13, 148, 136, 0.3)'
+                                        }}
+                                    >
+                                        {pendingBalance > 0 ? 'SETTLE NOW' : 'GENERATE'}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </aside>
 

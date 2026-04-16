@@ -189,7 +189,7 @@ export default function GeneratePayslipPage() {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '2.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '2.5rem', alignItems: 'start' }}>
                 
                 {/* 📋 LEFT: Attendance Ledger (DETAILED LOGS) */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -256,8 +256,8 @@ export default function GeneratePayslipPage() {
                     </div>
                 </div>
 
-                {/* ⚡ RIGHT: Settlement Console */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                {/* ⚡ RIGHT: Settlement Console (STIKCY) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', position: 'sticky', top: '2rem' }}>
                     
                     {/* Specialist Profile Card */}
                     <div className="card-premium" style={{ padding: '2rem', background: 'white' }}>

@@ -5,7 +5,7 @@ import DataTable from '@/components/DataTable';
 import { usePCMSStore } from '@/store/useStore';
 import api from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { Plus, FileText } from 'lucide-react';
+import { Plus, FileText, Wallet } from 'lucide-react';
 import HasPermission from '@/components/HasPermission';
 import { usePermission } from '@/hooks/usePermission';
 
@@ -139,22 +139,6 @@ export default function ExpensesPage() {
         </span>
       )
     },
-    {
-      header: 'DOC',
-      key: (e: Expense) => e.documentUrl ? (
-        <a 
-          href={e.documentUrl} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          title="View Attachment"
-          style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={(ev) => ev.stopPropagation()}
-        >
-          <FileText size={18} />
-        </a>
-      ) : <span style={{ opacity: 0.2 }}>-</span>,
-      style: { textAlign: 'center' as any }
-    }
   ], []);
 
   const paginationConfig = useMemo(() => ({
@@ -166,53 +150,74 @@ export default function ExpensesPage() {
     onFilterChange: (f: any) => { setActiveFilters(f); setCurrentPage(1); }
   }), [totalRecords, currentPage, pageSize]);
 
-  if (loading) return <LoadingSpinner />;
-
   return (
-    <div className="expenses-container animate-fade-in">
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+    <div className="expenses-container animate-fade-in" style={{ padding: '2rem' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.8rem', letterSpacing: '-0.01em' }}>Expense <span className="gradient-text">Management</span></h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Track clinical overheads, salaries, and operational expenditures.</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--primary)' }} />
+            <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '0.1em' }}>FINANCIAL AUDIT</span>
+          </div>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>
+            Expense <span className="gradient-text">Ledger</span>
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>
+            Audit-ready tracking of clinical overheads and operational costs.
+          </p>
         </div>
-        <HasPermission permission="expenses:create">
-            <button 
-                onClick={() => router.push('/expenses/add')}
-                style={{ background: 'var(--primary)', color: 'white', padding: '0.8rem 1.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <HasPermission permission="expenses:create">
+            <button
+              onClick={() => router.push('/expenses/add')}
+              className="glass-interactive"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.6rem',
+                background: 'var(--primary)',
+                color: 'white',
+                padding: '0.8rem 1.75rem',
+                borderRadius: 'var(--radius-md)',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                boxShadow: '0 10px 20px -5px rgba(15, 118, 110, 0.3)'
+              }}
             >
-                <Plus size={18} /> Record Expense
+              <Plus size={18} /> Log Expense
             </button>
-        </HasPermission>
+          </HasPermission>
+        </div>
       </div>
 
-
-        <DataTable 
-          data={expenses}
-          columns={columnsData}
-          searchPlaceholder="Search by description or ID..."
-          onView={(e) => router.push(`/expenses/${e._id}`)}
-          onEdit={hasPermission('expenses:edit') ? ((e) => {
-              if (canOperate(e)) {
-                  router.push(`/expenses/${e._id}/edit`);
-              } else {
-                  showToast('🚫 Access Denied | You can only modify your own expense records.', 'error');
-              }
-          }) : undefined}
-          onDelete={hasPermission('expenses:void') ? ((e) => {
-              if (canOperate(e)) {
-                  handleDelete(e);
-              } else {
-                  showToast('🚫 Access Denied | You can only delete your own expense records.', 'error');
-              }
-          }) : undefined}
-          onAddNew={() => router.push('/expenses/add')}
-          addNewLabel="Log Expense"
-          filterableFields={[
-            { label: 'Category', key: 'category' as keyof Expense, options: categories },
-            { label: 'Status', key: 'status' as keyof Expense, options: ['Paid', 'Pending'] }
-          ]}
-          serverPagination={paginationConfig}
-        />
+      <DataTable
+        isLoading={loading}
+        data={expenses}
+        columns={columnsData}
+        searchPlaceholder="Search by description or ID..."
+        onView={(e) => router.push(`/expenses/${e._id}`)}
+        onEdit={hasPermission('expenses:edit') ? ((e) => {
+          if (canOperate(e)) {
+            router.push(`/expenses/${e._id}/edit`);
+          } else {
+            showToast('🚫 Access Denied | You can only modify your own expense records.', 'error');
+          }
+        }) : undefined}
+        onDelete={hasPermission('expenses:void') ? ((e) => {
+          if (canOperate(e)) {
+            handleDelete(e);
+          } else {
+            showToast('🚫 Access Denied | You can only delete your own expense records.', 'error');
+          }
+        }) : undefined}
+        onAddNew={() => router.push('/expenses/add')}
+        addNewLabel="Log Expense"
+        filterableFields={[
+          { label: 'Category', key: 'category' as keyof Expense, options: categories },
+          { label: 'Status', key: 'status' as keyof Expense, options: ['Paid', 'Pending'] }
+        ]}
+        serverPagination={paginationConfig}
+      />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import api from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import HasPermission from '@/components/HasPermission';
 import { usePermission } from '@/hooks/usePermission';
+import { Plus } from 'lucide-react';
 
 interface Service {
   _id: string; // Mongoose ID
@@ -132,20 +133,42 @@ export default function ServicesPage() {
   if (localLoading) return <LoadingSpinner />;
 
   return (
-    <div className="services-container animate-fade-in">
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+    <div className="services-container animate-fade-in" style={{ padding: '2rem' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.8rem', letterSpacing: '-0.01em' }}>Clinical <span className="gradient-text">Services</span></h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Manage treatment definitions and pricing.</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--primary)' }} />
+            <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '0.1em' }}>SERVICE CATALOG</span>
+          </div>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>
+            Clinical <span className="gradient-text">Services</span>
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>
+            Manage treatment definitions, clinical procedures, and pricing.
+          </p>
         </div>
-        <HasPermission permission="services:create">
-          <button 
-            onClick={() => router.push('/services/add')}
-            style={{ background: 'var(--primary)', color: 'white', padding: '0.8rem 1.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600 }}
-          >
-            Add Service
-          </button>
-        </HasPermission>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <HasPermission permission="services:create">
+            <button 
+              onClick={() => router.push('/services/add')}
+              className="glass-interactive"
+              style={{ 
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.6rem',
+                background: 'var(--primary)', 
+                color: 'white', 
+                padding: '0.8rem 1.75rem', 
+                borderRadius: 'var(--radius-md)', 
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                boxShadow: '0 10px 20px -5px rgba(15, 118, 110, 0.3)'
+              }}
+            >
+              <Plus size={18} /> Add Service
+            </button>
+          </HasPermission>
+        </div>
       </div>
 
         <DataTable 

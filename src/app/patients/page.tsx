@@ -215,28 +215,25 @@ export default function PatientsPage() {
         </div>
       </div>
 
-      {localLoading ? (
-        <Loading />
-      ) : (
-        <DataTable
-          data={patientsForTable}
-          columns={columnsData}
-          filterableFields={filterableFields}
-          searchPlaceholder="Search by name, ID or contact..."
-          onView={(p) => router.push(`/patients/${p._id}`)}
-          onEdit={hasPermission('patients:edit') ? ((p) => {
-            if (canOperate(p)) {
-              router.push(`/patients/${p._id}/edit`);
-            } else {
-              showToast('🚫 Access Denied | You can only modify clinical records you personally created.', 'error');
-            }
-          }) : undefined}
-          onDelete={hasPermission('patients:delete') ? handleDeletePatient : undefined}
-          onAddNew={() => router.push('/patients/add')}
-          addNewLabel="Register Patient"
-          serverPagination={paginationConfig}
-        />
-      )}
+      <DataTable
+        isLoading={localLoading}
+        data={patientsForTable}
+        columns={columnsData}
+        filterableFields={filterableFields}
+        searchPlaceholder="Search by name, ID or contact..."
+        onView={(p) => router.push(`/patients/${p._id}`)}
+        onEdit={hasPermission('patients:edit') ? ((p) => {
+          if (canOperate(p)) {
+            router.push(`/patients/${p._id}/edit`);
+          } else {
+            showToast('🚫 Access Denied | You can only modify clinical records you personally created.', 'error');
+          }
+        }) : undefined}
+        onDelete={hasPermission('patients:delete') ? handleDeletePatient : undefined}
+        onAddNew={() => router.push('/patients/add')}
+        addNewLabel="Register Patient"
+        serverPagination={paginationConfig}
+      />
     </div>
   );
 }

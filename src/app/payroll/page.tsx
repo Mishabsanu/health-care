@@ -295,37 +295,37 @@ export default function PayrollPage() {
 
   return (
     <div className="payroll-container animate-fade-in" style={{ padding: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3.5rem' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3.5rem' }}>
         <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-              <div style={{ width: '14px', height: '14px', borderRadius: '4px', background: 'linear-gradient(135deg, var(--primary), #0d9488)', boxShadow: '0 4px 10px rgba(13, 148, 136, 0.3)' }} />
-              <span style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Financial Operations</span>
-            </div>
-            <h1 style={{ fontSize: '2.5rem', fontWeight: 950, letterSpacing: '-0.04em', margin: 0, lineHeight: 1 }}>
-              Salary & <span className="gradient-text">Payroll Registry</span>
-            </h1>
-            <p style={{ color: 'var(--text-muted)', fontWeight: 600, marginTop: '0.75rem', fontSize: '1rem' }}>
-              Centralized hub for specialist compensation, attendance analytics, and disbursements.
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--primary)' }} />
+            <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '0.1em' }}>STAFF LEDGER</span>
+          </div>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>
+            Salary & <span className="gradient-text">Payroll Registry</span>
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>
+            Centralized hub for specialist compensation, attendance analytics, and disbursements.
+          </p>
         </div>
         <button 
             onClick={handleExportCSV}
             className="glass-interactive"
             style={{ 
-              padding: '1rem 2rem', 
-              borderRadius: '1rem', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.75rem', 
-              fontWeight: 800, 
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.6rem',
+              background: 'white', 
               color: 'var(--primary)', 
-              fontSize: '0.9rem', 
-              border: '2px solid rgba(15, 118, 110, 0.2)',
-              background: 'white',
-              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)'
+              padding: '0.8rem 1.75rem', 
+              borderRadius: 'var(--radius-md)', 
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              border: '1.5px solid rgba(15, 118, 110, 0.2)',
+              boxShadow: '0 10px 20px -5px rgba(0,0,0,0.05)'
             }}
         >
-            <FileDown size={20} /> EXPORT DATA
+            <FileDown size={18} /> EXPORT DATA
         </button>
       </div>
 
@@ -405,42 +405,39 @@ export default function PayrollPage() {
         </div>
       </div>
 
-        {loading ? (
-          <Loading />
-        ) : (
-          <DataTable<any> 
-            data={recordsForTable}
-            columns={columnsData}
-            searchPlaceholder="Search specialists by name..."
-            onView={(r) => router.push(`/payroll/${r._id}`)}
-            filterableFields={[
-              { label: 'Payment Status', key: 'paymentStatus' as keyof PayrollRecord, options: ['Paid', 'Pending'] }
-            ]}
-            serverPagination={paginationConfig}
-            customActions={(staff: PayrollRecord) => (
-              <button 
-                  onClick={() => router.push(`/payroll/generate/${staff._id}?month=${selectedMonth}&year=${selectedYear}`)}
-                  disabled={staff.paymentStatus === 'Paid' || isFuturePeriod()}
-                  style={{ 
-                      padding: '0.5rem 1rem', 
-                      borderRadius: 'var(--radius-sm)', 
-                      background: (staff.paymentStatus === 'Paid' || isFuturePeriod()) ? '#f1f5f9' : 'var(--primary)', 
-                      color: (staff.paymentStatus === 'Paid' || isFuturePeriod()) ? '#94a3b8' : 'white', 
-                      fontWeight: 800, 
-                      fontSize: '0.75rem',
-                      border: 'none',
-                      cursor: (staff.paymentStatus === 'Paid' || isFuturePeriod()) ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem'
-                  }}
-              >
-                  <ArrowUpRight size={14} /> 
-                  {isFuturePeriod() ? 'NOT OPEN' : (staff.paymentStatus === 'Paid' ? 'DISBURSED' : (staff.salaryDetails.basicSalary === 0 ? 'SET SALARY & PAY' : 'GENERATE PAYSLIP'))}
-              </button>
-            )}
-          />
-        )}
+        <DataTable<any> 
+          isLoading={loading}
+          data={recordsForTable}
+          columns={columnsData}
+          searchPlaceholder="Search specialists by name..."
+          onView={(r) => router.push(`/payroll/${r._id}`)}
+          filterableFields={[
+            { label: 'Payment Status', key: 'paymentStatus' as keyof PayrollRecord, options: ['Paid', 'Pending'] }
+          ]}
+          serverPagination={paginationConfig}
+          customActions={(staff: PayrollRecord) => (
+            <button 
+                onClick={() => router.push(`/payroll/generate/${staff._id}?month=${selectedMonth}&year=${selectedYear}`)}
+                disabled={staff.paymentStatus === 'Paid' || isFuturePeriod()}
+                style={{ 
+                    padding: '0.5rem 1rem', 
+                    borderRadius: 'var(--radius-sm)', 
+                    background: (staff.paymentStatus === 'Paid' || isFuturePeriod()) ? '#f1f5f9' : 'var(--primary)', 
+                    color: (staff.paymentStatus === 'Paid' || isFuturePeriod()) ? '#94a3b8' : 'white', 
+                    fontWeight: 800, 
+                    fontSize: '0.75rem',
+                    border: 'none',
+                    cursor: (staff.paymentStatus === 'Paid' || isFuturePeriod()) ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                }}
+            >
+                <ArrowUpRight size={14} /> 
+                {isFuturePeriod() ? 'NOT OPEN' : (staff.paymentStatus === 'Paid' ? 'DISBURSED' : (staff.salaryDetails.basicSalary === 0 ? 'SET SALARY & PAY' : 'GENERATE PAYSLIP'))}
+            </button>
+          )}
+        />
 
       {/* 📅 Monthly Attendance Grid Modal */}
       {showAttendanceModal && (

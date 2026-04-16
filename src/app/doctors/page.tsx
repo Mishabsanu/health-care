@@ -5,6 +5,7 @@ import DataTable from '@/components/DataTable';
 import { usePCMSStore } from '@/store/useStore';
 import api from '@/services/api';
 import Loading from '@/components/Loading';
+import { Plus } from 'lucide-react';
 
 interface Doctor {
   _id: string;
@@ -107,42 +108,50 @@ export default function DoctorsPage() {
 
   return (
     <div className="doctors-container animate-fade-in" style={{ padding: '2rem' }}>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.01em', margin: 0 }}>Specialist <span className="gradient-text">Registry</span></h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>Manage clinical personnel, certifications, and operational status.</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--primary)' }} />
+            <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '0.1em' }}>SPECIALIST REGISTRY</span>
+          </div>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>
+            Specialist <span className="gradient-text">Registry</span>
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>
+            Manage clinical personnel, certifications, and operational status.
+          </p>
         </div>
         <button 
           onClick={() => router.push('/doctors/add')}
           className="glass-interactive"
           style={{ 
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.6rem',
             background: 'var(--primary)', 
             color: 'white', 
-            padding: '0.8rem 1.5rem', 
+            padding: '0.8rem 1.75rem', 
             borderRadius: 'var(--radius-md)', 
             fontWeight: 700,
             fontSize: '0.85rem',
             boxShadow: '0 10px 20px -5px rgba(13, 148, 136, 0.3)'
           }}
         >
-          Add Specialist
+          <Plus size={18} /> Add Specialist
         </button>
       </div>
 
-      {localLoading ? (
-        <Loading />
-      ) : (
-        <DataTable 
-          data={doctorsForTable}
-          columns={columns}
-          searchPlaceholder="Search specialists by name or category..."
-          onView={(d) => router.push(`/doctors/${d._id}`)}
-          onEdit={(d) => router.push(`/doctors/${d._id}/edit`)}
-          onDelete={handleDeleteDoctor}
-          onAddNew={() => router.push('/doctors/add')}
-          addNewLabel="Add Specialist"
-        />
-      )}
+      <DataTable 
+        isLoading={localLoading}
+        data={doctorsForTable}
+        columns={columns}
+        searchPlaceholder="Search specialists by name or category..."
+        onView={(d) => router.push(`/doctors/${d._id}`)}
+        onEdit={(d) => router.push(`/doctors/${d._id}/edit`)}
+        onDelete={handleDeleteDoctor}
+        onAddNew={() => router.push('/doctors/add')}
+        addNewLabel="Add Specialist"
+      />
     </div>
   );
 }

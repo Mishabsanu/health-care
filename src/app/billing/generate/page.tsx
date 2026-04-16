@@ -540,9 +540,9 @@ export default function GenerateInvoicePage() {
                         value={formData.method}
                         onChange={(e) => setFormData({...formData, method: e.target.value})}
                       >
-                        <option value="UPI">UPI</option>
-                        <option value="Cash">Cash</option>
-                        <option value="Card">Card</option>
+                        <option value="UPI" style={{ color: '#000000' }}>UPI</option>
+                        <option value="Cash" style={{ color: '#000000' }}>Cash</option>
+                        <option value="Card" style={{ color: '#000000' }}>Card</option>
                       </select>
                     </div>
                     <div>
@@ -552,9 +552,9 @@ export default function GenerateInvoicePage() {
                         value={formData.status}
                         onChange={(e) => setFormData({...formData, status: e.target.value})}
                       >
-                        <option value="Unpaid">Unpaid</option>
-                        <option value="Partially Paid">Partial</option>
-                        <option value="Paid">Fully Paid</option>
+                        <option value="Unpaid" style={{ color: '#000000' }}>Unpaid</option>
+                        <option value="Partially Paid" style={{ color: '#000000' }}>Partial</option>
+                        <option value="Paid" style={{ color: '#000000' }}>Fully Paid</option>
                       </select>
                     </div>
                   </div>
@@ -571,16 +571,36 @@ export default function GenerateInvoicePage() {
               </div>
 
               <div style={{ borderTop: '2px dashed rgba(255,255,255,0.1)', paddingTop: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Payable Total</p>
-                    <p style={{ fontSize: '1.75rem', fontWeight: 950, color: 'white', margin: 0 }}>₹{formData.amount.toLocaleString()}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <p style={{ fontSize: '0.6rem', fontWeight: 950, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>Gross Total</p>
+                      <p style={{ fontSize: '1.75rem', fontWeight: 950, color: 'white', margin: 0 }}>₹{(formData.amount + Number(formData.discount || 0)).toLocaleString()}</p>
+                    </div>
+                    {formData.discount > 0 && (
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: '0.6rem', fontWeight: 950, color: '#ef4444', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>Savings Applied</p>
+                        <p style={{ fontSize: '1.25rem', fontWeight: 950, color: '#ef4444', margin: 0 }}>- ₹{Number(formData.discount).toLocaleString()}</p>
+                      </div>
+                    )}
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <p style={{ fontSize: '0.65rem', fontWeight: 900, color: (formData.amount - formData.paidAmount) > 0 ? '#fb923c' : (formData.amount - formData.paidAmount < 0 ? '#2dd4bf' : '#64748b'), textTransform: 'uppercase', marginBottom: '0.4rem' }}>
-                      {formData.amount - formData.paidAmount < 0 ? 'Credit / Advance' : 'Balance Due'}
+
+                  <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '16px', border: '1.5px solid rgba(255,255,255,0.1)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                      <span style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary-light)', textTransform: 'uppercase' }}>Net Payable</span>
+                      <span style={{ fontSize: '1.5rem', fontWeight: 950, color: 'white' }}>₹{formData.amount.toLocaleString()}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(15, 148, 136, 0.15)', borderRadius: '10px' }}>
+                      <span style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary-light)' }}>AMOUNT COLLECTED</span>
+                      <span style={{ fontSize: '1.25rem', fontWeight: 950, color: 'white' }}>₹{formData.paidAmount.toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem' }}>
+                    <p style={{ fontSize: '0.65rem', fontWeight: 950, color: (formData.amount - formData.paidAmount) > 0 ? '#fb923c' : '#2dd4bf', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      {(formData.amount - formData.paidAmount) < 0 ? 'Advanced / Credit' : 'Final Balance Due'}
                     </p>
-                    <p style={{ fontSize: '1.75rem', fontWeight: 950, color: (formData.amount - formData.paidAmount) > 0 ? '#fb923c' : (formData.amount - formData.paidAmount < 0 ? '#2dd4bf' : 'white'), margin: 0 }}>
+                    <p style={{ fontSize: '1.75rem', fontWeight: 950, color: (formData.amount - formData.paidAmount) > 0 ? '#fb923c' : '#2dd4bf', margin: 0 }}>
                       ₹{Math.abs(formData.amount - formData.paidAmount).toLocaleString()}
                     </p>
                   </div>
@@ -592,13 +612,14 @@ export default function GenerateInvoicePage() {
                   onClick={() => { if (validateForm()) setIsPreview(true) }}
                   style={{
                     width: '100%', marginTop: '2rem', padding: '1.1rem', borderRadius: '14px',
-                    background: 'var(--primary)', color: 'white', fontWeight: 900, fontSize: '0.95rem',
+                    background: 'linear-gradient(135deg, var(--primary) 0%, #0d9488 100%)', color: 'white', fontWeight: 950, fontSize: '1rem',
                     border: 'none', cursor: 'pointer', transition: 'all 0.3s ease',
-                    boxShadow: '0 10px 20px -5px rgba(15, 118, 110, 0.4)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'
+                    boxShadow: '0 15px 30px -5px rgba(13, 148, 136, 0.4)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
+                    letterSpacing: '0.02em'
                   }}
                 >
-                  Review & Authorize <ChevronRight size={18} />
+                  <ShieldCheck size={20} /> Authorize Clinical Bill
                 </button>
               </div>
             </div>

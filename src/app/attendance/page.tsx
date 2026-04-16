@@ -163,7 +163,6 @@ export default function AttendancePage() {
   const monthLabel = MONTHS[selectedMonth - 1];
   const monthDaysCount = new Date(selectedYear, selectedMonth, 0).getDate();
   const todayKey = new Date().toDateString();
-  const firstName = user?.name?.trim()?.split(' ')[0] || 'Team';
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -452,86 +451,26 @@ export default function AttendancePage() {
 
   return (
     <div className={cn(styles.page, 'animate-fade-in')}>
-      <section className={styles.hero}>
-        <div className={styles.heroGlow} />
-
-        <div className={styles.heroCopy}>
-          <span className={styles.eyebrow}>Attendance Desk</span>
-          <h1 className={styles.heroTitle}>
-            Clinical <span>Attendance</span>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3.5rem' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--primary)' }} />
+            <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '0.1em' }}>ATTENDANCE DESK</span>
+          </div>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>
+            Clinical <span className="gradient-text">Attendance</span>
           </h1>
-          <p className={styles.heroText}>
-            Keep a live eye on floor coverage, daily movement, and monthly attendance
-            trends from one calmer workspace.
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>
+            Keep a live eye on floor coverage, daily movement, and clinical trends.
           </p>
-
-          <div className={styles.heroBadges}>
-            <span className={styles.heroBadge}>Hello, {firstName}</span>
-            <span className={styles.heroBadge}>{trackedDays}/{monthDaysCount} days tracked</span>
-            <span className={styles.heroBadge}>{totalSessions} session logs this month</span>
-          </div>
         </div>
-
-        <div className={styles.heroPanel}>
-          <div className={styles.searchField}>
-            <Search size={18} className={styles.searchIcon} />
-            <input
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search staff name..."
-              className={cn('input-premium', styles.searchInput)}
-            />
-          </div>
-
-          <div className={styles.panelControls}>
-            <div className={styles.selectGroup}>
-              <label className={styles.controlLabel}>Month</label>
-              <div className={styles.selectWrap}>
-                <Calendar size={16} />
-                <select
-                  value={selectedMonth}
-                  onChange={(event) => setSelectedMonth(Number(event.target.value))}
-                  className={styles.selectInput}
-                >
-                  {MONTHS.map((month, index) => (
-                    <option key={month} value={index + 1}>
-                      {month}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className={styles.selectGroup}>
-              <label className={styles.controlLabel}>Year</label>
-              <div className={styles.selectWrap}>
-                <Clock size={16} />
-                <select
-                  value={selectedYear}
-                  onChange={(event) => setSelectedYear(Number(event.target.value))}
-                  className={styles.selectInput}
-                >
-                  {YEAR_OPTIONS.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
+        <div style={{ display: 'flex', gap: '1rem' }}>
           <button type="button" onClick={handleExportAudit} className={styles.exportButton}>
             <Download size={18} />
             Export Audit
           </button>
-
-          <div className={styles.panelFootnote}>
-            <span className={styles.liveDot} />
-            {loading ? 'Refreshing live attendance data...' : `${monthLabel} ${selectedYear} is in sync.`}
-          </div>
         </div>
-      </section>
+      </div>
 
       <section className={styles.statsGrid}>
         {[
@@ -586,6 +525,55 @@ export default function AttendancePage() {
             <p className={styles.statDetail}>{card.detail}</p>
           </article>
         ))}
+      </section>
+
+      <section className={styles.controlsBar}>
+        <div className={styles.searchField} style={{ flex: 1 }}>
+          <Search size={18} className={styles.searchIcon} />
+          <input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search staff name..."
+            className={cn('input-premium', styles.searchInput)}
+            style={{ width: '100%', minHeight: '3.5rem', borderRadius: '1.2rem', paddingLeft: '3rem' }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <div className={styles.selectGroup}>
+            <div className={styles.selectWrap} style={{ minHeight: '3.5rem', borderRadius: '1.2rem', minWidth: '160px' }}>
+              <Calendar size={16} />
+              <select
+                value={selectedMonth}
+                onChange={(event) => setSelectedMonth(Number(event.target.value))}
+                className={styles.selectInput}
+              >
+                {MONTHS.map((month, index) => (
+                  <option key={month} value={index + 1}>
+                    {month}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className={styles.selectGroup}>
+            <div className={styles.selectWrap} style={{ minHeight: '3.5rem', borderRadius: '1.2rem', minWidth: '120px' }}>
+              <Clock size={16} />
+              <select
+                value={selectedYear}
+                onChange={(event) => setSelectedYear(Number(event.target.value))}
+                className={styles.selectInput}
+              >
+                {YEAR_OPTIONS.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section className={styles.workspace}>
@@ -672,15 +660,15 @@ export default function AttendancePage() {
                       const fallbackActiveLog =
                         activeSession && todayLogs.length === 0
                           ? [
-                              {
-                                staffId: {
-                                  _id: member._id,
-                                  name: member.name,
-                                },
-                                checkIn: activeSession.checkIn,
-                                checkOut: null,
-                              } satisfies AttendanceLog,
-                            ]
+                            {
+                              staffId: {
+                                _id: member._id,
+                                name: member.name,
+                              },
+                              checkIn: activeSession.checkIn,
+                              checkOut: null,
+                            } satisfies AttendanceLog,
+                          ]
                           : [];
 
                       const sessionLogs = todayLogs.length > 0 ? todayLogs : fallbackActiveLog;

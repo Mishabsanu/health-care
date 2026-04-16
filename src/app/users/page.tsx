@@ -7,6 +7,7 @@ import { usePCMSStore } from '@/store/useStore';
 import HasPermission from '@/components/HasPermission';
 import { usePermission } from '@/hooks/usePermission';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { UserPlus, Shield, Plus } from 'lucide-react';
 
 interface User {
   _id: string;
@@ -150,27 +151,48 @@ export default function UsersPage() {
     users.map(u => ({ ...u, id: u._id })), 
   [users]);
 
-  if (loading) return <LoadingSpinner />;
-
   return (
-    <div className="users-container animate-fade-in">
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+    <div className="users-container animate-fade-in" style={{ padding: '2rem 2.5rem' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3.5rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.8rem', letterSpacing: '-0.01em' }}>Staff <span className="gradient-text">Management</span></h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Orchestrate clinical personnel, specialists, and role-based authorizations.</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--primary)' }} />
+            <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '0.1em' }}>IDENTITY & ACCESS</span>
+          </div>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>
+            Specialists & <span className="gradient-text">Roles</span>
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>
+            Manage system access, clinical roles, and administrative permissions.
+          </p>
         </div>
-        <HasPermission permission="users:create">
-          <button
-            onClick={() => router.push('/users/add')}
-            style={{ background: 'var(--primary)', color: 'white', padding: '0.8rem 1.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600 }}
-          >
-            Onboard User
-          </button>
-        </HasPermission>
+
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <HasPermission permission="users:create">
+            <button
+              onClick={() => router.push('/users/add')}
+              className="glass-interactive"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.6rem',
+                background: 'var(--primary)',
+                color: 'white',
+                padding: '0.8rem 1.75rem',
+                borderRadius: 'var(--radius-md)',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                boxShadow: '0 10px 20px -5px rgba(15, 118, 110, 0.3)'
+              }}
+            >
+              <UserPlus size={18} /> Onboard Specialist
+            </button>
+          </HasPermission>
+        </div>
       </div>
 
-
       <DataTable
+        isLoading={loading}
         data={usersForTable}
         columns={columnsData}
         searchPlaceholder="Search by name, email..."
@@ -192,4 +214,5 @@ export default function UsersPage() {
       />
     </div>
   );
+
 }

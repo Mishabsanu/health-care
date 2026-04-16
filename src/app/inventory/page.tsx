@@ -5,7 +5,7 @@ import DataTable from '@/components/DataTable';
 import { usePCMSStore } from '@/store/useStore';
 import api from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { Plus, AlertCircle } from 'lucide-react';
+import { Plus, AlertCircle, Package } from 'lucide-react';
 import HasPermission from '@/components/HasPermission';
 import { usePermission } from '@/hooks/usePermission';
 
@@ -159,70 +159,75 @@ export default function InventoryPage() {
     }
   ];
 
-  if (loading) return <LoadingSpinner />;
-
   return (
-    <div className="inventory-container animate-fade-in">
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+    <div className="inventory-container animate-fade-in" style={{ padding: '2rem' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.8rem', letterSpacing: '-0.01em' }}>Inventory <span className="gradient-text">Registry</span></h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Manage clinical supplies, equipment stocks, and consumable levels.</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--primary)' }} />
+            <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '0.1em' }}>STOCK CONTROL</span>
+          </div>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>
+            Inventory <span className="gradient-text">Registry</span>
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>
+            Real-time management of clinical supplies, equipment, and consumables.
+          </p>
         </div>
-        <HasPermission permission="inventory:create">
-          <button 
-            onClick={() => router.push('/inventory/add')}
-            style={{ background: 'var(--primary)', color: 'white', padding: '0.8rem 1.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-          >
-            <Plus size={18} /> New Item
-          </button>
-        </HasPermission>
+
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <HasPermission permission="inventory:create">
+            <button
+              onClick={() => router.push('/inventory/add')}
+              className="glass-interactive"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.6rem',
+                background: 'var(--primary)',
+                color: 'white',
+                padding: '0.8rem 1.75rem',
+                borderRadius: 'var(--radius-md)',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                boxShadow: '0 10px 20px -5px rgba(15, 118, 110, 0.3)'
+              }}
+            >
+              <Plus size={18} /> Add Item
+            </button>
+          </HasPermission>
+        </div>
       </div>
 
-      {topSellers.length > 0 && (
-          <div className="top-sellers-grid animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1.25rem', marginBottom: '2.5rem' }}>
-              {topSellers.map((s, idx) => (
-                  <div key={s._id} className="card" style={{ padding: '1rem', borderTop: `3px solid ${['#0d9488', '#6366f1', '#8b5cf6', '#ec4899', '#f59e0b'][idx % 5]}` }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                        <span style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Rank #{idx + 1} Sales</span>
-                        <div style={{ padding: '0.2rem 0.5rem', background: 'rgba(15, 118, 110, 0.1)', color: 'var(--primary)', borderRadius: '1rem', fontSize: '0.6rem', fontWeight: 800 }}>HOT</div>
-                      </div>
-                      <h4 style={{ fontSize: '0.9rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '0.25rem' }}>{s.name}</h4>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)' }}>₹{s.salePrice?.toLocaleString()}</span>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{s.totalSold} sold</span>
-                      </div>
-                  </div>
-              ))}
-          </div>
-      )}
-
-        <DataTable 
-          data={items.map(i => ({ ...i, id: i._id }))}
-          columns={columns}
-          searchPlaceholder="Search by name, SKU or supplier..."
-          onView={(i) => router.push(`/inventory/${i._id}`)}
-          onEdit={hasPermission('inventory:edit') ? ((i) => {
-            if (canOperate(i)) {
-                router.push(`/inventory/${i._id}/edit`);
-            } else {
-                showToast('🚫 Access Denied | You can only modify items you personally registered.', 'error');
-            }
-          }) : undefined}
-          onDelete={hasPermission('inventory:delete') ? handleDelete : undefined}
-          onAddNew={() => router.push('/inventory/add')}
-          addNewLabel="Add Item"
-          filterableFields={[
-            { label: 'Category', key: 'category' as keyof InventoryItem, options: categories }
-          ]}
-          serverPagination={{
-            totalRecords,
-            currentPage,
-            pageSize,
-            onPageChange: setCurrentPage,
-            onSearchChange: (s) => { setSearchQuery(s); setCurrentPage(1); },
-            onFilterChange: (f) => { setActiveFilters(f); setCurrentPage(1); }
-          }}
-        />
+      <DataTable
+        isLoading={loading}
+        data={items.map(i => ({ ...i, id: i._id }))}
+        columns={columns}
+        searchPlaceholder="Search by name, SKU or supplier..."
+        onView={(i) => router.push(`/inventory/${i._id}`)}
+        onEdit={hasPermission('inventory:edit') ? ((i) => {
+          if (canOperate(i)) {
+            router.push(`/inventory/${i._id}/edit`);
+          } else {
+            showToast('🚫 Access Denied | You can only modify items you personally registered.', 'error');
+          }
+        }) : undefined}
+        onDelete={hasPermission('inventory:delete') ? handleDelete : undefined}
+        onAddNew={() => router.push('/inventory/add')}
+        addNewLabel="Add Item"
+        filterableFields={[
+          { label: 'Category', key: 'category' as keyof InventoryItem, options: categories }
+        ]}
+        serverPagination={{
+          totalRecords,
+          currentPage,
+          pageSize,
+          onPageChange: setCurrentPage,
+          onSearchChange: (s) => { setSearchQuery(s); setCurrentPage(1); },
+          onFilterChange: (f) => { setActiveFilters(f); setCurrentPage(1); }
+        }}
+      />
     </div>
   );
+
 }

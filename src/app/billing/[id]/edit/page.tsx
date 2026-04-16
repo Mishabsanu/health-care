@@ -34,7 +34,9 @@ export default function EditInvoicePage() {
     remarks: '',
     paidAmount: 0,
     payments: [] as any[],
-    balanceAmount: 0
+    balanceAmount: 0,
+    invoiceIdOriginal: '',
+    createdByOriginal: ''
   });
 
   const fetchData = async () => {
@@ -74,7 +76,9 @@ export default function EditInvoicePage() {
           remarks: inv.description || '',
           paidAmount: inv.paidAmount || 0,
           payments: inv.payments || [],
-          balanceAmount: inv.balanceAmount || 0
+          balanceAmount: inv.balanceAmount || 0,
+          invoiceIdOriginal: inv.id || '',
+          createdByOriginal: inv.createdBy?.name || 'SYSTEM'
         });
       }
 
@@ -169,11 +173,18 @@ export default function EditInvoicePage() {
           <h1 style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.03em', lineHeight: 1 }}>
             Modify <span className="gradient-text">Clinical Bill</span>
           </h1>
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem' }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', background: 'rgba(15, 118, 110, 0.1)', padding: '0.2rem 0.6rem', borderRadius: '4px' }}>ORIGINAL ID: {formData.invoiceIdOriginal}</span>
+            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)' }}>REGISTERED BY: {formData.createdByOriginal.toUpperCase()}</span>
+          </div>
         </div>
 
         {!isPreview && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            <Calendar size={16} /> {new Date(formData.date).toLocaleDateString(undefined, { dateStyle: 'long' })}
+          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', justifyContent: 'flex-end' }}>
+              <Calendar size={16} /> {new Date(formData.date).toLocaleDateString(undefined, { dateStyle: 'long' })}
+            </div>
+            <p style={{ fontSize: '0.65rem', color: 'var(--primary)', fontWeight: 800, margin: 0 }}>CLINICAL AUDIT ACTIVE</p>
           </div>
         )}
       </div>
@@ -394,22 +405,51 @@ export default function EditInvoicePage() {
                 </div>
               </div>
               <div style={{ borderTop: '2px dashed rgba(255,255,255,0.1)', paddingTop: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-                    <div>
-                        <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Updated Total</p>
-                        <p style={{ fontSize: '1.5rem', fontWeight: 950, color: 'white', margin: 0 }}>₹{formData.amount.toLocaleString()}</p>
+                <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.08)', borderRadius: '16px', border: '1.5px solid var(--primary)', marginBottom: '1.5rem', boxShadow: '0 0 15px rgba(13, 148, 136, 0.1)' }}>
+                    <div style={{ marginBottom: '1.25rem' }}>
+                      <label style={{ fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--primary-light)', display: 'block', marginBottom: '0.5rem' }}>Amount Paid (₹)</label>
+                      <input
+                        type="number" className="input-premium"
+                        style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', fontWeight: 900, fontSize: '1.4rem', borderRadius: '10px', width: '100%' }}
+                        value={formData.paidAmount} placeholder="0" onChange={(e) => setFormData({ ...formData, paidAmount: Number(e.target.value) })}
+                      />
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                        <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Paid Amount</p>
-                        <p style={{ fontSize: '1.5rem', fontWeight: 950, color: '#f8fafc', margin: 0 }}>₹{formData.paidAmount.toLocaleString()}</p>
-                    </div>
-                </div>
 
-                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                      <div>
+                        <label style={{ fontSize: '0.55rem', fontWeight: 900, textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.4rem' }}>Method</label>
+                        <select 
+                          style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontWeight: 700, fontSize: '0.75rem', padding: '0.5rem', borderRadius: '8px' }}
+                          value={formData.status === 'Paid' ? (formData.payments[0]?.method || 'Cash') : 'Cash'}
+                          onChange={(e) => {
+                            // Update first payment or add one if needed for the edit logic
+                            const val = e.target.value;
+                            setFormData(prev => ({ ...prev, method: val }));
+                          }}
+                        >
+                          <option value="UPI" style={{ color: '#000000' }}>UPI</option>
+                          <option value="Cash" style={{ color: '#000000' }}>Cash</option>
+                          <option value="Card" style={{ color: '#000000' }}>Card</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.55rem', fontWeight: 900, textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.4rem' }}>Status</label>
+                        <select 
+                          style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontWeight: 700, fontSize: '0.75rem', padding: '0.5rem', borderRadius: '8px' }}
+                          value={formData.status}
+                          onChange={(e) => setFormData({...formData, status: e.target.value})}
+                        >
+                          <option value="Unpaid" style={{ color: '#000000' }}>Unpaid</option>
+                          <option value="Partially Paid" style={{ color: '#000000' }}>Partial</option>
+                          <option value="Paid" style={{ color: '#000000' }}>Fully Paid</option>
+                        </select>
+                      </div>
+                    </div>
+
                     <p style={{ fontSize: '0.6rem', fontWeight: 900, color: (formData.amount - formData.paidAmount) > 0 ? '#fb923c' : '#2dd4bf', textTransform: 'uppercase', marginBottom: '0.2rem' }}>
-                        {formData.amount - formData.paidAmount < 0 ? 'Projected Credit' : 'Projected Balance'}
+                        {formData.amount - formData.paidAmount < 0 ? 'Projected Credit' : 'Final Balance Due'}
                     </p>
-                    <p style={{ fontSize: '1.75rem', fontWeight: 950, color: (formData.amount - formData.paidAmount) > 0 ? '#fb923c' : (formData.amount - formData.paidAmount < 0 ? '#2dd4bf' : 'white'), margin: 0 }}>
+                    <p style={{ fontSize: '1.8rem', fontWeight: 950, color: (formData.amount - formData.paidAmount) > 0 ? '#fb923c' : (formData.amount - formData.paidAmount < 0 ? '#2dd4bf' : 'white'), margin: 0 }}>
                         ₹{Math.abs(formData.amount - formData.paidAmount).toLocaleString()}
                     </p>
                 </div>

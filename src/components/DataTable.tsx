@@ -52,6 +52,7 @@ interface DataTableProps<T> {
   getRowStyle?: (item: T) => React.CSSProperties;
   onAddNew?: () => void;
   addNewLabel?: string;
+  isLoading?: boolean;
 }
 
 export default function DataTable<T extends { id: string }>({ 
@@ -67,7 +68,8 @@ export default function DataTable<T extends { id: string }>({
   serverPagination,
   getRowStyle,
   onAddNew,
-  addNewLabel = "Add Record"
+  addNewLabel = "Add Record",
+  isLoading = false
 }: DataTableProps<T>) {
   const isFirstRender = useRef(true);
   const [searchTerm, setSearchTerm] = useState(serverPagination?.externalSearch || '');
@@ -298,31 +300,32 @@ export default function DataTable<T extends { id: string }>({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', gap: '2rem', position: 'relative' }}>
         <div style={{ position: 'relative', width: '450px' }}>
           <Search size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', opacity: 0.6 }} />
-          <input 
-            type="text" 
-            autoComplete="off"
-            suppressHydrationWarning
-            placeholder={searchPlaceholder}
-            value={searchTerm}
-            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-            style={{ 
-              width: '100%', 
-              padding: '0.9rem 1rem 0.9rem 3.5rem', 
-              borderRadius: '2rem', 
-              border: '2px solid var(--border-subtle)', 
-              background: 'white', 
-              fontSize: '1rem',
-              fontWeight: 500,
-              outline: 'none',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
-              transition: 'var(--transition-smooth)'
-            }}
-            onFocus={(e) => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 4px rgba(13, 148, 136, 0.1)'; }}
-            onBlur={(e) => { e.target.style.borderColor = 'var(--border-subtle)'; e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.02)'; }}
-          />
+            <input 
+              type="text" 
+              autoComplete="off"
+              suppressHydrationWarning={true}
+              placeholder={searchPlaceholder}
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+              style={{ 
+                width: '100%', 
+                padding: '0.9rem 1rem 0.9rem 3.5rem', 
+                borderRadius: '2rem', 
+                border: '2px solid var(--border-subtle)', 
+                background: 'white', 
+                fontSize: '1rem',
+                fontWeight: 500,
+                outline: 'none',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
+                transition: 'var(--transition-smooth)'
+              }}
+              onFocus={(e) => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 4px rgba(13, 148, 136, 0.1)'; }}
+              onBlur={(e) => { e.target.style.borderColor = 'var(--border-subtle)'; e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.02)'; }}
+            />
         </div>
 
         <button 
+          suppressHydrationWarning={true}
           onClick={() => setIsFilterOpen(!isFilterOpen)}
           className="glass-interactive"
           style={{ 
@@ -362,6 +365,7 @@ export default function DataTable<T extends { id: string }>({
                           return (
                               <button 
                                 key={opt}
+                                suppressHydrationWarning={true}
                                 onClick={() => togglePendingFilter(String(field.key), opt)}
                                 style={{ 
                                   padding: '0.5rem 1rem', 
@@ -386,12 +390,14 @@ export default function DataTable<T extends { id: string }>({
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '1.25rem', borderTop: '1px solid var(--border-subtle)' }}>
               <button 
+                suppressHydrationWarning={true}
                 onClick={() => { setPendingFilters({}); setActiveFilters({}); setIsFilterOpen(false); }}
                 style={{ fontSize: '0.75rem', color: '#ef4444', fontWeight: 800, letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', cursor: 'pointer' }}
               >
                 <RotateCcw size={14} /> RESET
             </button>
               <button 
+                suppressHydrationWarning={true}
                 onClick={applyFilters}
                 style={{ 
                   background: 'var(--primary)', 
@@ -428,7 +434,7 @@ export default function DataTable<T extends { id: string }>({
                     </div>
                 ));
              })}
-             <button onClick={clearAll} style={{ fontSize: '0.75rem', fontWeight: 800, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.05em', marginLeft: '0.5rem' }}>✕ CLEAR ALL</button>
+             <button suppressHydrationWarning={true} onClick={clearAll} style={{ fontSize: '0.75rem', fontWeight: 800, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.05em', marginLeft: '0.5rem' }}>✕ CLEAR ALL</button>
         </div>
       )}
 
@@ -472,7 +478,25 @@ export default function DataTable<T extends { id: string }>({
               </tr>
             </thead>
             <tbody>
-              {currentData.map((item) => (
+              {isLoading ? (
+                Array.from({ length: pageSize }).map((_, idx) => (
+                  <tr key={`skeleton-${idx}`} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                    {columns.map((_, cIdx) => (
+                      <td key={cIdx} style={{ padding: '1.25rem' }}>
+                        <div className="skeleton-line" style={{ height: '1.2rem', background: '#f1f5f9', borderRadius: '4px', width: cIdx === 0 ? '70%' : '100%', animation: 'pulse 1.5s infinite ease-in-out' }} />
+                      </td>
+                    ))}
+                    {(onView || onEdit || onDelete || customActions) && (
+                      <td style={{ padding: '1.25rem' }}>
+                        <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'flex-end' }}>
+                          <div style={{ width: '40px', height: '40px', background: '#f1f5f9', borderRadius: '8px', animation: 'pulse 1.5s infinite ease-in-out' }} />
+                          <div style={{ width: '40px', height: '40px', background: '#f1f5f9', borderRadius: '8px', animation: 'pulse 1.5s infinite ease-in-out' }} />
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))
+              ) : currentData.map((item) => (
                 <tr 
                   key={item.id} 
                   className="table-row-hover" 
@@ -501,6 +525,7 @@ export default function DataTable<T extends { id: string }>({
                         {customActions && customActions(item)}
                         {onView && (
                           <button 
+                            suppressHydrationWarning={true}
                             onClick={() => onView(item)} 
                             className="glass-interactive"
                             style={{ width: '40px', height: '40px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid var(--border-subtle)', background: 'white', color: 'var(--primary)' }}
@@ -511,6 +536,7 @@ export default function DataTable<T extends { id: string }>({
                         )}
                         {onEdit && (
                           <button 
+                            suppressHydrationWarning={true}
                             onClick={() => onEdit(item)} 
                             className="glass-interactive"
                             style={{ width: '40px', height: '40px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid var(--border-subtle)', background: 'white', color: 'var(--primary)' }}
@@ -521,6 +547,7 @@ export default function DataTable<T extends { id: string }>({
                         )}
                         {onDelete && (
                           <button 
+                            suppressHydrationWarning={true}
                             onClick={() => onDelete(item)} 
                             className="glass-interactive"
                             style={{ width: '40px', height: '40px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #fee2e2', background: '#fff1f1', color: '#ef4444' }}
@@ -534,7 +561,7 @@ export default function DataTable<T extends { id: string }>({
                   )}
                 </tr>
               ))}
-              {currentData.length === 0 && (
+              {!isLoading && currentData.length === 0 && (
                 <tr>
                   <td colSpan={columns.length + 1} style={{ padding: '8rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                     <div style={{ opacity: 0.1, marginBottom: '2rem' }}><SlidersHorizontal size={80} style={{ margin: '0 auto' }} /></div>
@@ -542,10 +569,11 @@ export default function DataTable<T extends { id: string }>({
                     <p style={{ fontSize: '1rem', fontWeight: 500, maxWidth: '400px', margin: '0 auto 2.5rem auto', lineHeight: 1.6 }}>We couldn't locate any registry entries matching your current search or filter selection. Try adjusting your parameters or clearing all filters.</p>
                     
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', alignItems: 'center' }}>
-                      <button onClick={clearAll} style={{ padding: '1rem 2rem', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border-subtle)', background: 'white', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 900, letterSpacing: '0.05em' }}>CLEAR ALL FILTERS</button>
+                      <button suppressHydrationWarning={true} onClick={clearAll} style={{ padding: '1rem 2rem', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border-subtle)', background: 'white', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 900, letterSpacing: '0.05em' }}>CLEAR ALL FILTERS</button>
                       
                       {onAddNew && (
                         <button 
+                          suppressHydrationWarning={true}
                           onClick={onAddNew} 
                           style={{ 
                             padding: '1rem 2.5rem', 
@@ -577,18 +605,18 @@ export default function DataTable<T extends { id: string }>({
           <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em' }}>ROWS DISPLAYED</span>
-            <select value={pageSize} onChange={(e) => { 
-                const newSize = Number(e.target.value);
-                setPageSize(newSize); 
-                setCurrentPage(1); 
-                // Refresh if server paginated
-                if (serverPagination) {
-                    // Update limit state on parent if possible, but currently we just trigger reload
-                    // In a perfect world, parent controls pageSize state too. We'll leave it as is.
-                }
-            }} style={{ padding: '0.6rem 1.25rem', borderRadius: '8px', border: '2px solid var(--border-subtle)', background: 'white', fontSize: '0.9rem', fontWeight: 800, cursor: 'pointer', outline: 'none' }}>
-              {[10, 15, 25, 50, 100].map(v => <option key={v} value={v}>{v}</option>)}
-            </select>
+              <select 
+                value={pageSize} 
+                suppressHydrationWarning={true}
+                onChange={(e) => { 
+                  const newSize = Number(e.target.value);
+                  setPageSize(newSize); 
+                  setCurrentPage(1); 
+                }} 
+                style={{ padding: '0.6rem 1.25rem', borderRadius: '8px', border: '2px solid var(--border-subtle)', background: 'white', fontSize: '0.9rem', fontWeight: 800, cursor: 'pointer', outline: 'none' }}
+              >
+                {[10, 15, 25, 50, 100].map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
           </div>
           <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>
             Catalog results <span style={{ color: 'var(--primary)', fontWeight: 950 }}>{totalItems > 0 ? startIndex + 1 : 0}–{Math.min(startIndex + pageSize, totalItems)}</span> of <span style={{ color: 'var(--primary)', fontWeight: 950 }}>{totalItems}</span>
@@ -596,7 +624,7 @@ export default function DataTable<T extends { id: string }>({
         </div>
 
         <div style={{ display: 'flex', gap: '0.6rem' }}>
-          <button disabled={currentPage === 1} onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} className="glass-interactive" style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'white', color: 'var(--text-main)', opacity: currentPage === 1 ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button suppressHydrationWarning={true} disabled={currentPage === 1} onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} className="glass-interactive" style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'white', color: 'var(--text-main)', opacity: currentPage === 1 ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <ChevronLeft size={18} />
           </button>
           
@@ -606,18 +634,24 @@ export default function DataTable<T extends { id: string }>({
               .map((p, i, arr) => (
                 <React.Fragment key={p}>
                   {i > 0 && arr[i-1] !== p - 1 && <span style={{ alignSelf: 'center', opacity: 0.3, fontWeight: 900 }}>···</span>}
-                  <button onClick={() => setCurrentPage(p)} style={{ width: '40px', height: '40px', borderRadius: '8px', border: 'none', background: currentPage === p ? 'var(--primary)' : 'rgba(0,0,0,0.03)', color: currentPage === p ? 'white' : 'var(--text-main)', fontSize: '0.85rem', fontWeight: 900, transition: 'var(--transition-smooth)', boxShadow: currentPage === p ? '0 10px 20px -5px rgba(15, 118, 110, 0.4)' : 'none' }}>{p}</button>
+                  <button suppressHydrationWarning={true} onClick={() => setCurrentPage(p)} style={{ width: '40px', height: '40px', borderRadius: '8px', border: 'none', background: currentPage === p ? 'var(--primary)' : 'rgba(0,0,0,0.03)', color: currentPage === p ? 'white' : 'var(--text-main)', fontSize: '0.85rem', fontWeight: 900, transition: 'var(--transition-smooth)', boxShadow: currentPage === p ? '0 10px 20px -5px rgba(15, 118, 110, 0.4)' : 'none' }}>{p}</button>
                 </React.Fragment>
               ))
             }
           </div>
 
-          <button disabled={currentPage === totalPages || totalPages === 0} onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} className="glass-interactive" style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'white', color: 'var(--text-main)', opacity: (currentPage === totalPages || totalPages === 0) ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button suppressHydrationWarning={true} disabled={currentPage === totalPages || totalPages === 0} onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} className="glass-interactive" style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'white', color: 'var(--text-main)', opacity: (currentPage === totalPages || totalPages === 0) ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <ChevronRight size={18} />
             </button>
           </div>
         </div>
       </div>
+      <style jsx>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+      `}</style>
     </div>
   );
 }
