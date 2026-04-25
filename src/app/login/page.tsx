@@ -12,7 +12,9 @@ import {
   Briefcase,
   Activity,
   ChevronRight,
-  Heart
+  Heart,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -21,6 +23,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -166,13 +169,13 @@ export default function LoginPage() {
                         <Lock style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} size={18} />
                         <input 
                             required
-                            type="password" 
+                            type={showPassword ? "text" : "password"} 
                             value={formData.password}
                             onChange={(e) => setFormData({...formData, password: e.target.value})}
                             placeholder="••••••••"
                             style={{ 
                                 width: '100%', 
-                                padding: '1rem 1rem 1rem 3.5rem', 
+                                padding: '1rem 3.5rem 1rem 3.5rem', 
                                 borderRadius: '14px', 
                                 border: '2px solid #e2e8f0', 
                                 background: 'white',
@@ -183,6 +186,13 @@ export default function LoginPage() {
                             }}
                             className="focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10"
                         />
+                        <button 
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            style={{ position: 'absolute', right: '1.25rem', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
+                        >
+                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
                     </div>
                 </div>
 

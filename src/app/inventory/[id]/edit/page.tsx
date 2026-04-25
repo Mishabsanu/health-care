@@ -194,7 +194,7 @@ export default function EditInventoryPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
             <div>
               <label className="label-premium">Stock Quantity</label>
-              <input required type="number" className="input-premium" style={{ fontWeight: 800, textAlign: 'center' }} value={formData.quantity} onChange={e => setFormData({...formData, quantity: parseInt(e.target.value) || 0})} />
+              <input required type="number" min="0" onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }} className="input-premium" style={{ fontWeight: 800, textAlign: 'center' }} value={formData.quantity} onChange={e => setFormData({...formData, quantity: parseInt(e.target.value) || 0})} />
             </div>
             <div>
               <label className="label-premium">Unit</label>
@@ -204,7 +204,7 @@ export default function EditInventoryPage() {
               <label className="label-premium" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 Reorder At <Info size={14} style={{ color: 'var(--primary)', cursor: 'help' }} />
               </label>
-              <input required type="number" className="input-premium" value={formData.reorderLevel} onChange={e => setFormData({...formData, reorderLevel: parseInt(e.target.value) || 0})} />
+              <input required type="number" min="0" onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }} className="input-premium" value={formData.reorderLevel} onChange={e => setFormData({...formData, reorderLevel: parseInt(e.target.value) || 0})} />
             </div>
           </div>
 
@@ -213,7 +213,7 @@ export default function EditInventoryPage() {
               <label className="label-premium">Purchase Price (₹)</label>
               <div style={{ position: 'relative' }}>
                 <span style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 800, color: 'var(--primary)', opacity: 0.5 }}>₹</span>
-                <input type="number" className="input-premium" style={{ paddingLeft: '3.5rem', fontWeight: 800 }} value={formData.purchasePrice} onChange={e => setFormData({...formData, purchasePrice: parseFloat(e.target.value) || 0})} />
+                <input type="number" min="0" onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }} className="input-premium" style={{ paddingLeft: '3.5rem', fontWeight: 800 }} value={formData.purchasePrice} onChange={e => setFormData({...formData, purchasePrice: parseFloat(e.target.value) || 0})} />
               </div>
               <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>Net clinical cost.</p>
             </div>
@@ -221,7 +221,7 @@ export default function EditInventoryPage() {
               <label className="label-premium">Sale Price (₹)</label>
               <div style={{ position: 'relative' }}>
                 <span style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 800, color: '#10b981', opacity: 0.5 }}>₹</span>
-                <input type="number" className="input-premium" style={{ paddingLeft: '3.5rem', fontWeight: 800, color: '#10b981' }} value={formData.salePrice} onChange={e => setFormData({...formData, salePrice: parseFloat(e.target.value) || 0})} />
+                <input type="number" min="0" onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }} className="input-premium" style={{ paddingLeft: '3.5rem', fontWeight: 800, color: '#10b981' }} value={formData.salePrice} onChange={e => setFormData({...formData, salePrice: parseFloat(e.target.value) || 0})} />
               </div>
               <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>Patient billing price.</p>
             </div>

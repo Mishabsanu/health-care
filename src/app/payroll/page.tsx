@@ -285,6 +285,7 @@ export default function PayrollPage() {
     currentPage,
     pageSize,
     onPageChange: setCurrentPage,
+    onPageSizeChange: setPageSize,
     onSearchChange: (s: string) => { setSearchQuery(s); setCurrentPage(1); },
     onFilterChange: (f: any) => { setActiveFilters(f); setCurrentPage(1); }
   }), [totalRecords, currentPage, pageSize]);
@@ -294,8 +295,8 @@ export default function PayrollPage() {
     [records]);
 
   return (
-    <div className="payroll-container animate-fade-in" style={{ padding: '2rem 2.5rem' }}>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3.5rem' }}>
+    <div className="payroll-container animate-fade-in">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3.5rem', paddingTop: '2rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--primary)' }} />

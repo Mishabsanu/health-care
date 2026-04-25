@@ -115,7 +115,7 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="dashboard-container animate-fade-in" style={{ padding: '2rem 2.5rem', paddingBottom: '5rem' }}>
+    <div className="dashboard-container animate-fade-in" style={{ paddingTop: '2rem', paddingBottom: '5rem' }}>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3.5rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>

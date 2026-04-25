@@ -24,8 +24,8 @@ export default function DoctorsPage() {
   const [hasLoaded, setHasLoaded] = useState(false);
 
   const handleDeleteDoctor = async (doctor: Doctor) => {
-    if (!confirm(`⚠️ WARNING: You are about to purge specialist ${doctor.name} from the clinical registry. Continue?`)) return;
-    
+    if (!confirm(` WARNING: You are about to purge specialist ${doctor.name} from the clinical registry. Continue?`)) return;
+
     try {
       await api.delete(`/doctors/${doctor._id}`);
       showToast('Specialist successfully removed from registry.', 'success');
@@ -56,44 +56,44 @@ export default function DoctorsPage() {
     fetchDoctors(!hasLoaded);
   }, []);
 
-  const doctorsForTable = useMemo(() => 
-    doctors.map(d => ({ ...d, id: d._id })), 
-  [doctors]);
+  const doctorsForTable = useMemo(() =>
+    doctors.map(d => ({ ...d, id: d._id })),
+    [doctors]);
 
   const columns = useMemo(() => [
     { header: 'SPECIALIST NAME', key: 'name' as keyof Doctor, style: { fontWeight: 600, color: 'var(--primary)' } },
-    { 
-      header: 'CLINICAL CATEGORY', 
+    {
+      header: 'CLINICAL CATEGORY',
       searchable: false,
       key: (d: Doctor) => (
-        <span style={{ 
-          background: 'rgba(15, 118, 110, 0.1)', 
-          color: 'var(--primary)', 
-          padding: '0.3rem 0.75rem', 
-          borderRadius: '0.5rem', 
-          fontSize: '0.75rem', 
-          fontWeight: 700 
+        <span style={{
+          background: 'rgba(15, 118, 110, 0.1)',
+          color: 'var(--primary)',
+          padding: '0.3rem 0.75rem',
+          borderRadius: '0.5rem',
+          fontSize: '0.75rem',
+          fontWeight: 700
         }}>
           {d.specialization}
         </span>
-      ) 
+      )
     },
     { header: 'CONTACT', key: 'phone' as keyof Doctor, style: { fontSize: '0.9rem' } },
-    { 
-      header: 'STATUS', 
+    {
+      header: 'STATUS',
       searchable: false,
       key: (d: Doctor) => (
-        <span style={{ 
+        <span style={{
           background: d.status === 'Available' ? '#dcfce7' : '#f1f5f9',
           color: d.status === 'Available' ? '#166534' : '#64748b',
-          padding: '0.35rem 0.85rem', 
-          borderRadius: '1rem', 
-          fontSize: '0.75rem', 
-          fontWeight: 600 
+          padding: '0.35rem 0.85rem',
+          borderRadius: '1rem',
+          fontSize: '0.75rem',
+          fontWeight: 600
         }}>
           {d.status}
         </span>
-      ) 
+      )
     },
     {
       header: 'CREATED BY',
@@ -107,8 +107,8 @@ export default function DoctorsPage() {
   ], []);
 
   return (
-    <div className="doctors-container animate-fade-in" style={{ padding: '2rem 2.5rem' }}>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3.5rem' }}>
+    <div className="doctors-container animate-fade-in">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3.5rem', paddingTop: '2rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--primary)' }} />
@@ -121,17 +121,17 @@ export default function DoctorsPage() {
             Manage clinical personnel, certifications, and operational status.
           </p>
         </div>
-        <button 
+        <button
           onClick={() => router.push('/doctors/add')}
           className="glass-interactive"
-          style={{ 
+          style={{
             display: 'flex',
             alignItems: 'center',
             gap: '0.6rem',
-            background: 'var(--primary)', 
-            color: 'white', 
-            padding: '0.8rem 1.75rem', 
-            borderRadius: 'var(--radius-md)', 
+            background: 'var(--primary)',
+            color: 'white',
+            padding: '0.8rem 1.75rem',
+            borderRadius: 'var(--radius-md)',
             fontWeight: 700,
             fontSize: '0.85rem',
             boxShadow: '0 10px 20px -5px rgba(13, 148, 136, 0.3)'
@@ -141,7 +141,7 @@ export default function DoctorsPage() {
         </button>
       </div>
 
-      <DataTable 
+      <DataTable
         isLoading={localLoading}
         data={doctorsForTable}
         columns={columns}

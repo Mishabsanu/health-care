@@ -32,7 +32,7 @@ export default function UsersPage() {
 
     showConfirm(
       'Revoke System Access',
-      `⚠️ WARNING: You are about to revoke system access for ${user.name}. All assigned clinical tasks may be affected. Continue?`,
+      ` WARNING: You are about to revoke system access for ${user.name}. All assigned clinical tasks may be affected. Continue?`,
       async () => {
         try {
           await api.delete(`/users/${user._id}`);
@@ -98,6 +98,7 @@ export default function UsersPage() {
     { header: 'EMPLOYEE ID', key: 'employeeId' as keyof User, style: { fontWeight: 800, color: 'var(--text-muted)', fontSize: '0.75rem' } },
     { header: 'SPECIALIST NAME', key: 'name' as keyof User, style: { fontWeight: 600, color: 'var(--primary)' } },
     { header: 'EMAIL', key: 'email' as keyof User, style: { fontSize: '0.85rem' } },
+    { header: 'CONTACT', key: 'phone' as keyof User, style: { fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary)' } },
     {
       header: 'CLINICAL ROLE',
       key: (u: User) => (
@@ -139,21 +140,22 @@ export default function UsersPage() {
   ], []);
 
   const paginationConfig = useMemo(() => ({
-      totalRecords,
-      currentPage,
-      pageSize,
-      onPageChange: setCurrentPage,
-      onSearchChange: (s: string) => { setSearchQuery(s); setCurrentPage(1); },
-      onFilterChange: (f: any) => { setActiveFilters(f); setCurrentPage(1); }
+    totalRecords,
+    currentPage,
+    pageSize,
+    onPageChange: setCurrentPage,
+    onPageSizeChange: setPageSize,
+    onSearchChange: (s: string) => { setSearchQuery(s); setCurrentPage(1); },
+    onFilterChange: (f: any) => { setActiveFilters(f); setCurrentPage(1); }
   }), [totalRecords, currentPage, pageSize]);
 
-  const usersForTable = useMemo(() => 
-    users.map(u => ({ ...u, id: u._id })), 
-  [users]);
+  const usersForTable = useMemo(() =>
+    users.map(u => ({ ...u, id: u._id })),
+    [users]);
 
   return (
-    <div className="users-registry-container animate-fade-in" style={{ padding: '2rem 2.5rem' }}>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3.5rem' }}>
+    <div className="users-registry-container animate-fade-in">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3.5rem', paddingTop: '2rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--primary)' }} />

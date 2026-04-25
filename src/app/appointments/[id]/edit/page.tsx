@@ -109,13 +109,13 @@ export default function EditAppointmentPage() {
 
   const selectedPatient = patients.find(p => p._id === formik.values.patientId);
 
-  const isError = (field: keyof typeof formik.values) => 
+  const isError = (field: keyof typeof formik.values) =>
     formik.touched[field] && !!formik.errors[field];
 
   const ErrorMsg = ({ name }: { name: keyof typeof formik.values }) => (
     formik.touched[name] && formik.errors[name] ? (
       <div style={{ color: '#ef4444', fontSize: '0.7rem', fontWeight: 700, marginTop: '0.4rem', marginLeft: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-        <span>⚠️ {formik.errors[name] as string}</span>
+        <span> {formik.errors[name] as string}</span>
       </div>
     ) : null
   );

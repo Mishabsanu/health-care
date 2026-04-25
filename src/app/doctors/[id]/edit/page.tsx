@@ -87,7 +87,7 @@ export default function EditDoctorPage() {
   const ErrMsg = ({ name }: { name: keyof typeof formik.values }) =>
     formik.touched[name] && formik.errors[name] ? (
       <div style={{ color: '#ef4444', fontSize: '0.72rem', fontWeight: 700, marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-        ⚠️ {formik.errors[name] as string}
+        {formik.errors[name] as string}
       </div>
     ) : null;
 
@@ -170,10 +170,14 @@ export default function EditDoctorPage() {
               <input
                 name="phone"
                 type="text"
+                maxLength={10}
                 className={`input-premium ${isErr('phone') ? 'input-error' : ''}`}
                 style={{ paddingLeft: '2.75rem', borderColor: isErr('phone') ? '#ef4444' : '' }}
                 value={formik.values.phone}
-                onChange={formik.handleChange}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  if (val.length <= 10) formik.setFieldValue('phone', val);
+                }}
                 onBlur={formik.handleBlur}
                 placeholder="9876543210"
               />

@@ -30,7 +30,7 @@ const validationSchema = Yup.object().shape({
   supplier: Yup.string(),
 });
 
-const categories = ['Products','Equipment', 'Consumables', 'Medicines', 'Stationery', 'Others'];
+const categories = ['Products', 'Equipment', 'Consumables', 'Medicines', 'Stationery', 'Others'];
 
 export default function AddInventoryPage() {
   const router = useRouter();
@@ -90,7 +90,7 @@ export default function AddInventoryPage() {
   const ErrMsg = ({ name }: { name: keyof typeof formik.values }) =>
     formik.touched[name] && formik.errors[name] ? (
       <div style={{ color: '#ef4444', fontSize: '0.72rem', fontWeight: 700, marginTop: '0.35rem' }}>
-        ⚠️ {formik.errors[name] as string}
+        {formik.errors[name] as string}
       </div>
     ) : null;
 
@@ -216,6 +216,7 @@ export default function AddInventoryPage() {
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 min="0"
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }}
               />
               <ErrMsg name="quantity" />
             </div>
@@ -247,6 +248,7 @@ export default function AddInventoryPage() {
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 min="0"
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }}
               />
               <ErrMsg name="reorderLevel" />
             </div>
@@ -267,6 +269,7 @@ export default function AddInventoryPage() {
                   value={formik.values.purchasePrice ?? ''}
                   onChange={formik.handleChange}
                   min="0"
+                  onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }}
                 />
               </div>
               <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>Net cost per unit.</p>
@@ -284,6 +287,7 @@ export default function AddInventoryPage() {
                   value={formik.values.salePrice ?? ''}
                   onChange={formik.handleChange}
                   min="0"
+                  onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }}
                 />
               </div>
               <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>Billing price for patients.</p>

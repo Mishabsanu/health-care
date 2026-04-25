@@ -5,10 +5,11 @@ import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
-import { ArrowLeft, User, Mail, Lock, Calendar, CreditCard, Banknote, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, User, Mail, Lock, Calendar, CreditCard, Banknote, ShieldCheck, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 
 const validationSchema = Yup.object().shape({
   name: Yup.string().trim().required('Full name is required'),
+  phone: Yup.string().required('Mobile number is required').length(10, 'Must be exactly 10 digits'),
   email: Yup.string().email('Invalid email').required('Email is required'),
   password: Yup.string().required('Password is required').min(6, 'Minimum 6 characters'),
   roleId: Yup.string().required('Role is required'),
@@ -29,6 +30,7 @@ export default function OnboardUserPage() {
   const router = useRouter();
   const { showToast } = usePCMSStore();
   const [roles, setRoles] = useState<any[]>([]);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     api.get('/roles')
@@ -39,6 +41,7 @@ export default function OnboardUserPage() {
   const formik = useFormik({
     initialValues: {
       name: '',
+      phone: '',
       email: '',
       password: '',
       roleId: '',
@@ -62,6 +65,7 @@ export default function OnboardUserPage() {
       try {
         const payload = {
           name: values.name,
+          phone: values.phone,
           email: values.email,
           password: values.password,
           roleId: values.roleId,
@@ -100,14 +104,14 @@ export default function OnboardUserPage() {
   const ErrMsg = ({ name }: { name: keyof typeof formik.values }) =>
     formik.touched[name] && formik.errors[name] ? (
       <div style={{ color: '#ef4444', fontSize: '0.72rem', fontWeight: 700, marginTop: '0.35rem' }}>
-        ⚠️ {formik.errors[name] as string}
+        {formik.errors[name] as string}
       </div>
     ) : null;
 
   const basic = Number(formik.values.basicSalary) || 0;
   const allowance = Number(formik.values.allowance) || 0;
   const deduction = Number(formik.values.deduction) || 0;
-  
+
   // Calculate projected take-home
   let takeHome = 0;
   if (formik.values.salaryType === 'Monthly') {
@@ -149,13 +153,35 @@ export default function OnboardUserPage() {
             <h3 style={{ fontSize: '1.05rem', fontWeight: 800 }}>Staff <span className="gradient-text">Identity</span></h3>
           </div>
 
-          <div className="col-12">
+          <div className="col-6">
             <label className="label-premium">Full Name <span style={{ color: '#ef4444' }}>*</span></label>
             <div style={{ position: 'relative' }}>
               <User size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isErr('name') ? '#ef4444' : 'var(--text-muted)', opacity: 0.6 }} />
               <input name="name" type="text" className={`input-premium ${isErr('name') ? 'input-error' : ''}`} style={{ paddingLeft: '2.75rem', borderColor: isErr('name') ? '#ef4444' : '' }} value={formik.values.name} onChange={formik.handleChange} onBlur={formik.handleBlur} placeholder="e.g. Dr. Jane Smith" />
             </div>
             <ErrMsg name="name" />
+          </div>
+
+          <div className="col-6">
+            <label className="label-premium">Mobile Number <span style={{ color: '#ef4444' }}>*</span></label>
+            <div style={{ position: 'relative' }}>
+              <User size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isErr('phone') ? '#ef4444' : 'var(--text-muted)', opacity: 0.6 }} />
+              <input 
+                name="phone" 
+                type="text" 
+                maxLength={10} 
+                className={`input-premium ${isErr('phone') ? 'input-error' : ''}`} 
+                style={{ paddingLeft: '2.75rem', borderColor: isErr('phone') ? '#ef4444' : '' }} 
+                value={formik.values.phone} 
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  if (val.length <= 10) formik.setFieldValue('phone', val);
+                }} 
+                onBlur={formik.handleBlur} 
+                placeholder="9876543210" 
+              />
+            </div>
+            <ErrMsg name="phone" />
           </div>
 
           <div className="col-6">
@@ -171,7 +197,14 @@ export default function OnboardUserPage() {
             <label className="label-premium">Password <span style={{ color: '#ef4444' }}>*</span></label>
             <div style={{ position: 'relative' }}>
               <Lock size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isErr('password') ? '#ef4444' : 'var(--text-muted)', opacity: 0.6 }} />
-              <input name="password" type="password" className={`input-premium ${isErr('password') ? 'input-error' : ''}`} style={{ paddingLeft: '2.75rem', borderColor: isErr('password') ? '#ef4444' : '' }} value={formik.values.password} onChange={formik.handleChange} onBlur={formik.handleBlur} placeholder="••••••••" autoComplete="new-password" />
+              <input name="password" type={showPassword ? "text" : "password"} className={`input-premium ${isErr('password') ? 'input-error' : ''}`} style={{ paddingLeft: '2.75rem', paddingRight: '2.75rem', borderColor: isErr('password') ? '#ef4444' : '' }} value={formik.values.password} onChange={formik.handleChange} onBlur={formik.handleBlur} placeholder="••••••••" autoComplete="new-password" />
+              <button 
+                type="button" 
+                onClick={() => setShowPassword(!showPassword)}
+                style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', opacity: 0.6, display: 'flex' }}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
             <ErrMsg name="password" />
           </div>
@@ -242,7 +275,16 @@ export default function OnboardUserPage() {
           {formik.values.salaryType !== 'Monthly' && (
             <div className="col-3">
               <label className="label-premium">{formik.values.salaryType} Rate (₹)</label>
-              <input name="salaryRate" type="number" className="input-premium" value={formik.values.salaryRate} onChange={formik.handleChange} placeholder="0.00" />
+              <input 
+                name="salaryRate" 
+                type="number" 
+                className="input-premium" 
+                value={formik.values.salaryRate} 
+                onChange={formik.handleChange} 
+                placeholder="0.00" 
+                min="0"
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }}
+              />
             </div>
           )}
 
@@ -250,11 +292,29 @@ export default function OnboardUserPage() {
             <>
               <div className="col-3">
                 <label className="label-premium">Expected Hrs/Day</label>
-                <input name="expectedHoursPerDay" type="number" className="input-premium" value={formik.values.expectedHoursPerDay} onChange={formik.handleChange} placeholder="8" />
+                <input 
+                  name="expectedHoursPerDay" 
+                  type="number" 
+                  className="input-premium" 
+                  value={formik.values.expectedHoursPerDay} 
+                  onChange={formik.handleChange} 
+                  placeholder="8" 
+                  min="0"
+                  onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }}
+                />
               </div>
               <div className="col-3">
                 <label className="label-premium">OT Rate (Extra/Hr)</label>
-                <input name="overtimeRate" type="number" className="input-premium" value={formik.values.overtimeRate} onChange={formik.handleChange} placeholder="0.00" />
+                <input 
+                  name="overtimeRate" 
+                  type="number" 
+                  className="input-premium" 
+                  value={formik.values.overtimeRate} 
+                  onChange={formik.handleChange} 
+                  placeholder="0.00" 
+                  min="0"
+                  onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }}
+                />
               </div>
             </>
           )}
@@ -263,7 +323,17 @@ export default function OnboardUserPage() {
             <label className="label-premium">Basic Salary (₹)</label>
             <div style={{ position: 'relative' }}>
               <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 800, color: 'var(--primary)', opacity: 0.6 }}>₹</span>
-              <input name="basicSalary" type="number" className="input-premium" style={{ paddingLeft: '2.25rem', fontWeight: 800, color: 'var(--primary)' }} value={formik.values.basicSalary} onChange={formik.handleChange} placeholder="Enter basic salary" min="0" />
+              <input 
+                name="basicSalary" 
+                type="number" 
+                className="input-premium" 
+                style={{ paddingLeft: '2.25rem', fontWeight: 800, color: 'var(--primary)' }} 
+                value={formik.values.basicSalary} 
+                onChange={formik.handleChange} 
+                placeholder="Enter basic salary" 
+                min="0" 
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }}
+              />
             </div>
             <ErrMsg name="basicSalary" />
           </div>
@@ -271,7 +341,17 @@ export default function OnboardUserPage() {
             <label className="label-premium">Allowances (₹)</label>
             <div style={{ position: 'relative' }}>
               <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 800, color: '#10b981', opacity: 0.6 }}>₹</span>
-              <input name="allowance" type="number" className="input-premium" style={{ paddingLeft: '2.25rem', fontWeight: 800, color: '#10b981' }} value={formik.values.allowance} onChange={formik.handleChange} placeholder="0" min="0" />
+              <input 
+                name="allowance" 
+                type="number" 
+                className="input-premium" 
+                style={{ paddingLeft: '2.25rem', fontWeight: 800, color: '#10b981' }} 
+                value={formik.values.allowance} 
+                onChange={formik.handleChange} 
+                placeholder="0" 
+                min="0" 
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }}
+              />
             </div>
             <ErrMsg name="allowance" />
           </div>
@@ -279,7 +359,17 @@ export default function OnboardUserPage() {
             <label className="label-premium">Deductions (₹)</label>
             <div style={{ position: 'relative' }}>
               <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 800, color: '#ef4444', opacity: 0.6 }}>₹</span>
-              <input name="deduction" type="number" className="input-premium" style={{ paddingLeft: '2.25rem', fontWeight: 800, color: '#ef4444' }} value={formik.values.deduction} onChange={formik.handleChange} placeholder="0" min="0" />
+              <input 
+                name="deduction" 
+                type="number" 
+                className="input-premium" 
+                style={{ paddingLeft: '2.25rem', fontWeight: 800, color: '#ef4444' }} 
+                value={formik.values.deduction} 
+                onChange={formik.handleChange} 
+                placeholder="0" 
+                min="0" 
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }}
+              />
             </div>
             <ErrMsg name="deduction" />
           </div>

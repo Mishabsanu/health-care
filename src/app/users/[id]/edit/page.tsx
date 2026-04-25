@@ -10,6 +10,7 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 
 const validationSchema = Yup.object().shape({
   name: Yup.string().trim().required('Full name is required'),
+  phone: Yup.string().required('Mobile number is required').length(10, 'Must be exactly 10 digits'),
   email: Yup.string().email('Invalid email').required('Email is required'),
   roleId: Yup.string().required('Role is required'),
   status: Yup.string().required('Status is required'),
@@ -34,6 +35,7 @@ export default function EditUserPage() {
   const formik = useFormik({
     initialValues: {
       name: '',
+      phone: '',
       email: '',
       roleId: '',
       status: 'Active',
@@ -82,6 +84,7 @@ export default function EditUserPage() {
         const u = userRes.data;
         formik.setValues({
           name: u.name || '',
+          phone: u.phone || '',
           email: u.email || '',
           roleId: u.role?._id || u.role || '',
           status: u.status || 'Active',
@@ -121,7 +124,7 @@ export default function EditUserPage() {
   const ErrMsg = ({ name }: { name: keyof typeof formik.values }) =>
     formik.touched[name] && formik.errors[name] ? (
       <div style={{ color: '#ef4444', fontSize: '0.72rem', fontWeight: 700, marginTop: '0.35rem' }}>
-        ⚠️ {formik.errors[name] as string}
+        {formik.errors[name] as string}
       </div>
     ) : null;
 
@@ -160,13 +163,35 @@ export default function EditUserPage() {
             <h3 style={{ fontSize: '1.05rem', fontWeight: 800 }}>Staff <span className="gradient-text">Identity</span></h3>
           </div>
 
-          <div className="col-12">
+          <div className="col-6">
             <label className="label-premium">Personnel Full Name <span style={{ color: '#ef4444' }}>*</span></label>
             <div style={{ position: 'relative' }}>
               <User size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isErr('name') ? '#ef4444' : 'var(--text-muted)', opacity: 0.6 }} />
               <input name="name" type="text" className={`input-premium ${isErr('name') ? 'input-error' : ''}`} style={{ paddingLeft: '2.75rem', borderColor: isErr('name') ? '#ef4444' : '' }} value={formik.values.name} onChange={formik.handleChange} onBlur={formik.handleBlur} placeholder="e.g. Dr. Jane Smith" />
             </div>
             <ErrMsg name="name" />
+          </div>
+
+          <div className="col-6">
+            <label className="label-premium">Mobile Number <span style={{ color: '#ef4444' }}>*</span></label>
+            <div style={{ position: 'relative' }}>
+              <User size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isErr('phone') ? '#ef4444' : 'var(--text-muted)', opacity: 0.6 }} />
+              <input 
+                name="phone" 
+                type="text" 
+                maxLength={10} 
+                className={`input-premium ${isErr('phone') ? 'input-error' : ''}`} 
+                style={{ paddingLeft: '2.75rem', borderColor: isErr('phone') ? '#ef4444' : '' }} 
+                value={formik.values.phone} 
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  if (val.length <= 10) formik.setFieldValue('phone', val);
+                }} 
+                onBlur={formik.handleBlur} 
+                placeholder="9876543210" 
+              />
+            </div>
+            <ErrMsg name="phone" />
           </div>
 
           <div className="col-6">

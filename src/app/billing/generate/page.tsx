@@ -4,15 +4,16 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
 import { generateInvoicePDF } from '@/utils/pdfGenerator';
-import { Calendar, ChevronRight, MessageSquare, Plus, Printer, Receipt, Save, ShieldCheck, Trash2, User } from 'lucide-react';
+import { Calendar, ChevronRight, MessageSquare, Package, Plus, Printer, Receipt, Save, Search, ShieldCheck, Stethoscope, Trash2, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 export default function GenerateInvoicePage() {
   const router = useRouter();
-  const [isPreview, setIsPreview] = useState(false); // Toggle between Form and Receipt Preview
+  const [isPreview, setIsPreview] = useState(false);
   const [loading, setLoading] = useState(false);
   const [patients, setPatients] = useState<any[]>([]);
+  const [eligibleAppointments, setEligibleAppointments] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
   const [itemSearch, setItemSearch] = useState('');
@@ -38,11 +39,16 @@ export default function GenerateInvoicePage() {
 
   const fetchData = async () => {
     try {
-      const getPatients = api.get('/patients/dropdown').then(res => setPatients(Array.isArray(res.data) ? res.data : (res.data?.data || []))).catch(e => console.error('Pt Error', e));
-      const getServices = api.get('/services').then(res => setServices(Array.isArray(res.data) ? res.data : (res.data?.data || []))).catch(e => console.error('Svc Error', e));
-      const getInventory = api.get('/inventory').then(res => setInventory(Array.isArray(res.data) ? res.data : (res.data?.data || []))).catch(e => console.error('Inv Error', e));
+      const getPatients = api.get('/patients/dropdown?billingEligible=true').then(res => setPatients(Array.isArray(res.data) ? res.data : (res.data?.data || []))).catch(e => console.error('Pt Error', e));
+      const getEligibleAppointments = api.get('/appointments?status=Completed&isBilled=false&limit=500').then(res => setEligibleAppointments(Array.isArray(res.data) ? res.data : (res.data?.data || []))).catch(e => console.error('Appt Error', e));
+      const getServices = api.get('/services/dropdown').then(res => {
+        const data = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+        // Remove 'Products' from services as they belong to Inventory
+        setServices(data.filter((s: any) => s.category !== 'Products'));
+      }).catch(e => console.error('Svc Error', e));
+      const getInventory = api.get('/inventory/dropdown').then(res => setInventory(Array.isArray(res.data) ? res.data : (res.data?.data || []))).catch(e => console.error('Inv Error', e));
 
-      await Promise.all([getPatients, getServices, getInventory]);
+      await Promise.all([getPatients, getEligibleAppointments, getServices, getInventory]);
     } catch (err) {
       console.error('🚫 Registry Error | Failed to fetch financial options:', err);
     }
@@ -78,6 +84,9 @@ export default function GenerateInvoicePage() {
             const latest = unbilled[0];
             setFormData(prev => ({ ...prev, appointmentId: latest._id }));
             showToast(`🔗 Auto-Sync | Linked to session on ${new Date(latest.date).toLocaleDateString()}`, 'success');
+          } else {
+            setFormData(prev => ({ ...prev, appointmentId: '' }));
+            showToast('Bill can be generated only after appointment session is completed.', 'error');
           }
         } catch (err) {
           console.error('🚫 Registry Sync Error:', err);
@@ -115,6 +124,10 @@ export default function GenerateInvoicePage() {
   const validateForm = () => {
     if (!formData.patientId) {
       showToast('Please select a patient.', 'error');
+      return false;
+    }
+    if (!formData.appointmentId) {
+      showToast('Bill can be generated only after appointment session is completed.', 'error');
       return false;
     }
     const allItems = [
@@ -171,6 +184,20 @@ export default function GenerateInvoicePage() {
     }
   };
 
+  // 📡 Emit Changes to Parent
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.input-premium') && !target.closest('.glass-premium')) {
+        setActiveSearchRow(null);
+      }
+    };
+    if (activeSearchRow !== null) {
+      window.addEventListener('mousedown', handleGlobalClick);
+    }
+    return () => window.removeEventListener('mousedown', handleGlobalClick);
+  }, [activeSearchRow]);
+
   const selectedPatient = patients.find(p => p._id === formData.patientId);
   const totalServices = formData.serviceItems.reduce((sum, item) => sum + (Number(item.price) || 0), 0);
   const totalInventory = formData.inventoryItems.reduce((sum, item) => sum + ((Number(item.quantity) || 0) * (Number(item.price) || 0)), 0);
@@ -198,9 +225,10 @@ export default function GenerateInvoicePage() {
           Initialize a new financial transaction for clinical services and procurement.
         </p>
       </div>
+
       {!isPreview ? (
-        <div className="animate-slide-up" style={{ background: 'white', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: '4rem' }}>
-          
+        <div className="animate-slide-up" style={{ background: 'white', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', marginBottom: '4rem' }}>
+
           {/* 1. 🏥 Patient & Record Selection */}
           <div style={{ padding: '3.5rem', borderBottom: '1px solid #e2e8f0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
@@ -219,8 +247,11 @@ export default function GenerateInvoicePage() {
                 value={formData.patientId}
                 placeholder="Search patient by name, phone or ID..."
                 searchFields={['name', 'phone', 'patientId']}
-                onSelect={(p) => setFormData({ ...formData, patientId: p._id })}
-                onClear={() => setFormData({ ...formData, patientId: '' })}
+                onSelect={(p) => {
+                  const appointment = eligibleAppointments.find(a => a.patientId?._id === p._id || a.patientId === p._id);
+                  setFormData({ ...formData, patientId: p._id, appointmentId: appointment?._id || '' });
+                }}
+                onClear={() => setFormData({ ...formData, patientId: '', appointmentId: '' })}
                 renderOption={(p) => (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -240,19 +271,19 @@ export default function GenerateInvoicePage() {
                 marginTop: '1.5rem', padding: '1.5rem 2rem', borderRadius: '16px',
                 background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
               }}>
-                 <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-                   <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'white', color: 'var(--primary)', border: '3px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 900 }}>
-                     {selectedPatient.name[0]}
-                   </div>
-                   <div>
-                     <h4 style={{ fontSize: '1.15rem', fontWeight: 900, margin: 0, color: '#0f172a' }}>{selectedPatient.name}</h4>
-                     <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0.2rem 0 0', fontWeight: 700 }}>Profile ID: <span style={{ color: 'var(--primary)', fontWeight: 900 }}>#{selectedPatient.patientId}</span></p>
-                   </div>
-                 </div>
-                 <div style={{ textAlign: 'right' }}>
-                   <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.2rem', letterSpacing: '0.05em' }}>Contact</p>
-                   <p style={{ fontWeight: 900, fontSize: '1rem', color: '#0f172a', margin: 0 }}>{selectedPatient.phone}</p>
-                 </div>
+                <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                  <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'white', color: 'var(--primary)', border: '3px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 900 }}>
+                    {selectedPatient.name[0]}
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: '1.15rem', fontWeight: 900, margin: 0, color: '#0f172a' }}>{selectedPatient.name}</h4>
+                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0.2rem 0 0', fontWeight: 700 }}>Profile ID: <span style={{ color: 'var(--primary)', fontWeight: 900 }}>#{selectedPatient.patientId}</span></p>
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.2rem', letterSpacing: '0.05em' }}>Contact</p>
+                  <p style={{ fontWeight: 900, fontSize: '1rem', color: '#0f172a', margin: 0 }}>{selectedPatient.phone}</p>
+                </div>
               </div>
             )}
           </div>
@@ -269,171 +300,239 @@ export default function GenerateInvoicePage() {
               </div>
             </div>
 
-            <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-              {/* Procedures Table */}
-              <div style={{ padding: '1rem 1.5rem', background: '#0f172a', color: 'white', display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                 <p style={{ fontWeight: 800, fontSize: '0.8rem', letterSpacing: '0.05em', margin: 0, textTransform: 'uppercase' }}>Clinical Procedures</p>
-              </div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px dashed #cbd5e1' }}>
-                    <th style={{ textAlign: 'left', padding: '1.25rem 1.5rem', fontSize: '0.7rem', fontWeight: 950, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em' }}>Procedure Description</th>
-                    <th style={{ textAlign: 'left', padding: '1.25rem 1.5rem', fontSize: '0.7rem', fontWeight: 950, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em' }}>Clinical Spec</th>
-                    <th style={{ textAlign: 'right', padding: '1.25rem 1.5rem', fontSize: '0.7rem', fontWeight: 950, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em', width: '200px' }}>Fee (₹)</th>
-                    <th style={{ width: '60px' }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {formData.serviceItems.map((item, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '1rem 1.5rem', position: 'relative' }}>
-                        <input required type="text" className="input-premium" placeholder="Tap to select procedure..."
-                          style={{ fontSize: '0.9rem', background: '#f8fafc', borderColor: '#e2e8f0' }}
-                          value={item.name || ''} onFocus={() => { setActiveSearchRow(999 + idx); setItemSearch(''); }}
-                          onChange={(e) => {
-                            const newItems = [...formData.serviceItems]; newItems[idx].name = e.target.value;
-                            setFormData({ ...formData, serviceItems: newItems }); setItemSearch(e.target.value);
-                          }}
-                        />
-                        {activeSearchRow === (999 + idx) && (
-                          <div className="glass-premium animate-fade-in" style={{
-                            position: 'absolute', top: '100%', left: '1.5rem', right: '0', zIndex: 1000,
-                            borderRadius: '16px', maxHeight: '300px', overflowY: 'auto',
-                            boxShadow: '0 20px 40px rgba(0,0,0,0.15)', border: '1px solid var(--border-subtle)',
-                            background: 'white', marginTop: '8px', padding: '0.5rem'
-                          }}>
-                            {services.filter(s => !itemSearch || s.name.toLowerCase().includes(itemSearch.toLowerCase())).map(s => (
-                              <div key={s._id} onClick={() => {
-                                const newItems = [...formData.serviceItems]; newItems[idx] = { name: s.name, price: s.price, serviceId: s._id, description: '' };
-                                setFormData({ ...formData, serviceItems: newItems }); setActiveSearchRow(null);
-                              }} className="table-row-hover" style={{ padding: '1rem', borderRadius: '10px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>{s.name}</span>
-                                <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--primary)', background: 'rgba(15, 118, 110, 0.05)', padding: '4px 10px', borderRadius: '6px' }}>₹{s.price}</span>
-                              </div>
-                            ))}
-                            {services.filter(s => !itemSearch || s.name.toLowerCase().includes(itemSearch.toLowerCase())).length === 0 && (
-                              <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>No matching procedures found</div>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ padding: '1rem 1.5rem' }}>
-                        <input type="text" className="input-premium" placeholder="e.g. Left Knee..." style={{ fontSize: '0.9rem', background: '#f8fafc', borderColor: '#e2e8f0' }} value={item.description || ''} onChange={(e) => {
-                          const newItems = [...formData.serviceItems]; newItems[idx].description = e.target.value; setFormData({ ...formData, serviceItems: newItems });
-                        }} />
-                      </td>
-                      <td style={{ padding: '1rem 1.5rem' }}>
-                        <input required type="number" className="input-premium" style={{ textAlign: 'right', fontWeight: 800, background: '#f0fdfa', borderColor: '#ccfbf1', color: 'var(--primary)' }} value={item.price ?? 0} onChange={(e) => {
-                          const newItems = [...formData.serviceItems]; newItems[idx].price = e.target.value; setFormData({ ...formData, serviceItems: newItems });
-                        }} />
-                      </td>
-                      <td style={{ padding: '1rem 0', textAlign: 'center' }}>
-                        {formData.serviceItems.length > 1 && (
-                          <button type="button" onClick={() => setFormData({ ...formData, serviceItems: formData.serviceItems.filter((_, i) => i !== idx) })} style={{ color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer' }}>
-                            <Trash2 size={20} />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: 'white' }}>
-                 <button type="button" onClick={() => setFormData({ ...formData, serviceItems: [...formData.serviceItems, { name: '', price: 0, serviceId: '', description: '' }] })} style={{ color: 'var(--primary)', fontWeight: 900, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(15, 118, 110, 0.08)', padding: '0.75rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', letterSpacing: '0.05em' }}>
-                   <Plus size={16} /> ADD ANOTHER PROCEDURE
-                 </button>
+            <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+              {/* 💉 CLINICAL PROCEDURES SECTION */}
+              <div style={{ padding: '1.25rem 2rem', background: '#f0fdfa', color: '#0d9488', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #ccfbf1', borderRadius: '16px 16px 0 0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                  <Stethoscope size={18} />
+                  <p style={{ fontWeight: 800, fontSize: '0.8rem', letterSpacing: '0.05em', margin: 0, textTransform: 'uppercase' }}>Clinical Procedures & Services</p>
+                </div>
+                <span style={{ fontSize: '0.65rem', fontWeight: 800, background: 'rgba(13, 148, 136, 0.15)', padding: '4px 10px', borderRadius: '6px' }}>{formData.serviceItems.length} SERVICES</span>
               </div>
 
-              {/* Add-ons Separator */}
-              <div style={{ height: '8px', background: '#f1f5f9' }}></div>
-
-              <div style={{ padding: '1rem 1.5rem', background: '#fdf2f8', color: '#be185d', display: 'flex', alignItems: 'center', gap: '0.8rem', borderTop: '1px solid #fce7f3', borderBottom: '1px solid #fce7f3' }}>
-                 <p style={{ fontWeight: 800, fontSize: '0.8rem', letterSpacing: '0.05em', margin: 0, textTransform: 'uppercase' }}>Medical Inventory Add-ons</p>
-              </div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px dashed #cbd5e1' }}>
-                    <th style={{ textAlign: 'left', padding: '1.25rem 1.5rem', fontSize: '0.7rem', fontWeight: 950, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em' }}>Inventory Item</th>
-                    <th style={{ textAlign: 'left', padding: '1.25rem 1.5rem', fontSize: '0.7rem', fontWeight: 950, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em' }}>Detail</th>
-                    <th style={{ textAlign: 'center', padding: '1.25rem 1.5rem', fontSize: '0.7rem', fontWeight: 950, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em', width: '120px' }}>Quantity</th>
-                    <th style={{ textAlign: 'right', padding: '1.25rem 1.5rem', fontSize: '0.7rem', fontWeight: 950, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em', width: '180px' }}>Price (₹)</th>
-                    <th style={{ width: '60px' }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {formData.inventoryItems.map((item, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '1rem 1.5rem', position: 'relative' }}>
-                        <input required type="text" className="input-premium" placeholder="Tap to select item..."
-                          style={{ fontSize: '0.9rem', background: '#f8fafc', borderColor: '#e2e8f0' }}
-                          value={item.name || ''} onFocus={() => { setActiveSearchRow(800 + idx); setItemSearch(''); }}
-                          onChange={(e) => {
-                            const newItems = [...formData.inventoryItems]; newItems[idx].name = e.target.value;
-                            setFormData({ ...formData, inventoryItems: newItems }); setItemSearch(e.target.value);
-                          }}
-                        />
-                        {activeSearchRow === (800 + idx) && (
-                          <div className="glass-premium animate-fade-in" style={{
-                            position: 'absolute', top: '100%', left: '1.5rem', right: '0', zIndex: 1000,
-                            borderRadius: '16px', maxHeight: '300px', overflowY: 'auto',
-                            boxShadow: '0 20px 40px rgba(0,0,0,0.15)', border: '1px solid #fce7f3',
-                            background: 'white', marginTop: '8px', padding: '0.5rem'
-                          }}>
-                            {inventory.filter(i => !itemSearch || i.name.toLowerCase().includes(itemSearch.toLowerCase())).map(i => (
-                              <div key={i._id} onClick={() => {
-                                if (i.quantity <= 0) return;
-                                const newItems = [...formData.inventoryItems]; newItems[idx] = { name: i.name, quantity: 1, price: i.salePrice || i.pricePerUnit || 0, inventoryId: i._id, stock: i.quantity };
-                                setFormData({ ...formData, inventoryItems: newItems }); setActiveSearchRow(null);
-                              }} className="table-row-hover" style={{ padding: '1rem', borderRadius: '10px', cursor: i.quantity > 0 ? 'pointer' : 'not-allowed', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                <div>
-                                  <p style={{ fontWeight: 800, fontSize: '0.95rem', margin: 0 }}>{i.name}</p>
-                                  <p style={{ fontSize: '0.75rem', color: i.quantity <= 5 ? '#ef4444' : '#64748b', fontWeight: 800, margin: 0 }}>Stock: {i.quantity}</p>
-                                </div>
-                                <span style={{ fontWeight: 900, color: '#ec4899', fontSize: '0.85rem', background: 'rgba(236, 72, 153, 0.05)', padding: '4px 10px', borderRadius: '6px' }}>₹{i.salePrice || i.pricePerUnit}</span>
+              <div style={{ paddingBottom: '30px', position: 'relative', zIndex: 1 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
+                      <thead>
+                        <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                          <th style={{ textAlign: 'left', padding: '1rem 2rem', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.05em' }}>Procedure / Service Name</th>
+                          <th style={{ textAlign: 'left', padding: '1rem 2rem', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.05em' }}>Clinical Details</th>
+                          <th style={{ textAlign: 'right', padding: '1rem 2rem', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.05em', width: '200px' }}>Fee (₹)</th>
+                          <th style={{ width: '60px' }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {formData.serviceItems.map((item, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '0.75rem 1rem', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+                              <div style={{ position: 'relative' }}>
+                                <input required type="text" className="input-premium" placeholder="Select procedure..."
+                                  style={{ fontSize: '0.9rem', background: '#f8fafc', borderColor: '#e2e8f0', fontWeight: 600 }}
+                                  value={item.name || ''} onFocus={() => { setActiveSearchRow(999 + idx); setItemSearch(''); }}
+                                  onChange={(e) => {
+                                    const newItems = [...formData.serviceItems]; newItems[idx].name = e.target.value;
+                                    setFormData({ ...formData, serviceItems: newItems }); setItemSearch(e.target.value);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Escape') setActiveSearchRow(null);
+                                  }}
+                                />
+                                {activeSearchRow === (999 + idx) && (
+                                  <div style={{
+                                    position: 'absolute', top: 'calc(100% + 5px)', left: '0', minWidth: '450px', zIndex: 10000,
+                                    borderRadius: '12px', maxHeight: '280px', overflowY: 'auto',
+                                    boxShadow: '0 20px 40px rgba(0,0,0,0.15)', border: '1px solid #e2e8f0',
+                                    background: 'white', padding: '0.5rem'
+                                  }}>
+                                    <div style={{ padding: '0.4rem 0.75rem', borderBottom: '1px solid #f1f5f9', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                      <Search size={12} style={{ color: '#0d9488' }} />
+                                      <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>Service Catalog</span>
+                                    </div>
+                                    {services.filter(s => !itemSearch || s.name.toLowerCase().includes(itemSearch.toLowerCase())).map(s => (
+                                      <div key={s._id} onMouseDown={() => {
+                                        const newItems = [...formData.serviceItems]; newItems[idx] = { name: s.name, price: s.price, serviceId: s._id, description: '' };
+                                        setFormData({ ...formData, serviceItems: newItems }); setActiveSearchRow(null);
+                                      }} style={{
+                                        padding: '0.75rem 1rem', borderRadius: '8px', cursor: 'pointer',
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        marginBottom: '2px', transition: 'all 0.2s ease'
+                                      }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = '#f0fdfa'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                      >
+                                        <div>
+                                          <p style={{ fontWeight: 700, fontSize: '0.85rem', margin: 0, color: '#1e293b' }}>{s.name}</p>
+                                          <p style={{ fontSize: '0.65rem', color: '#94a3b8', margin: 0 }}>{s.category || 'General'}</p>
+                                        </div>
+                                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0d9488' }}>₹{s.price?.toLocaleString()}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
-                            ))}
-                            {inventory.filter(i => !itemSearch || i.name.toLowerCase().includes(itemSearch.toLowerCase())).length === 0 && (
-                              <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>No matching inventory records found</div>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ padding: '1rem 1.5rem' }}>
-                        <input type="text" className="input-premium" placeholder="Batch/Exp..." style={{ fontSize: '0.9rem', background: '#f8fafc', borderColor: '#e2e8f0' }} value={item.description || ''} onChange={(e) => {
-                          const newItems = [...formData.inventoryItems]; newItems[idx].description = e.target.value; setFormData({ ...formData, inventoryItems: newItems });
-                        }} />
-                      </td>
-                      <td style={{ padding: '1rem 1.5rem' }}>
-                        <input required type="number" className="input-premium" style={{ textAlign: 'center', fontWeight: 800, background: '#f8fafc', borderColor: '#e2e8f0' }} value={item.quantity ?? 1} onChange={(e) => {
-                          const newItems = [...formData.inventoryItems]; newItems[idx].quantity = Number(e.target.value); setFormData({ ...formData, inventoryItems: newItems });
-                        }} />
-                      </td>
-                      <td style={{ padding: '1rem 1.5rem' }}>
-                        <input required type="number" className="input-premium" style={{ textAlign: 'right', fontWeight: 800, background: '#fdf2f8', borderColor: '#fbcfe8', color: '#be185d' }} value={item.price ?? 0} onChange={(e) => {
-                          const newItems = [...formData.inventoryItems]; newItems[idx].price = Number(e.target.value); setFormData({ ...formData, inventoryItems: newItems });
-                        }} />
-                      </td>
-                      <td style={{ padding: '1rem 0', textAlign: 'center' }}>
-                        <button type="button" onClick={() => setFormData({ ...formData, inventoryItems: formData.inventoryItems.filter((_, i) => i !== idx) })} style={{ color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer' }}>
-                          <Trash2 size={20} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: 'white' }}>
-                 <button type="button" onClick={() => setFormData({ ...formData, inventoryItems: [...formData.inventoryItems, { name: '', quantity: 1, price: 0, inventoryId: '', stock: 0, description: '' }] })} style={{ color: '#ec4899', fontWeight: 900, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(236, 72, 153, 0.08)', padding: '0.75rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', letterSpacing: '0.05em' }}>
-                   <Plus size={16} /> ADD MEDICAL ADD-ON
-                 </button>
-              </div>
+                            </td>
+                            <td style={{ padding: '0.75rem 1rem' }}>
+                              <input type="text" className="input-premium" placeholder="Notes..." style={{ fontSize: '0.9rem', background: '#f8fafc', borderColor: '#e2e8f0' }} value={item.description || ''} onChange={(e) => {
+                                const newItems = [...formData.serviceItems]; newItems[idx].description = e.target.value; setFormData({ ...formData, serviceItems: newItems });
+                              }} />
+                            </td>
+                            <td style={{ padding: '0.75rem 1rem' }}>
+                              <div style={{ position: 'relative' }}>
+                                <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 700, color: '#0d9488', fontSize: '0.8rem' }}>₹</span>
+                                <input required type="number" className="input-premium" style={{ textAlign: 'right', fontWeight: 800, background: '#f0fdfa', borderColor: '#ccfbf1', color: '#0d9488', paddingLeft: '1.5rem' }} min="0" onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }} value={item.price ?? 0} onChange={(e) => {
+                                  const newItems = [...formData.serviceItems]; newItems[idx].price = e.target.value; setFormData({ ...formData, serviceItems: newItems });
+                                }} />
+                              </div>
+                            </td>
+                            <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                              {formData.serviceItems.length > 1 && (
+                                <button type="button" onClick={() => setFormData({ ...formData, serviceItems: formData.serviceItems.filter((_, i) => i !== idx) })} style={{ color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'} onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}>
+                                  <Trash2 size={18} />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div style={{ padding: '1.25rem 2rem' }}>
+                      <button type="button" onClick={() => setFormData({ ...formData, serviceItems: [...formData.serviceItems, { name: '', price: 0, serviceId: '', description: '' }] })} style={{ color: '#0d9488', fontWeight: 800, fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f0fdfa', padding: '0.6rem 1.25rem', borderRadius: '10px', border: '1px dashed #5eead4', cursor: 'pointer', textTransform: 'uppercase' }}>
+                        <Plus size={14} /> Add Service
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 💊 MEDICAL INVENTORY ADD-ONS SECTION */}
+                  <div style={{ padding: '1.25rem 2rem', background: '#fdf2f8', color: '#be185d', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #fce7f3', borderBottom: '1px solid #fce7f3' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                      <Package size={18} />
+                      <p style={{ fontWeight: 800, fontSize: '0.8rem', letterSpacing: '0.05em', margin: 0, textTransform: 'uppercase' }}>Medical Inventory Add-ons</p>
+                    </div>
+                    <span style={{ fontSize: '0.65rem', fontWeight: 800, background: 'rgba(190, 24, 93, 0.1)', padding: '4px 10px', borderRadius: '6px' }}>{formData.inventoryItems.length} ITEMS</span>
+                  </div>
+
+              {formData.inventoryItems.length === 0 ? (
+                <div style={{ padding: '2rem', textAlign: 'center', background: '#fdf2f8', borderBottomLeftRadius: '16px', borderBottomRightRadius: '16px' }}>
+                  <button type="button" onClick={() => setFormData({ ...formData, inventoryItems: [{ name: '', quantity: 1, price: 0, inventoryId: '', stock: 0, description: '' }] })} style={{ color: '#be185d', fontWeight: 800, fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'white', padding: '0.8rem 1.5rem', borderRadius: '10px', border: '1.5px dashed #fbcfe8', cursor: 'pointer', textTransform: 'uppercase', boxShadow: '0 4px 6px -1px rgba(190, 24, 93, 0.1)' }}>
+                    <Plus size={16} /> Add Medical Inventory
+                  </button>
+                </div>
+              ) : (
+                <div style={{ paddingBottom: '30px', position: 'relative', zIndex: 1 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
+                      <thead>
+                        <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                          <th style={{ textAlign: 'left', padding: '1rem 2rem', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.05em' }}>Inventory Item</th>
+                          <th style={{ textAlign: 'left', padding: '1rem 2rem', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.05em' }}>Batch / Detail</th>
+                          <th style={{ textAlign: 'center', padding: '1rem 2rem', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.05em', width: '120px' }}>Qty</th>
+                          <th style={{ textAlign: 'right', padding: '1rem 2rem', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.05em', width: '180px' }}>Sub-Total (₹)</th>
+                          <th style={{ width: '60px' }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {formData.inventoryItems.map((item, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '0.75rem 1rem', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+                              <div style={{ position: 'relative' }}>
+                                <input required type="text" className="input-premium" placeholder="Search item..."
+                                  style={{ fontSize: '0.9rem', background: '#f8fafc', borderColor: '#e2e8f0', fontWeight: 600 }}
+                                  value={item.name || ''} onFocus={() => { setActiveSearchRow(800 + idx); setItemSearch(''); }}
+                                  onChange={(e) => {
+                                    const newItems = [...formData.inventoryItems]; newItems[idx].name = e.target.value;
+                                    setFormData({ ...formData, inventoryItems: newItems }); setItemSearch(e.target.value);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Escape') setActiveSearchRow(null);
+                                  }}
+                                />
+                                {activeSearchRow === (800 + idx) && (
+                                  <div style={{
+                                    position: 'absolute', top: 'calc(100% + 5px)', left: '0', minWidth: '450px', zIndex: 10000,
+                                    borderRadius: '12px', maxHeight: '280px', overflowY: 'auto',
+                                    boxShadow: '0 20px 40px rgba(0,0,0,0.15)', border: '1px solid #fce7f3',
+                                    background: 'white', padding: '0.5rem'
+                                  }}>
+                                    <div style={{ padding: '0.4rem 0.75rem', borderBottom: '1px solid #fce7f3', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                      <Package size={12} style={{ color: '#be185d' }} />
+                                      <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>Inventory Catalog</span>
+                                    </div>
+                                    {inventory.filter(i => !itemSearch || i.name.toLowerCase().includes(itemSearch.toLowerCase())).map(i => (
+                                      <div key={i._id} onMouseDown={() => {
+                                        if (i.quantity <= 0) return;
+                                        const existingIdx = formData.inventoryItems.findIndex((it, index) => it.inventoryId === i._id && index !== idx);
+                                        if (existingIdx !== -1) {
+                                          const newItems = [...formData.inventoryItems];
+                                          newItems[existingIdx].quantity += 1;
+                                          const finalItems = newItems.filter((_, index) => index !== idx);
+                                          setFormData({ ...formData, inventoryItems: finalItems });
+                                        } else {
+                                          const newItems = [...formData.inventoryItems];
+                                          newItems[idx] = { name: i.name, quantity: 1, price: i.salePrice || i.pricePerUnit || 0, inventoryId: i._id, stock: i.quantity };
+                                          setFormData({ ...formData, inventoryItems: newItems });
+                                        }
+                                        setActiveSearchRow(null);
+                                      }} style={{
+                                        padding: '0.75rem 1rem', borderRadius: '8px',
+                                        cursor: i.quantity > 0 ? 'pointer' : 'not-allowed',
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        marginBottom: '2px', transition: 'all 0.2s ease',
+                                        opacity: i.quantity > 0 ? 1 : 0.6
+                                      }}
+                                        onMouseEnter={(e) => { if (i.quantity > 0) e.currentTarget.style.background = '#fdf2f8'; }}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                      >
+                                        <div>
+                                          <p style={{ fontWeight: 700, fontSize: '0.85rem', margin: 0, color: '#1e293b' }}>{i.name}</p>
+                                          <p style={{ fontSize: '0.65rem', color: i.quantity <= 5 ? '#ef4444' : '#94a3b8', fontWeight: 700 }}>Stock: {i.quantity}</p>
+                                        </div>
+                                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#be185d' }}>₹{(i.salePrice || i.pricePerUnit || 0).toLocaleString()}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td style={{ padding: '0.75rem 1rem' }}>
+                              <input type="text" className="input-premium" placeholder="Detail..." style={{ fontSize: '0.9rem', background: '#f8fafc', borderColor: '#e2e8f0' }} value={item.description || ''} onChange={(e) => {
+                                const newItems = [...formData.inventoryItems]; newItems[idx].description = e.target.value; setFormData({ ...formData, inventoryItems: newItems });
+                              }} />
+                            </td>
+                            <td style={{ padding: '0.75rem 1rem' }}>
+                              <input required type="number" className="input-premium" style={{ textAlign: 'center', fontWeight: 800, background: '#f8fafc', borderColor: '#e2e8f0' }} min="1" value={item.quantity ?? 1} onChange={(e) => {
+                                const newItems = [...formData.inventoryItems]; newItems[idx].quantity = Number(e.target.value); setFormData({ ...formData, inventoryItems: newItems });
+                              }} />
+                            </td>
+                            <td style={{ padding: '0.75rem 1rem' }}>
+                              <div style={{ position: 'relative' }}>
+                                <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 700, color: '#be185d', fontSize: '0.8rem' }}>₹</span>
+                                <input required type="number" className="input-premium" style={{ textAlign: 'right', fontWeight: 800, background: '#fdf2f8', borderColor: '#fce7f3', color: '#be185d', paddingLeft: '1.5rem' }} min="0" value={item.price ?? 0} onChange={(e) => {
+                                  const newItems = [...formData.inventoryItems]; newItems[idx].price = Number(e.target.value); setFormData({ ...formData, inventoryItems: newItems });
+                                }} />
+                              </div>
+                            </td>
+                            <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                              <button type="button" onClick={() => setFormData({ ...formData, inventoryItems: formData.inventoryItems.filter((_, i) => i !== idx) })} style={{ color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'} onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}>
+                                <Trash2 size={18} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div style={{ padding: '1.25rem 2rem' }}>
+                      <button type="button" onClick={() => setFormData({ ...formData, inventoryItems: [...formData.inventoryItems, { name: '', quantity: 1, price: 0, inventoryId: '', stock: 0, description: '' }] })} style={{ color: '#be185d', fontWeight: 800, fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fdf2f8', padding: '0.6rem 1.25rem', borderRadius: '10px', border: '1px dashed #fbcfe8', cursor: 'pointer', textTransform: 'uppercase' }}>
+                        <Plus size={14} /> Add Medical Add-on
+                      </button>
+                    </div>
+                  </div>
+                )}
             </div>
           </div>
 
-          {/* 3. 💳 Payment Details & Generation */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr minmax(380px, 420px)' }}>
-             {/* Left Inputs block */}
-             <div style={{ padding: '3.5rem', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+
+            {/* 3. 💳 Payment Details & Generation */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr minmax(380px, 420px)' }}>
+              {/* Left Inputs block */}
+              <div style={{ padding: '3.5rem', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem' }}>
                   <Receipt size={20} style={{ color: '#0f172a' }} />
                   <h4 style={{ fontWeight: 900, fontSize: '1.15rem', color: '#0f172a', margin: 0 }}>Settlement Terms</h4>
@@ -459,7 +558,7 @@ export default function GenerateInvoicePage() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Clinical Remarks / Case Notes</label>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Prescription Description / Remarks</label>
                   <textarea
                     className="input-premium"
                     placeholder="Enter clinical notes or specialized instructions to attach to this invoice body..."
@@ -471,15 +570,15 @@ export default function GenerateInvoicePage() {
                 <div>
                   <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Short Payment Note</label>
                   <input
-                     type="text" className="input-premium" placeholder="e.g. Partial advance received by Bank Transfer"
-                     style={{ background: '#f8fafc', borderColor: '#e2e8f0' }}
-                     value={formData.paymentNote} onChange={(e) => setFormData({ ...formData, paymentNote: e.target.value })}
+                    type="text" className="input-premium" placeholder="e.g. Partial advance received by Bank Transfer"
+                    style={{ background: '#f8fafc', borderColor: '#e2e8f0' }}
+                    value={formData.paymentNote} onChange={(e) => setFormData({ ...formData, paymentNote: e.target.value })}
                   />
                 </div>
-             </div>
+              </div>
 
-             {/* Right Summary Block */}
-             <div style={{ background: '#f8fafc', padding: '3.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              {/* Right Summary Block */}
+              <div style={{ background: '#f8fafc', padding: '3.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <p style={{ fontSize: '0.7rem', fontWeight: 950, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1.5rem' }}>Dynamic Ledger Summary</p>
 
                 {previousDebt > 0 && (
@@ -495,11 +594,11 @@ export default function GenerateInvoicePage() {
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                   <label style={{ fontSize: '0.9rem', fontWeight: 700, color: '#64748b' }}>Custom Discount</label>
-                   <div style={{ position: 'relative', width: '120px' }}>
-                     <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 900, color: '#ef4444' }}>-₹</span>
-                     <input type="number" className="input-premium" style={{ background: 'white', borderColor: '#e2e8f0', color: '#ef4444', fontWeight: 900, textAlign: 'right', paddingLeft: '2.5rem' }} value={formData.discount ?? 0} placeholder="0" onChange={(e) => setFormData({ ...formData, discount: e.target.value })} />
-                   </div>
+                  <label style={{ fontSize: '0.9rem', fontWeight: 700, color: '#64748b' }}>Custom Discount</label>
+                  <div style={{ position: 'relative', width: '120px' }}>
+                    <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 900, color: '#ef4444' }}>-₹</span>
+                    <input type="number" className="input-premium" style={{ background: 'white', borderColor: '#e2e8f0', color: '#ef4444', fontWeight: 900, textAlign: 'right', paddingLeft: '2.5rem' }} min="0" onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }} value={formData.discount ?? 0} placeholder="0" onChange={(e) => setFormData({ ...formData, discount: e.target.value })} />
+                  </div>
                 </div>
 
                 <div style={{ borderTop: '2px dashed #cbd5e1', margin: '0 0 2rem 0' }}></div>
@@ -510,25 +609,25 @@ export default function GenerateInvoicePage() {
                 </div>
 
                 <div style={{ padding: '1.5rem', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-                   <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>Amount Collected Now</label>
-                   <div style={{ position: 'relative' }}>
-                     <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', fontSize: '1.25rem', fontWeight: 900, color: '#0f172a' }}>₹</span>
-                     <input type="number" className="input-premium" style={{ fontSize: '1.5rem', fontWeight: 950, height: '64px', paddingLeft: '2.5rem', color: '#0f172a', border: '2px solid #0f172a', background: '#f8fafc' }} value={formData.paidAmount} placeholder="0" onChange={(e) => setFormData({ ...formData, paidAmount: Number(e.target.value) })} />
-                   </div>
+                  <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>Amount Collected Now</label>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', fontSize: '1.25rem', fontWeight: 900, color: '#0f172a' }}>₹</span>
+                    <input type="number" className="input-premium" style={{ fontSize: '1.5rem', fontWeight: 950, height: '64px', paddingLeft: '2.5rem', color: '#0f172a', border: '2px solid #0f172a', background: '#f8fafc' }} min="0" onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }} value={formData.paidAmount} placeholder="0" onChange={(e) => setFormData({ ...formData, paidAmount: Number(e.target.value) })} />
+                  </div>
 
-                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0' }}>
-                     <span style={{ fontSize: '0.7rem', fontWeight: 900, color: (formData.amount - formData.paidAmount) > 0 ? '#ea580c' : '#059669', textTransform: 'uppercase' }}>
-                       {(formData.amount - formData.paidAmount) <= 0 ? 'Balance Clear' : 'Session Dues'}
-                     </span>
-                     <span style={{ fontSize: '1rem', fontWeight: 950, color: (formData.amount - formData.paidAmount) > 0 ? '#ea580c' : '#059669' }}>
-                       ₹{Math.max(0, formData.amount - formData.paidAmount).toLocaleString()}
-                     </span>
-                   </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0' }}>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 900, color: (formData.amount - formData.paidAmount) > 0 ? '#ea580c' : '#059669', textTransform: 'uppercase' }}>
+                      {(formData.amount - formData.paidAmount) <= 0 ? 'Balance Clear' : 'Session Dues'}
+                    </span>
+                    <span style={{ fontSize: '1rem', fontWeight: 950, color: (formData.amount - formData.paidAmount) > 0 ? '#ea580c' : '#059669' }}>
+                      ₹{Math.max(0, formData.amount - formData.paidAmount).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
 
                 <button
                   type="button"
-                  disabled={!formData.patientId || (totalServices === 0 && totalInventory === 0)}
+                  disabled={!formData.patientId || !formData.appointmentId || (totalServices === 0 && totalInventory === 0)}
                   onClick={() => { if (validateForm()) setIsPreview(true) }}
                   style={{
                     width: '100%', marginTop: '3rem', padding: '1.25rem', borderRadius: '14px',
@@ -541,9 +640,9 @@ export default function GenerateInvoicePage() {
                 >
                   <ShieldCheck size={20} /> Preview Clinical Bill
                 </button>
-             </div>
+              </div>
+            </div>
           </div>
-        </div>
       ) : (
         <div className="animate-slide-up" style={{ maxWidth: '900px', margin: '0 auto' }}>
           <style jsx global>{`
@@ -567,135 +666,135 @@ export default function GenerateInvoicePage() {
               }
             }
           `}</style>
-          <div id="printable-bill" style={{ background: 'white', boxShadow: '0 40px 80px -20px rgba(0,0,0,0.15)', borderRadius: '32px', overflow: 'hidden' }}>
+            <div id="printable-bill" style={{ background: 'white', boxShadow: '0 40px 80px -20px rgba(0,0,0,0.15)', borderRadius: '32px', overflow: 'hidden' }}>
 
-            <div style={{ padding: '3rem 4rem', borderBottom: '1.5px dashed #f1f5f9' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <p style={{ fontSize: '0.55rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Clinic Information</p>
-                  <p style={{ fontWeight: 900, fontSize: '1.15rem', color: '#0f172a', marginBottom: '0.25rem' }}>PHYSIO 4</p>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 650 }}>Edavanna Central • Kerala - 676541</p>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 650 }}>Phone: 7298448844</p>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', textAlign: 'right' }}>
-                  <div style={{ textAlign: 'right' }}>
-                    <h3 style={{ fontSize: '1.5rem', fontWeight: 950, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>PHYSIO 4</h3>
-                    <p style={{ fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>Clinic Bill Preview</p>
-                  </div>
-                  <img src="/logo.jpeg" style={{ width: '56px', height: '56px', borderRadius: '14px', objectFit: 'cover' }} alt="Clinic Logo" />
-                </div>
-              </div>
-            </div>
-
-            <div style={{ padding: '3.5rem 4rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', marginBottom: '3.5rem' }}>
-                <div>
-                  <p style={{ fontSize: '0.55rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Bill To</p>
-                  <p style={{ fontWeight: 900, fontSize: '1.15rem', color: '#0f172a', marginBottom: '0.25rem' }}></p>
-
-
-                  <p style={{ fontWeight: 950, fontSize: '1.4rem', color: '#0f172a', marginBottom: '0.3rem', textTransform: 'capitalize' }}>{selectedPatient?.name}</p>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 750 }}>{selectedPatient?.phone}</p><p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 650 }}></p>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 750 }}>ID: {selectedPatient?.patientId}</p><p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 650 }}></p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontSize: '0.55rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>Invoice Details</p>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Invoice # : </span>
-                    <span style={{ fontSize: '1.05rem', fontWeight: 950, color: 'var(--primary)', fontFamily: 'monospace' }}>INV-1001</span>
-                  </div>
+              <div style={{ padding: '3rem 4rem', borderBottom: '1.5px dashed #f1f5f9' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Issue Date : </span>
-                    <span style={{ fontWeight: 800, fontSize: '1rem', color: '#0f172a' }}>{new Date(formData.date).toLocaleDateString()}</span>
+                    <p style={{ fontSize: '0.55rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Clinic Information</p>
+                    <p style={{ fontWeight: 900, fontSize: '1.15rem', color: '#0f172a', marginBottom: '0.25rem' }}>PHYSIO 4</p>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 650 }}>Edavanna Central • Kerala - 676541</p>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 650 }}>Phone: 7298448844</p>
                   </div>
-                </div>
-              </div>
-
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '3rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '2.5px solid #0f172a' }}>
-                    <th style={{ textAlign: 'left', padding: '1rem 0', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase' }}>S.NO</th>
-                    <th style={{ textAlign: 'left', padding: '1rem 0', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Description</th>
-                    <th style={{ textAlign: 'right', padding: '1rem 0', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', width: '120px' }}>Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...formData.serviceItems.filter(i => i.name).map(i => ({ ...i, quantity: 1 })), ...formData.inventoryItems].map((item, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '1.25rem 0', width: '50px', verticalAlign: 'top', fontWeight: 800, color: 'var(--text-muted)', fontSize: '0.85rem' }}>{(idx + 1).toString().padStart(2, '0')}</td>
-                      <td style={{ padding: '1.25rem 0' }}>
-                        <p style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem', margin: 0 }}>{item.name}</p>
-                        {item.description && <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.2rem 0 0' }}>Spec: {item.description}</p>}
-
-                        {item.quantity > 1 && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Qty: {item.quantity}</span>}
-                      </td>
-                      <td style={{ padding: '1.25rem 0', textAlign: 'right', fontWeight: 900, color: '#0f172a', verticalAlign: 'top' }}>₹{(item.price * item.quantity).toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <div style={{ width: '300px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    <span>Gross Total</span>
-                    <span>₹{(formData.amount + Number(formData.discount || 0)).toLocaleString()}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontSize: '0.85rem', color: '#ef4444', fontWeight: 600 }}>
-                    <span>Discount</span>
-                    <span>- ₹{Number(formData.discount || 0).toLocaleString()}</span>
-                  </div>
-                  <div style={{ borderTop: '2px solid #0f172a', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <p style={{ fontWeight: 900, fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', margin: 0 }}>Net Payable</p>
-                    <p style={{ fontWeight: 950, fontSize: '1.75rem', color: 'var(--primary)', margin: 0 }}>₹{formData.amount.toLocaleString()}</p>
-                  </div>
-
-                  {formData.paidAmount > 0 && (
-                    <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px dashed #f1f5f9' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                        <span>Amount Paid Now</span>
-                        <span style={{ color: '#0f172a' }}>₹{formData.paidAmount.toLocaleString()}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <p style={{ fontWeight: 950, fontSize: '0.7rem', textTransform: 'uppercase', color: (formData.amount - formData.paidAmount) > 0 ? '#fb923c' : '#0d9488' }}>
-                          {(formData.amount - formData.paidAmount) < 0 ? 'Credit / Advanced' : 'Balance Due'}
-                        </p>
-                        <p style={{ fontWeight: 950, fontSize: '1.25rem', color: (formData.amount - formData.paidAmount) > 0 ? '#fb923c' : '#0d9488' }}>
-                          ₹{Math.abs(formData.amount - formData.paidAmount).toLocaleString()}
-                        </p>
-                      </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', textAlign: 'right' }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <h3 style={{ fontSize: '1.5rem', fontWeight: 950, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>PHYSIO 4</h3>
+                      <p style={{ fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>Clinic Bill Preview</p>
                     </div>
-                  )}
+                    <img src="/logo.jpeg" style={{ width: '56px', height: '56px', borderRadius: '14px', objectFit: 'cover' }} alt="Clinic Logo" />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="no-print" style={{ background: '#f8fafc', padding: '2.5rem 4rem', display: 'flex', justifyContent: 'flex-end', gap: '1.5rem' }}>
-              <button
-                type="button"
-                onClick={() => setIsPreview(false)}
-                style={{ padding: '0.9rem 2.5rem', borderRadius: '10px', background: 'white', border: '1.5px solid var(--border-subtle)', fontWeight: 800, color: 'var(--text-muted)', cursor: 'pointer' }}
-              >
-                Modify Records
-              </button>
-              <button
-                type="button"
-                onClick={() => window.print()}
-                style={{ padding: '0.9rem 2.5rem', borderRadius: '10px', background: '#f1f5f9', border: '1.5px solid #cbd5e1', fontWeight: 800, color: '#1e293b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.6rem' }}
-              >
-                <Printer size={18} /> Print Bill
-              </button>
-              <button
-                type="button"
-                disabled={loading}
-                onClick={handleAuthorize}
-                style={{ padding: '0.9rem 3.5rem', borderRadius: '10px', background: 'var(--bg-sidebar)', color: 'white', fontWeight: 900, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.8rem', boxShadow: '0 10px 20px rgba(15, 23, 42, 0.2)' }}
-              >
-                {loading ? 'Processing...' : <><Save size={20} />Save</>}
-              </button>
+              <div style={{ padding: '3.5rem 4rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', marginBottom: '3.5rem' }}>
+                  <div>
+                    <p style={{ fontSize: '0.55rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Bill To</p>
+                    <p style={{ fontWeight: 900, fontSize: '1.15rem', color: '#0f172a', marginBottom: '0.25rem' }}></p>
+
+
+                    <p style={{ fontWeight: 950, fontSize: '1.4rem', color: '#0f172a', marginBottom: '0.3rem', textTransform: 'capitalize' }}>{selectedPatient?.name}</p>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 750 }}>{selectedPatient?.phone}</p><p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 650 }}></p>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 750 }}>ID: {selectedPatient?.patientId}</p><p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 650 }}></p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <p style={{ fontSize: '0.55rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>Invoice Details</p>
+                    <div style={{ marginBottom: '1rem' }}>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Invoice # : </span>
+                      <span style={{ fontSize: '1.05rem', fontWeight: 950, color: 'var(--primary)', fontFamily: 'monospace' }}>INV-1001</span>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Issue Date : </span>
+                      <span style={{ fontWeight: 800, fontSize: '1rem', color: '#0f172a' }}>{new Date(formData.date).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '3rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2.5px solid #0f172a' }}>
+                      <th style={{ textAlign: 'left', padding: '1rem 0', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase' }}>S.NO</th>
+                      <th style={{ textAlign: 'left', padding: '1rem 0', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Description</th>
+                      <th style={{ textAlign: 'right', padding: '1rem 0', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', width: '120px' }}>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...formData.serviceItems.filter(i => i.name).map(i => ({ ...i, quantity: 1 })), ...formData.inventoryItems].map((item, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '1.25rem 0', width: '50px', verticalAlign: 'top', fontWeight: 800, color: 'var(--text-muted)', fontSize: '0.85rem' }}>{(idx + 1).toString().padStart(2, '0')}</td>
+                        <td style={{ padding: '1.25rem 0' }}>
+                          <p style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem', margin: 0 }}>{item.name}</p>
+                          {item.description && <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.2rem 0 0' }}>Spec: {item.description}</p>}
+
+                          {item.quantity > 1 && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Qty: {item.quantity}</span>}
+                        </td>
+                        <td style={{ padding: '1.25rem 0', textAlign: 'right', fontWeight: 900, color: '#0f172a', verticalAlign: 'top' }}>₹{(item.price * item.quantity).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <div style={{ width: '300px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      <span>Gross Total</span>
+                      <span>₹{(formData.amount + Number(formData.discount || 0)).toLocaleString()}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontSize: '0.85rem', color: '#ef4444', fontWeight: 600 }}>
+                      <span>Discount</span>
+                      <span>- ₹{Number(formData.discount || 0).toLocaleString()}</span>
+                    </div>
+                    <div style={{ borderTop: '2px solid #0f172a', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <p style={{ fontWeight: 900, fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', margin: 0 }}>Net Payable</p>
+                      <p style={{ fontWeight: 950, fontSize: '1.75rem', color: 'var(--primary)', margin: 0 }}>₹{formData.amount.toLocaleString()}</p>
+                    </div>
+
+                    {formData.paidAmount > 0 && (
+                      <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px dashed #f1f5f9' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                          <span>Amount Paid Now</span>
+                          <span style={{ color: '#0f172a' }}>₹{formData.paidAmount.toLocaleString()}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <p style={{ fontWeight: 950, fontSize: '0.7rem', textTransform: 'uppercase', color: (formData.amount - formData.paidAmount) > 0 ? '#fb923c' : '#0d9488' }}>
+                            {(formData.amount - formData.paidAmount) < 0 ? 'Credit / Advanced' : 'Balance Due'}
+                          </p>
+                          <p style={{ fontWeight: 950, fontSize: '1.25rem', color: (formData.amount - formData.paidAmount) > 0 ? '#fb923c' : '#0d9488' }}>
+                            ₹{Math.abs(formData.amount - formData.paidAmount).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="no-print" style={{ background: '#f8fafc', padding: '2.5rem 4rem', display: 'flex', justifyContent: 'flex-end', gap: '1.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsPreview(false)}
+                  style={{ padding: '0.9rem 2.5rem', borderRadius: '10px', background: 'white', border: '1.5px solid var(--border-subtle)', fontWeight: 800, color: 'var(--text-muted)', cursor: 'pointer' }}
+                >
+                  Modify Records
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  style={{ padding: '0.9rem 2.5rem', borderRadius: '10px', background: '#f1f5f9', border: '1.5px solid #cbd5e1', fontWeight: 800, color: '#1e293b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.6rem' }}
+                >
+                  <Printer size={18} /> Print Bill
+                </button>
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={handleAuthorize}
+                  style={{ padding: '0.9rem 3.5rem', borderRadius: '10px', background: 'var(--bg-sidebar)', color: 'white', fontWeight: 900, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.8rem', boxShadow: '0 10px 20px rgba(15, 23, 42, 0.2)' }}
+                >
+                  {loading ? 'Processing...' : <><Save size={20} />Save</>}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
       )}
     </div>
   );

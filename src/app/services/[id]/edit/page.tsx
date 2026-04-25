@@ -112,7 +112,7 @@ export default function EditServicePage() {
             <label className="label-premium">Update Session Rate (₹) <span style={{ color: '#ef4444' }}>*</span></label>
             <div style={{ position: 'relative' }}>
               <CreditCard size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-              <input required disabled={saving} type="number" className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} placeholder="0" />
+              <input required disabled={saving} type="number" min="0" onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }} className="input-premium" style={{ paddingLeft: '2.75rem' }} value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} placeholder="0" />
             </div>
           </div>
 

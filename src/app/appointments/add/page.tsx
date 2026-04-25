@@ -87,13 +87,13 @@ export default function BookAppointmentPage() {
 
   const selectedPatient = patients.find(p => p._id === formik.values.patientId);
 
-  const isError = (field: keyof typeof formik.values) => 
+  const isError = (field: keyof typeof formik.values) =>
     formik.touched[field] && !!formik.errors[field];
 
   const ErrorMsg = ({ name }: { name: keyof typeof formik.values }) => (
     formik.touched[name] && formik.errors[name] ? (
       <div style={{ color: '#ef4444', fontSize: '0.7rem', fontWeight: 700, marginTop: '0.4rem', marginLeft: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-        <span>⚠️ {formik.errors[name] as string}</span>
+        <span> {formik.errors[name] as string}</span>
       </div>
     ) : null
   );
@@ -117,15 +117,15 @@ export default function BookAppointmentPage() {
         <div className="clinical-form-grid">
 
           {/* Section 1: Patient Identification */}
-          <div className="col-12" style={{ 
-              marginBottom: '1.5rem', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '1rem',
-              background: 'linear-gradient(90deg, rgba(15, 118, 110, 0.05) 0%, transparent 100%)',
-              padding: '0.75rem 1rem',
-              borderRadius: 'var(--radius-sm)',
-              borderLeft: '4px solid var(--primary)'
+          <div className="col-12" style={{
+            marginBottom: '1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem',
+            background: 'linear-gradient(90deg, rgba(15, 118, 110, 0.05) 0%, transparent 100%)',
+            padding: '0.75rem 1rem',
+            borderRadius: 'var(--radius-sm)',
+            borderLeft: '4px solid var(--primary)'
           }}>
             <User size={20} style={{ color: 'var(--primary)' }} />
             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
@@ -134,7 +134,7 @@ export default function BookAppointmentPage() {
           </div>
 
           <div className="col-12" style={{ marginBottom: '2rem' }}>
-            <ClinicalSearchSelect 
+            <ClinicalSearchSelect
               label="Search Clinical Registry *"
               options={patients}
               value={formik.values.patientId}
@@ -179,8 +179,8 @@ export default function BookAppointmentPage() {
                   </div>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.1rem' }}>
-                       <p style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '1.25rem', letterSpacing: '-0.01em' }}>{selectedPatient.name}</p>
-                       <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 800, background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '2rem' }}>VERIFIED FILE</span>
+                      <p style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '1.25rem', letterSpacing: '-0.01em' }}>{selectedPatient.name}</p>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 800, background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '2rem' }}>VERIFIED FILE</span>
                     </div>
                     <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Selected Record: {selectedPatient.phone} • [#{selectedPatient.patientId || 'N/A'}]</p>
                   </div>
@@ -190,15 +190,15 @@ export default function BookAppointmentPage() {
           </div>
 
           {/* Section 2: Clinical Logistics */}
-          <div className="col-12" style={{ 
-              margin: '2rem 0 1.5rem', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '1rem',
-              background: 'linear-gradient(90deg, rgba(15, 118, 110, 0.05) 0%, transparent 100%)',
-              padding: '0.75rem 1rem',
-              borderRadius: 'var(--radius-sm)',
-              borderLeft: '4px solid var(--primary)'
+          <div className="col-12" style={{
+            margin: '2rem 0 1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem',
+            background: 'linear-gradient(90deg, rgba(15, 118, 110, 0.05) 0%, transparent 100%)',
+            padding: '0.75rem 1rem',
+            borderRadius: 'var(--radius-sm)',
+            borderLeft: '4px solid var(--primary)'
           }}>
             <Calendar size={20} style={{ color: 'var(--primary)' }} />
             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
@@ -207,7 +207,7 @@ export default function BookAppointmentPage() {
           </div>
 
           <div className="col-12" style={{ marginBottom: '1.5rem' }}>
-            <ClinicalSearchSelect 
+            <ClinicalSearchSelect
               label="Medical Specialist *"
               options={doctors}
               value={formik.values.doctorId}
@@ -236,14 +236,15 @@ export default function BookAppointmentPage() {
             <label className="label-premium">Scheduled Date <span style={{ color: '#ef4444' }}>*</span></label>
             <div style={{ position: 'relative' }}>
               <Calendar size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('date') ? '#ef4444' : 'var(--text-muted)', opacity: 0.5 }} />
-              <input 
+              <input
                 name="date"
                 autoComplete="off"
-                type="date" 
+                type="date"
                 className={`input-premium ${isError('date') ? 'input-error' : ''}`}
-                style={{ paddingLeft: '2.75rem' }} 
-                value={formik.values.date} 
-                onChange={formik.handleChange} 
+                style={{ paddingLeft: '2.75rem' }}
+                min={new Date().toISOString().split('T')[0]}
+                value={formik.values.date}
+                onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
               />
             </div>
@@ -253,14 +254,14 @@ export default function BookAppointmentPage() {
             <label className="label-premium">Scheduled Time (Optional)</label>
             <div style={{ position: 'relative' }}>
               <Clock size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('time') ? '#ef4444' : 'var(--text-muted)', opacity: 0.5 }} />
-              <input 
+              <input
                 name="time"
                 autoComplete="off"
-                type="time" 
+                type="time"
                 className={`input-premium ${isError('time') ? 'input-error' : ''}`}
-                style={{ paddingLeft: '2.75rem' }} 
-                value={formik.values.time} 
-                onChange={formik.handleChange} 
+                style={{ paddingLeft: '2.75rem' }}
+                value={formik.values.time}
+                onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
               />
             </div>
@@ -268,15 +269,15 @@ export default function BookAppointmentPage() {
           </div>
 
           {/* Section 3: Conclusion / Remarks */}
-          <div className="col-12" style={{ 
-              margin: '3rem 0 1.5rem', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '1rem',
-              background: 'linear-gradient(90deg, rgba(15, 118, 110, 0.05) 0%, transparent 100%)',
-              padding: '0.75rem 1rem',
-              borderRadius: 'var(--radius-sm)',
-              borderLeft: '4px solid var(--primary)'
+          <div className="col-12" style={{
+            margin: '3rem 0 1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem',
+            background: 'linear-gradient(90deg, rgba(15, 118, 110, 0.05) 0%, transparent 100%)',
+            padding: '0.75rem 1rem',
+            borderRadius: 'var(--radius-sm)',
+            borderLeft: '4px solid var(--primary)'
           }}>
             <MessageCircle size={20} style={{ color: 'var(--primary)' }} />
             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em' }}>

@@ -26,6 +26,14 @@ export default function AddRolePage() {
       .catch(err => console.error('🚫 Failed to fetch permissions:', err));
   }, []);
 
+  // Sync permissions when allAccess is toggled
+  useEffect(() => {
+    if (allAccess && availablePermissions) {
+      const allKeys = Object.values(availablePermissions as Record<string, Record<string, string>>).flatMap(module => Object.values(module)) as string[];
+      setPermissions(allKeys);
+    }
+  }, [allAccess, availablePermissions]);
+
   const formik = useFormik({
     initialValues: {
       name: '',
@@ -34,7 +42,7 @@ export default function AddRolePage() {
     validationSchema,
     onSubmit: async (values) => {
       if (!allAccess && permissions.length === 0) {
-        showToast('⚠️ Please select at least one permission or enable Full Access.', 'error');
+        showToast(' Please select at least one permission or enable Full Access.', 'error');
         return;
       }
       try {
@@ -88,7 +96,7 @@ export default function AddRolePage() {
             </div>
           </div>
           <div
-            onClick={() => setAllAccess(v => !v)}
+            onClick={() => setAllAccess(!allAccess)}
             style={{ width: '50px', height: '26px', background: allAccess ? 'var(--primary)' : '#cbd5e1', borderRadius: '20px', position: 'relative', cursor: 'pointer', transition: 'var(--transition-smooth)' }}
           >
             <div style={{ width: '20px', height: '20px', background: 'white', borderRadius: '50%', position: 'absolute', top: '3px', left: allAccess ? '27px' : '3px', transition: 'var(--transition-smooth)', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }} />
@@ -117,7 +125,7 @@ export default function AddRolePage() {
               />
               {formik.touched.name && formik.errors.name && (
                 <div style={{ color: '#ef4444', fontSize: '0.72rem', fontWeight: 700, marginTop: '0.35rem' }}>
-                  ⚠️ {formik.errors.name}
+                  {formik.errors.name}
                 </div>
               )}
             </div>
@@ -150,7 +158,7 @@ export default function AddRolePage() {
               <strong style={{ color: 'var(--text-main)' }}>{permissions.length}</strong> Modules Active
             </span>
             <span style={{ color: allAccess ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 700 }}>
-              {allAccess ? '⚠️ FULL BYPASS ACTIVE' : '✓ CONTROLLED ACCESS'}
+              {allAccess ? ' FULL BYPASS ACTIVE' : '✓ CONTROLLED ACCESS'}
             </span>
           </div>
         </div>

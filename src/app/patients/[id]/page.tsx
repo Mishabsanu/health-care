@@ -1,5 +1,5 @@
 'use client'
-import api from '@/services/api';
+import api, { BASE_URL } from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
 import {
     ArrowLeft,
@@ -751,7 +751,7 @@ return (
                                     key={idx}
                                     className="glass-interactive"
                                     style={{ padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', background: 'white', display: 'flex', gap: '1rem', alignItems: 'center', cursor: 'pointer' }}
-                                    onClick={() => window.open(`http://localhost:2000${doc.url}`, '_blank')}
+                                    onClick={() => window.open(`${BASE_URL}${doc.url}`, '_blank')}
                                 >
                                     <div style={{ width: '45px', height: '45px', borderRadius: 'var(--radius-sm)', background: 'rgba(15, 118, 110, 0.1)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                         <FileText size={20} />

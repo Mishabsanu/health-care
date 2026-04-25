@@ -307,6 +307,8 @@ export default function GeneratePayslipPage() {
                                             else setPayslipData({...payslipData, rate: val});
                                         }}
                                         placeholder="Rate / Base"
+                                        min="0"
+                                        onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }}
                                     />
                                 </div>
                             </div>
@@ -314,17 +316,17 @@ export default function GeneratePayslipPage() {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                                 <div>
                                     <label className="label-premium">Allowances (+)</label>
-                                    <input type="number" suppressHydrationWarning className="input-premium" value={payslipData.allowance} onChange={(e) => setPayslipData({...payslipData, allowance: Number(e.target.value)})} />
+                                    <input type="number" suppressHydrationWarning className="input-premium" value={payslipData.allowance} onChange={(e) => setPayslipData({...payslipData, allowance: Number(e.target.value)})} min="0" onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }} />
                                 </div>
                                 <div>
                                     <label className="label-premium">Deductions (-)</label>
-                                    <input type="number" suppressHydrationWarning className="input-premium" value={payslipData.deduction} onChange={(e) => setPayslipData({...payslipData, deduction: Number(e.target.value)})} />
+                                    <input type="number" suppressHydrationWarning className="input-premium" value={payslipData.deduction} onChange={(e) => setPayslipData({...payslipData, deduction: Number(e.target.value)})} min="0" onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }} />
                                 </div>
                             </div>
 
                             <div>
                                 <label className="label-premium" style={{ color: '#10b981' }}>Performance Bonus (+)</label>
-                                <input type="number" className="input-premium" style={{ borderColor: '#10b981' }} value={payslipData.bonus} onChange={(e) => setPayslipData({...payslipData, bonus: Number(e.target.value)})} />
+                                <input type="number" className="input-premium" style={{ borderColor: '#10b981' }} value={payslipData.bonus} onChange={(e) => setPayslipData({...payslipData, bonus: Number(e.target.value)})} min="0" onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }} />
                             </div>
 
                             <div style={{ padding: '1.5rem', background: 'rgba(15, 118, 110, 0.04)', borderRadius: '1rem', border: '1px dashed var(--primary)' }}>

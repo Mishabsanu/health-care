@@ -5,9 +5,9 @@ import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
-import { 
-  ArrowLeft, User, Phone, Mail, MapPin, 
-  Activity, Briefcase, Stethoscope, Scale, 
+import {
+  ArrowLeft, User, Phone, Mail, MapPin,
+  Activity, Briefcase, Stethoscope, Scale,
   Ruler, UserCircle, Smartphone, CheckCircle2,
   ChevronRight, ClipboardList, Building2
 } from 'lucide-react';
@@ -16,10 +16,10 @@ const validationSchema = Yup.object().shape({
   name: Yup.string().required('Patient name is required'),
   phone: Yup.string()
     .required('Contact number is required')
-    .matches(/^[0-9+\-\s()]*$/, 'Invalid phone format'),
+    .matches(/^[0-9]{10}$/, 'Contact must be exactly 10 digits'),
   age: Yup.number()
     .required('Age is required')
-    .positive('Age must be positive')
+    .min(0, 'Age cannot be negative')
     .integer('Age must be a whole number'),
   address: Yup.string().required('Residential address is required'),
   email: Yup.string().email('Invalid email address'),
@@ -85,7 +85,7 @@ export default function RegisterPatientPage() {
   }, [formik.values.weight, formik.values.height]);
 
   const habitOptions = [
-    'Smoking', 'Alcohol', 
+    'Smoking', 'Alcohol',
     'Exercise', 'Poor Sleep', 'Caffeine', 'Healthy', 'Sedentary'
   ];
 
@@ -97,13 +97,13 @@ export default function RegisterPatientPage() {
     formik.setFieldValue('habits', nextHabits);
   };
 
-  const isError = (field: keyof typeof formik.values) => 
+  const isError = (field: keyof typeof formik.values) =>
     formik.touched[field] && formik.errors[field];
 
   const ErrorMsg = ({ name }: { name: keyof typeof formik.values }) => (
     formik.touched[name] && formik.errors[name] ? (
       <div style={{ color: '#ef4444', fontSize: '0.7rem', fontWeight: 700, marginTop: '0.4rem', marginLeft: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-        <span>⚠️ {formik.errors[name] as string}</span>
+        <span> {formik.errors[name] as string}</span>
       </div>
     ) : null
   );
@@ -133,15 +133,15 @@ export default function RegisterPatientPage() {
       <form onSubmit={formik.handleSubmit} className="clinical-form-card" style={{ opacity: loading ? 0.7 : 1 }}>
         <div className="clinical-form-grid">
           {/* Section 1: Identity & Contact */}
-          <div className="col-12" style={{ 
-              marginBottom: '1.5rem', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '1rem',
-              background: 'linear-gradient(90deg, rgba(15, 118, 110, 0.05) 0%, transparent 100%)',
-              padding: '0.75rem 1.25rem',
-              borderRadius: 'var(--radius-sm)',
-              borderLeft: '4px solid var(--primary)'
+          <div className="col-12" style={{
+            marginBottom: '1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem',
+            background: 'linear-gradient(90deg, rgba(15, 118, 110, 0.05) 0%, transparent 100%)',
+            padding: '0.75rem 1.25rem',
+            borderRadius: 'var(--radius-sm)',
+            borderLeft: '4px solid var(--primary)'
           }}>
             <UserCircle size={20} style={{ color: 'var(--primary)' }} />
             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
@@ -153,17 +153,17 @@ export default function RegisterPatientPage() {
             <label className="label-premium">Patient Full Name <span style={{ color: '#ef4444' }}>*</span></label>
             <div style={{ position: 'relative' }}>
               <User size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('name') ? '#ef4444' : 'var(--text-muted)', opacity: isError('name') ? 0.8 : 0.5 }} />
-              <input 
+              <input
                 name="name"
                 autoComplete="off"
-                disabled={loading} 
-                type="text" 
+                disabled={loading}
+                type="text"
                 className={`input-premium ${isError('name') ? 'input-error' : ''}`}
-                style={{ paddingLeft: '2.75rem', borderColor: isError('name') ? '#ef4444' : '' }} 
-                value={formik.values.name} 
-                onChange={formik.handleChange} 
+                style={{ paddingLeft: '2.75rem', borderColor: isError('name') ? '#ef4444' : '' }}
+                value={formik.values.name}
+                onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                placeholder="Full legal name..." 
+                placeholder="Full legal name..."
               />
             </div>
             <ErrorMsg name="name" />
@@ -172,17 +172,21 @@ export default function RegisterPatientPage() {
             <label className="label-premium">Primary Contact <span style={{ color: '#ef4444' }}>*</span></label>
             <div style={{ position: 'relative' }}>
               <Smartphone size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('phone') ? '#ef4444' : 'var(--text-muted)', opacity: isError('phone') ? 0.8 : 0.5 }} />
-              <input 
+              <input
                 name="phone"
                 autoComplete="off"
-                disabled={loading} 
-                type="text" 
+                disabled={loading}
+                type="text"
+                maxLength={10}
                 className={`input-premium ${isError('phone') ? 'input-error' : ''}`}
-                style={{ paddingLeft: '2.75rem', borderColor: isError('phone') ? '#ef4444' : '' }} 
-                value={formik.values.phone} 
-                onChange={formik.handleChange} 
+                style={{ paddingLeft: '2.75rem', borderColor: isError('phone') ? '#ef4444' : '' }}
+                value={formik.values.phone}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  if (val.length <= 10) formik.setFieldValue('phone', val);
+                }}
                 onBlur={formik.handleBlur}
-                placeholder="9876543210" 
+                placeholder="9876543210"
               />
             </div>
             <ErrorMsg name="phone" />
@@ -190,65 +194,67 @@ export default function RegisterPatientPage() {
 
           <div className="col-12" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
             <div>
-               <label className="label-premium">Email Address (Optional)</label>
-               <div style={{ position: 'relative' }}>
-                 <Mail size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('email') ? '#ef4444' : 'var(--text-muted)', opacity: 0.5 }} />
-                 <input 
-                   name="email"
-                   autoComplete="off"
-                   disabled={loading} 
-                   type="email" 
-                   className={`input-premium ${isError('email') ? 'input-error' : ''}`}
-                   style={{ paddingLeft: '2.75rem' }} 
-                   value={formik.values.email} 
-                   onChange={formik.handleChange} 
-                   onBlur={formik.handleBlur}
-                   placeholder="patient@example.com" 
-                 />
-               </div>
-               <ErrorMsg name="email" />
+              <label className="label-premium">Email Address (Optional)</label>
+              <div style={{ position: 'relative' }}>
+                <Mail size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('email') ? '#ef4444' : 'var(--text-muted)', opacity: 0.5 }} />
+                <input
+                  name="email"
+                  autoComplete="off"
+                  disabled={loading}
+                  type="email"
+                  className={`input-premium ${isError('email') ? 'input-error' : ''}`}
+                  style={{ paddingLeft: '2.75rem' }}
+                  value={formik.values.email}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  placeholder="patient@example.com"
+                />
+              </div>
+              <ErrorMsg name="email" />
             </div>
             <div>
-               <label className="label-premium">Occupation</label>
-               <div style={{ position: 'relative' }}>
-                 <Briefcase size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-                 <input 
-                   name="occupation"
-                   autoComplete="off"
-                   disabled={loading} 
-                   type="text" 
-                   className="input-premium" 
-                   style={{ paddingLeft: '2.75rem' }} 
-                   value={formik.values.occupation} 
-                   onChange={formik.handleChange} 
-                   placeholder="e.g. Software Engineer, Teacher" 
-                 />
-               </div>
+              <label className="label-premium">Occupation</label>
+              <div style={{ position: 'relative' }}>
+                <Briefcase size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
+                <input
+                  name="occupation"
+                  autoComplete="off"
+                  disabled={loading}
+                  type="text"
+                  className="input-premium"
+                  style={{ paddingLeft: '2.75rem' }}
+                  value={formik.values.occupation}
+                  onChange={formik.handleChange}
+                  placeholder="e.g. Software Engineer, Teacher"
+                />
+              </div>
             </div>
           </div>
 
           <div className="col-4">
             <label className="label-premium">Age <span style={{ color: '#ef4444' }}>*</span></label>
-            <input 
+            <input
               name="age"
               autoComplete="off"
-              disabled={loading} 
-              type="number" 
+              disabled={loading}
+              type="number"
               className={`input-premium ${isError('age') ? 'input-error' : ''}`}
               style={{ borderColor: isError('age') ? '#ef4444' : '' }}
-              value={formik.values.age} 
-              onChange={formik.handleChange} 
+              min="0"
+              onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }}
+              value={formik.values.age}
+              onChange={formik.handleChange}
               onBlur={formik.handleBlur}
-              placeholder="Enter age" 
+              placeholder="Enter age"
             />
             <ErrorMsg name="age" />
           </div>
           <div className="col-4">
             <label className="label-premium">Gender</label>
-            <select 
+            <select
               name="gender"
-              className="input-premium" 
-              value={formik.values.gender} 
+              className="input-premium"
+              value={formik.values.gender}
               onChange={formik.handleChange}
             >
               <option value="Male">Male</option>
@@ -261,32 +267,32 @@ export default function RegisterPatientPage() {
             <label className="label-premium">Residential Address <span style={{ color: '#ef4444' }}>*</span></label>
             <div style={{ position: 'relative' }}>
               <MapPin size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: isError('address') ? '#ef4444' : 'var(--text-muted)', opacity: isError('address') ? 0.8 : 0.5 }} />
-              <input 
+              <input
                 name="address"
                 autoComplete="off"
-                disabled={loading} 
-                type="text" 
+                disabled={loading}
+                type="text"
                 className={`input-premium ${isError('address') ? 'input-error' : ''}`}
-                style={{ paddingLeft: '2.75rem', borderColor: isError('address') ? '#ef4444' : '' }} 
-                value={formik.values.address} 
-                onChange={formik.handleChange} 
+                style={{ paddingLeft: '2.75rem', borderColor: isError('address') ? '#ef4444' : '' }}
+                value={formik.values.address}
+                onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                placeholder="Full physical address..." 
+                placeholder="Full physical address..."
               />
             </div>
             <ErrorMsg name="address" />
           </div>
 
           {/* Section 2: Clinical Profiling */}
-          <div className="col-12" style={{ 
-              margin: '2.5rem 0 1.5rem', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '1rem',
-              background: 'linear-gradient(90deg, rgba(15, 118, 110, 0.05) 0%, transparent 100%)',
-              padding: '0.75rem 1.25rem',
-              borderRadius: 'var(--radius-sm)',
-              borderLeft: '4px solid var(--primary)'
+          <div className="col-12" style={{
+            margin: '2.5rem 0 1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem',
+            background: 'linear-gradient(90deg, rgba(15, 118, 110, 0.05) 0%, transparent 100%)',
+            padding: '0.75rem 1.25rem',
+            borderRadius: 'var(--radius-sm)',
+            borderLeft: '4px solid var(--primary)'
           }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
               🩺 Clinical <span className="gradient-text">Profiling</span>
@@ -297,16 +303,16 @@ export default function RegisterPatientPage() {
             <label className="label-premium">Referred By</label>
             <div style={{ position: 'relative' }}>
               <Stethoscope size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-              <input 
+              <input
                 name="referredBy"
                 autoComplete="off"
-                disabled={loading} 
-                type="text" 
-                className="input-premium" 
-                style={{ paddingLeft: '2.75rem' }} 
-                value={formik.values.referredBy} 
-                onChange={formik.handleChange} 
-                placeholder="Physician / Source" 
+                disabled={loading}
+                type="text"
+                className="input-premium"
+                style={{ paddingLeft: '2.75rem' }}
+                value={formik.values.referredBy}
+                onChange={formik.handleChange}
+                placeholder="Physician / Source"
               />
             </div>
           </div>
@@ -345,54 +351,56 @@ export default function RegisterPatientPage() {
 
           <div className="col-12">
             <label className="label-premium">Medical Complaint</label>
-            <textarea 
+            <textarea
               name="reasonForVisit"
               autoComplete="off"
-              disabled={loading} 
-              className="textarea-premium" 
-              style={{ height: '80px' }} 
-              value={formik.values.reasonForVisit} 
-              onChange={formik.handleChange} 
-              placeholder="Primary reason for seeking clinical help..." 
+              disabled={loading}
+              className="textarea-premium"
+              style={{ height: '80px' }}
+              value={formik.values.reasonForVisit}
+              onChange={formik.handleChange}
+              placeholder="Primary reason for seeking clinical help..."
             />
           </div>
 
           {/* Clinical Vitals Section */}
-          <div className="col-12" style={{ 
-              marginTop: '3rem', 
-              padding: '2rem', 
-              background: '#f8fafc', 
-              borderRadius: 'var(--radius-lg)', 
-              border: '1px solid var(--border-subtle)',
-              boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+          <div className="col-12" style={{
+            marginTop: '3rem',
+            padding: '2rem',
+            background: '#f8fafc',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--border-subtle)',
+            boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
           }}>
-            <div style={{ 
-                marginBottom: '2rem', 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '1rem',
-                borderBottom: '1px solid rgba(15, 118, 110, 0.1)',
-                paddingBottom: '1rem'
+            <div style={{
+              marginBottom: '2rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1rem',
+              borderBottom: '1px solid rgba(15, 118, 110, 0.1)',
+              paddingBottom: '1rem'
             }}>
-               <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                 📊 Anthropometry & Vitals
-               </h3>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                📊 Anthropometry & Vitals
+              </h3>
             </div>
             <div className="clinical-form-grid">
               <div className="col-4">
                 <label className="label-premium" style={{ fontSize: '0.65rem' }}>Weight (KG)</label>
                 <div style={{ position: 'relative' }}>
                   <Scale size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-                  <input 
+                  <input
                     name="weight"
                     autoComplete="off"
-                    disabled={loading} 
-                    type="number" 
-                    className="input-premium" 
-                    style={{ paddingLeft: '2.25rem' }} 
-                    value={formik.values.weight} 
-                    onChange={formik.handleChange} 
-                    placeholder="Enter weight" 
+                    disabled={loading}
+                    type="number"
+                    className="input-premium"
+                    style={{ paddingLeft: '2.25rem' }}
+                    min="0"
+                    onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }}
+                    value={formik.values.weight}
+                    onChange={formik.handleChange}
+                    placeholder="Enter weight"
                   />
                 </div>
               </div>
@@ -400,16 +408,18 @@ export default function RegisterPatientPage() {
                 <label className="label-premium" style={{ fontSize: '0.65rem' }}>Height (CM)</label>
                 <div style={{ position: 'relative' }}>
                   <Ruler size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.5 }} />
-                  <input 
+                  <input
                     name="height"
                     autoComplete="off"
-                    disabled={loading} 
-                    type="number" 
-                    className="input-premium" 
-                    style={{ paddingLeft: '2.25rem' }} 
-                    value={formik.values.height} 
-                    onChange={formik.handleChange} 
-                    placeholder="Enter height" 
+                    disabled={loading}
+                    type="number"
+                    className="input-premium"
+                    style={{ paddingLeft: '2.25rem' }}
+                    min="0"
+                    onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }}
+                    value={formik.values.height}
+                    onChange={formik.handleChange}
+                    placeholder="Enter height"
                   />
                 </div>
               </div>
@@ -424,28 +434,28 @@ export default function RegisterPatientPage() {
 
           <div className="col-12">
             <label className="label-premium">Initial Assessment Notes</label>
-            <textarea 
+            <textarea
               name="initialTreatment"
               autoComplete="off"
-              disabled={loading} 
-              className="textarea-premium" 
-              style={{ height: '100px' }} 
-              value={formik.values.initialTreatment} 
-              onChange={formik.handleChange} 
-              placeholder="Detailed clinical history and initial findings..." 
+              disabled={loading}
+              className="textarea-premium"
+              style={{ height: '100px' }}
+              value={formik.values.initialTreatment}
+              onChange={formik.handleChange}
+              placeholder="Detailed clinical history and initial findings..."
             />
           </div>
 
           {/* Section 4: Conclusion / Remarks */}
-          <div className="col-12" style={{ 
-              margin: '3rem 0 1.5rem', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '1rem',
-              background: 'linear-gradient(90deg, rgba(15, 118, 110, 0.05) 0%, transparent 100%)',
-              padding: '0.75rem 1.25rem',
-              borderRadius: 'var(--radius-sm)',
-              borderLeft: '4px solid var(--primary)'
+          <div className="col-12" style={{
+            margin: '3rem 0 1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem',
+            background: 'linear-gradient(90deg, rgba(15, 118, 110, 0.05) 0%, transparent 100%)',
+            padding: '0.75rem 1.25rem',
+            borderRadius: 'var(--radius-sm)',
+            borderLeft: '4px solid var(--primary)'
           }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
               📝 Conclusions & <span className="gradient-text">Remarks</span>
@@ -457,7 +467,7 @@ export default function RegisterPatientPage() {
             <textarea
               name="remarks"
               autoComplete="off"
-              className="textarea-premium" 
+              className="textarea-premium"
               placeholder="Add final clinical context..."
               value={formik.values.remarks}
               onChange={formik.handleChange}

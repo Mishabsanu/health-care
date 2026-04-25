@@ -451,7 +451,7 @@ export default function AttendancePage() {
 
   return (
     <div className={cn(styles.page, 'animate-fade-in')}>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3.5rem' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3.5rem', paddingTop: '2rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--primary)' }} />
@@ -843,30 +843,48 @@ export default function AttendancePage() {
             </div>
 
             <div className={styles.modalBody}>
-              {modalData.map((log, index) => (
-                <article key={log._id || `${getEntityId(log.staffId)}-${index}`} className={styles.logCard}>
-                  <div className={styles.logCardTop}>
-                    <div>
-                      <span className={styles.logIndex}>Segment {index + 1}</span>
-                      <h4>{getDisplayNameFromLog(log)}</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {modalData.map((log, index) => (
+                  <div key={log._id || `${index}`} className={styles.logCard}>
+                    <div className={styles.logCardTop}>
+                      <div>
+                        <span className={styles.logIndex}>SESSION #{index + 1}</span>
+                        <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                          <div className={styles.memberAvatar}>
+                            {getDisplayNameFromLog(log)?.[0] || 'S'}
+                          </div>
+                          {getDisplayNameFromLog(log)}
+                        </h4>
+                      </div>
+                      <span className={styles.logDuration}>
+                        <Clock size={14} style={{ marginRight: '0.4rem' }} />
+                        {formatMs(calculateDuration(log.checkIn, log.checkOut || new Date()))}
+                      </span>
                     </div>
-                    <span className={styles.logDuration}>
-                      {formatMs(calculateDuration(log.checkIn, log.checkOut || new Date()))}
-                    </span>
+                    
+                    <div className={styles.logGrid}>
+                      <div>
+                        <span className={styles.logLabel}>Specialist</span>
+                        <strong>{getDisplayNameFromLog(log)}</strong>
+                      </div>
+                      <div>
+                        <span className={styles.logLabel}>Clock In</span>
+                        <strong>{formatTime(log.checkIn)}</strong>
+                      </div>
+                      <div>
+                        <span className={styles.logLabel}>Clock Out</span>
+                        <strong style={{ color: log.checkOut ? 'inherit' : '#fb923c' }}>
+                          {log.checkOut ? formatTime(log.checkOut) : 'Currently Active'}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className={styles.logLabel}>Session Reference</span>
+                        <code style={{ fontSize: '0.7rem', opacity: 0.6 }}>{log._id?.slice(-8).toUpperCase() || 'SYSTEM'}</code>
+                      </div>
+                    </div>
                   </div>
-
-                  <div className={styles.logGrid}>
-                    <div>
-                      <span className={styles.logLabel}>Check in</span>
-                      <strong>{formatTime(log.checkIn)}</strong>
-                    </div>
-                    <div>
-                      <span className={styles.logLabel}>Check out</span>
-                      <strong>{log.checkOut ? formatTime(log.checkOut) : 'Active session'}</strong>
-                    </div>
-                  </div>
-                </article>
-              ))}
+                ))}
+              </div>
             </div>
 
             <div className={styles.modalFooter}>

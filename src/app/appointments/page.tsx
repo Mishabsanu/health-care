@@ -4,7 +4,7 @@ import HasPermission from '@/components/HasPermission';
 import { usePermission } from '@/hooks/usePermission';
 import api from '@/services/api';
 import { usePCMSStore } from '@/store/useStore';
-import { CheckCircle2, ChevronDown, ClipboardCheck, Clock, MessageSquare, Plus, Receipt, Trash2, Wallet, XCircle } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ClipboardCheck, Clock, MessageSquare, Plus, Receipt, Trash2, Users, Wallet, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -30,7 +30,7 @@ interface Appointment {
 export default function AppointmentsPage() {
   const router = useRouter();
   const { hasPermission, canOperate } = usePermission();
-  const { isLoading: storeLoading, showToast, showConfirm, setIsSyncing } = usePCMSStore();
+  const { user, isLoading: storeLoading, showToast, showConfirm, setIsSyncing } = usePCMSStore();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [localLoading, setLocalLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -41,6 +41,7 @@ export default function AppointmentsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
   const [activeTimeframe, setActiveTimeframe] = useState<'today' | 'upcoming' | 'history'>('today');
+  const [showOnlyMine, setShowOnlyMine] = useState(false);
 
   const fetchAppointments = useCallback(async (isInitial = false) => {
     if (isInitial && !hasLoaded) setLocalLoading(true);
@@ -49,6 +50,8 @@ export default function AppointmentsPage() {
       const localDate = new Date().toLocaleDateString('en-CA');
       const params = new URLSearchParams({ page: currentPage.toString(), limit: pageSize.toString(), timeframe: activeTimeframe, localDate });
       if (searchQuery) params.append('search', searchQuery);
+      if (showOnlyMine && user?.id) params.append('createdBy', user.id);
+
       Object.entries(activeFilters).forEach(([key, values]) => {
         if (values && values.length > 0) {
           let value = values[0];
@@ -69,7 +72,7 @@ export default function AppointmentsPage() {
       setHasLoaded(true);
       setIsSyncing(false);
     }
-  }, [currentPage, pageSize, searchQuery, activeFilters, activeTimeframe, hasLoaded, setIsSyncing, showToast]);
+  }, [currentPage, pageSize, searchQuery, activeFilters, activeTimeframe, hasLoaded, setIsSyncing, showToast, showOnlyMine, user]);
 
   useEffect(() => {
     fetchAppointments(!hasLoaded);
@@ -154,6 +157,16 @@ export default function AppointmentsPage() {
       )
     },
     { header: 'SPECIALIST', style: { minWidth: '150px' }, key: (a: Appointment) => (<div><p style={{ fontWeight: 600 }}>{a.doctorId?.name || a.doctorName}</p><p style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 700 }}>{a.doctorId?.specialization?.toUpperCase()}</p></div>) },
+    { 
+      header: 'CREATED BY', 
+      style: { minWidth: '130px' }, 
+      key: (a: any) => (
+        <div>
+          <p style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--primary)' }}>{(a.createdBy?.name || 'ADMIN').toUpperCase()}</p>
+          <p style={{ fontSize: '0.65rem', opacity: 0.6, fontWeight: 800 }}>CLINICAL STAFF</p>
+        </div>
+      ) 
+    },
     {
       header: 'BILLING',
       style: { minWidth: '130px' },
@@ -208,6 +221,7 @@ export default function AppointmentsPage() {
       key: (a: Appointment) => {
         const statusColors: any = {
           'Scheduled': { bg: '#e2e8f0', text: '#334155' },
+          'Queued': { bg: '#fef3c7', text: '#d97706' },
           'Confirmed': { bg: '#dcfce7', text: '#059669' },
           'Completed': { bg: '#e0e7ff', text: '#4f46e5' },
           'Cancelled': { bg: '#fee2e2', text: '#dc2626' }
@@ -241,7 +255,8 @@ export default function AppointmentsPage() {
               transition: 'var(--transition-smooth)'
             }}
           >
-            <option value="Scheduled">QUEUED</option>
+            <option value="Scheduled">SCHEDULED</option>
+            <option value="Queued">QUEUED</option>
             <option value="Confirmed">PATIENT IN</option>
             <option value="Completed">SESSION DONE</option>
             <option value="Cancelled">CANCELLED</option>
@@ -250,9 +265,21 @@ export default function AppointmentsPage() {
       }
     }
   ], [router, handleStatusUpdate, canOperate, showToast, handleSendReminder]);
+  const paginationConfig = useMemo(() => ({
+    totalRecords,
+    currentPage,
+    pageSize,
+    onPageChange: setCurrentPage,
+    onPageSizeChange: setPageSize,
+    onSearchChange: (s: string) => { setSearchQuery(s); setCurrentPage(1); },
+    onFilterChange: (f: any) => { setActiveFilters(f); setCurrentPage(1); },
+    externalFilters: activeFilters,
+    externalSearch: searchQuery
+  }), [totalRecords, currentPage, pageSize, activeFilters, searchQuery]);
+
   return (
-    <div className="appointments-container animate-fade-in" style={{ padding: '2rem 2.5rem' }}>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3.5rem' }}>
+    <div className="appointments-container animate-fade-in">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3.5rem', paddingTop: '2rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--primary)' }} />
@@ -303,6 +330,7 @@ export default function AppointmentsPage() {
             ))}
           </div>
 
+
           <HasPermission permission="appointments:create">
             <button
               onClick={() => router.push('/appointments/add')}
@@ -352,16 +380,7 @@ export default function AppointmentsPage() {
           { label: 'Status', key: 'status' as keyof Appointment, options: ['Queued', 'Patient In', 'Session Done', 'Cancelled'] },
           { label: 'Date', key: 'date' as keyof Appointment, options: [] }
         ]}
-        serverPagination={{
-          totalRecords,
-          currentPage,
-          pageSize,
-          onPageChange: setCurrentPage,
-          onSearchChange: (s) => { setSearchQuery(s); setCurrentPage(1); },
-          onFilterChange: (f) => { setActiveFilters(f); setCurrentPage(1); },
-          externalFilters: activeFilters,
-          externalSearch: searchQuery
-        }}
+        serverPagination={paginationConfig}
         getRowStyle={(a: any) => {
           const today = new Date().toISOString().split('T')[0];
           const isToday = a.date === today;
@@ -376,5 +395,4 @@ export default function AppointmentsPage() {
       />
     </div>
   );
-
 }

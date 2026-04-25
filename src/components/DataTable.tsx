@@ -44,6 +44,7 @@ interface DataTableProps<T> {
     currentPage: number;
     pageSize: number;
     onPageChange: (page: number) => void;
+    onPageSizeChange?: (size: number) => void;
     onSearchChange: (search: string) => void;
     onFilterChange: (filters: Record<string, string[]>) => void;
     externalFilters?: Record<string, string[]>;
@@ -123,6 +124,7 @@ export default function DataTable<T extends { id: string }>({
   const lastEmittedSearch = useRef(searchTerm);
   const lastEmittedFilters = useRef(JSON.stringify(activeFilters));
   const lastEmittedPage = useRef(currentPage);
+  const lastEmittedPageSize = useRef(pageSize);
 
   // Sync to Backend if requested — ONLY on actual state change
   useEffect(() => {
@@ -144,12 +146,31 @@ export default function DataTable<T extends { id: string }>({
     }
   }, [activeFilters, serverPagination]);
 
+  // 📡 Emit Changes to Parent
   useEffect(() => {
     if (!serverPagination || isFirstRender.current) return;
     
+    if (lastEmittedPageSize.current !== pageSize) {
+      lastEmittedPageSize.current = pageSize;
+      if (serverPagination.onPageSizeChange) {
+        serverPagination.onPageSizeChange(pageSize);
+      }
+      // CRITICAL: When page size changes, we MUST reset to page 1 in both internal and external state
+      setCurrentPage(1); 
+      if (serverPagination.onPageChange) {
+        serverPagination.onPageChange(1);
+      }
+    }
+  }, [pageSize, serverPagination]);
+
+  useEffect(() => {
+    if (!serverPagination || isFirstRender.current) return;
+
     if (lastEmittedPage.current !== currentPage) {
-        lastEmittedPage.current = currentPage;
+      lastEmittedPage.current = currentPage;
+      if (serverPagination.onPageChange) {
         serverPagination.onPageChange(currentPage);
+      }
     }
   }, [currentPage, serverPagination]);
 

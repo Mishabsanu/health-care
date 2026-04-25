@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import DataTable from '@/components/DataTable';
 import { usePCMSStore } from '@/store/useStore';
@@ -51,24 +51,24 @@ export default function InventoryPage() {
         limit: pageSize.toString()
       });
       if (searchQuery) params.append('search', searchQuery);
-      
+
       Object.entries(activeFilters).forEach(([key, values]) => {
         if (values && values.length > 0) {
-            params.append(key, values[0]);
+          params.append(key, values[0]);
         }
       });
 
       const [itemsRes, topRes] = await Promise.all([
-          api.get(`/inventory?${params.toString()}`),
-          api.get('/inventory/top-selling')
+        api.get(`/inventory?${params.toString()}`),
+        api.get('/inventory/top-selling')
       ]);
 
       if (itemsRes.data && typeof itemsRes.data.total !== 'undefined') {
-          setItems(itemsRes.data.data);
-          setTotalRecords(itemsRes.data.total);
+        setItems(itemsRes.data.data);
+        setTotalRecords(itemsRes.data.total);
       } else {
-          setItems(itemsRes.data);
-          setTotalRecords(itemsRes.data.length);
+        setItems(itemsRes.data);
+        setTotalRecords(itemsRes.data.length);
       }
       setTopSellers(topRes.data);
     } catch (err) {
@@ -110,13 +110,13 @@ export default function InventoryPage() {
     { header: 'ITEM NAME', key: 'name' as keyof InventoryItem, style: { fontWeight: 700, color: 'var(--primary)' } },
     { header: 'SKU', key: 'sku' as keyof InventoryItem, style: { fontSize: '0.8rem', opacity: 0.6 } },
     { header: 'CATEGORY', key: 'category' as keyof InventoryItem, style: { fontWeight: 600 } },
-    { 
-      header: 'STOCK LEVEL', 
+    {
+      header: 'STOCK LEVEL',
       key: (i: InventoryItem) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ 
-            fontWeight: 800, 
-            color: i.quantity <= i.reorderLevel ? '#ef4444' : 'var(--text-main)' 
+          <span style={{
+            fontWeight: 800,
+            color: i.quantity <= i.reorderLevel ? '#ef4444' : 'var(--text-main)'
           }}>
             {i.quantity} {i.unit}
           </span>
@@ -130,23 +130,23 @@ export default function InventoryPage() {
       sortKey: 'quantity' as keyof InventoryItem
     },
     { header: 'REORDER AT', key: (i: InventoryItem) => `${i.reorderLevel} ${i.unit}`, style: { fontSize: '0.8rem', opacity: 0.6 } },
-    { 
-      header: 'SALE PRICE', 
+    {
+      header: 'SALE PRICE',
       key: (i: InventoryItem) => (
         <span style={{ fontWeight: 700, color: 'var(--primary)' }}>₹{i.salePrice?.toLocaleString() || '0'}</span>
       ),
       sortKey: 'salePrice' as keyof InventoryItem
     },
     { header: 'P. PRICE', key: (i: InventoryItem) => `₹${i.purchasePrice?.toLocaleString() || '0'}`, style: { fontSize: '0.8rem', opacity: 0.6 } },
-    { 
-        header: 'PERFORMANCE', 
-        key: (i: InventoryItem) => (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <span style={{ fontWeight: 800 }}>{i.totalSold || 0}</span>
-                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>SOLD</span>
-            </div>
-        ),
-        sortKey: 'totalSold' as keyof InventoryItem
+    {
+      header: 'PERFORMANCE',
+      key: (i: InventoryItem) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <span style={{ fontWeight: 800 }}>{i.totalSold || 0}</span>
+          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>SOLD</span>
+        </div>
+      ),
+      sortKey: 'totalSold' as keyof InventoryItem
     },
     { header: 'SUPPLIER', key: 'supplier' as keyof InventoryItem, style: { fontSize: '0.85rem' } },
     {
@@ -159,9 +159,19 @@ export default function InventoryPage() {
     }
   ];
 
+  const paginationConfig = useMemo(() => ({
+    totalRecords,
+    currentPage,
+    pageSize,
+    onPageChange: setCurrentPage,
+    onPageSizeChange: setPageSize,
+    onSearchChange: (s: string) => { setSearchQuery(s); setCurrentPage(1); },
+    onFilterChange: (f: any) => { setActiveFilters(f); setCurrentPage(1); }
+  }), [totalRecords, currentPage, pageSize]);
+
   return (
-    <div className="inventory-container animate-fade-in" style={{ padding: '2rem 2.5rem' }}>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3.5rem' }}>
+    <div className="inventory-container animate-fade-in">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3.5rem', paddingTop: '2rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--primary)' }} />
@@ -218,14 +228,7 @@ export default function InventoryPage() {
         filterableFields={[
           { label: 'Category', key: 'category' as keyof InventoryItem, options: categories }
         ]}
-        serverPagination={{
-          totalRecords,
-          currentPage,
-          pageSize,
-          onPageChange: setCurrentPage,
-          onSearchChange: (s) => { setSearchQuery(s); setCurrentPage(1); },
-          onFilterChange: (f) => { setActiveFilters(f); setCurrentPage(1); }
-        }}
+        serverPagination={paginationConfig}
       />
     </div>
   );

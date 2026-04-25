@@ -49,16 +49,16 @@ export default function Sidebar() {
     {
       label: 'OPERATIONS',
       items: [
-        { label: 'Clinic Attendance', href: '/attendance', icon: Activity, permission: 'operations:view' },
-        { label: 'Services Catalog', href: '/services', icon: BriefcaseMedical, permission: 'services:view' },
-        { label: 'Expense Management', href: '/expenses', icon: Wallet, permission: 'expenses:view' },
-        { label: 'Inventory Registry', href: '/inventory', icon: Package, permission: 'inventory:view' },
+        { label: 'Attendance', href: '/attendance', icon: Activity, permission: 'operations:view' },
+        { label: 'Services', href: '/services', icon: BriefcaseMedical, permission: 'services:view' },
+        { label: 'Expenses', href: '/expenses', icon: Wallet, permission: 'expenses:view' },
+        { label: 'Inventory', href: '/inventory', icon: Package, permission: 'inventory:view' },
       ]
     },
     {
       label: 'ADMINISTRATION',
       items: [
-        { label: 'Clinical Staff', href: '/users', icon: ShieldCheck, permission: 'users:view' },
+        { label: 'Specialists', href: '/users', icon: ShieldCheck, permission: 'users:view' },
         { label: 'Staff Payroll', href: '/payroll', icon: Wallet, permission: 'users:view' },
         { label: 'Roles & Permissions', href: '/roles', icon: Lock, permission: 'roles:view' },
       ]
@@ -74,25 +74,27 @@ export default function Sidebar() {
   return (
     <aside className="sidebar animate-fade-in">
       <div className="sidebar-logo" style={{ marginBottom: '2.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <Image
-            src="/logo.png"
-            alt="AKOD TECH Logo"
-            width={100}
-            height={100}
-            priority
-            loading="eager"
-            style={{ borderRadius: '10px', objectFit: 'cover', width: 'auto', height: 'auto' }}
-          />
-          <div>
-            <h1 style={{ fontSize: '1.15rem', letterSpacing: '-0.02em', fontWeight: 800, margin: 0, color: 'white' }}>
-              Physio<span className="gradient-text"> 4</span>
-            </h1>
-            <p style={{ fontSize: '0.6rem', opacity: 0.4, letterSpacing: '0.1em', fontWeight: 700, textTransform: 'uppercase', margin: 0 }}>
-              Clinical Systems v1.4
-            </p>
+        <Link href="/" style={{ textDecoration: 'none', display: 'block' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <Image
+              src="/logo.png"
+              alt="AKOD TECH Logo"
+              width={100}
+              height={100}
+              priority
+              loading="eager"
+              style={{ borderRadius: '10px', objectFit: 'cover', width: 'auto', height: 'auto' }}
+            />
+            <div>
+              <h1 style={{ fontSize: '1.15rem', letterSpacing: '-0.02em', fontWeight: 800, margin: 0, color: 'white' }}>
+                Physio<span className="gradient-text"> 4</span>
+              </h1>
+              <p style={{ fontSize: '0.6rem', opacity: 0.4, letterSpacing: '0.1em', fontWeight: 700, textTransform: 'uppercase', margin: 0 }}>
+                Clinical Systems v1.4
+              </p>
+            </div>
           </div>
-        </div>
+        </Link>
       </div>
       
       <div className="sidebar-nav" style={{ overflowY: 'auto' }}>

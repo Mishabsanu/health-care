@@ -17,7 +17,7 @@ const validationSchema = Yup.object().shape({
   description: Yup.string(),
 });
 
-const categories = ['Products','Consultation', 'Therapy', 'Assessment', 'Rehabilitation', 'Emergency'];
+const categories = ['Consultation', 'Therapy', 'Assessment', 'Rehabilitation', 'Emergency'];
 
 export default function AddServicePage() {
   const router = useRouter();
@@ -49,7 +49,7 @@ export default function AddServicePage() {
   const ErrMsg = ({ name }: { name: keyof typeof formik.values }) =>
     formik.touched[name] && formik.errors[name] ? (
       <div style={{ color: '#ef4444', fontSize: '0.72rem', fontWeight: 700, marginTop: '0.35rem' }}>
-        ⚠️ {formik.errors[name] as string}
+        {formik.errors[name] as string}
       </div>
     ) : null;
 
@@ -126,6 +126,7 @@ export default function AddServicePage() {
                 onBlur={formik.handleBlur}
                 placeholder="Enter session rate"
                 min="0"
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }}
               />
             </div>
             <ErrMsg name="price" />

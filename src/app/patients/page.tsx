@@ -33,7 +33,7 @@ export default function PatientsPage() {
   // Backend Pagination State
   const [totalRecords, setTotalRecords] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
 
@@ -86,7 +86,7 @@ export default function PatientsPage() {
 
     showConfirm(
       'Purge Patient Record',
-      `⚠️ WARNING: You are about to permanently purge the clinical record for ${patient.name}. This action cannot be undone. Continue?`,
+      ` WARNING: You are about to permanently purge the clinical record for ${patient.name}. This action cannot be undone. Continue?`,
       async () => {
         setIsSyncing(true);
         try {
@@ -167,16 +167,17 @@ export default function PatientsPage() {
     currentPage,
     pageSize,
     onPageChange: setCurrentPage,
+    onPageSizeChange: setPageSize,
     onSearchChange: (s: string) => { setSearchQuery(s); setCurrentPage(1); },
     onFilterChange: (f: any) => { setActiveFilters(f); setCurrentPage(1); }
   }), [totalRecords, currentPage, pageSize]);
 
-  const patientsForTable = useMemo(() => 
-    patients.map(p => ({ ...p, id: p._id })), 
-  [patients]);
+  const patientsForTable = useMemo(() =>
+    patients.map(p => ({ ...p, id: p._id })),
+    [patients]);
 
   return (
-    <div className="patients-container animate-fade-in" style={{ padding: '2rem' }}>
+    <div className="patients-container animate-fade-in" style={{ paddingTop: '2rem' }}>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>

@@ -116,8 +116,8 @@ export default function BillingPage() {
 
   const handleMarkPaid = async (inv: Invoice) => {
     try {
-      await api.put(`/invoices/${inv._id}`, { status: 'Paid' });
-      setInvoices(prev => prev.map(i => i._id === inv._id ? { ...i, status: 'Paid' } : i));
+      const res = await api.put(`/invoices/${inv._id}`, { status: 'Paid' });
+      setInvoices(prev => prev.map(i => i._id === inv._id ? res.data : i));
       showToast(`✅ Invoice ${inv.id} marked as Paid.`, 'success');
     } catch (err) {
       console.error('🚫 Financial Error | Failed to update invoice status:', err);
@@ -157,7 +157,7 @@ export default function BillingPage() {
 
     showConfirm(
       'Erase Financial Record',
-      `⚠️ WARNING: Permanent erasure of invoice ${i.id}. This cannot be undone. Continue?`,
+      ` WARNING: Permanent erasure of invoice ${i.id}. This cannot be undone. Continue?`,
       async () => {
         try {
           await api.delete(`/invoices/${i._id}`);
@@ -245,13 +245,14 @@ export default function BillingPage() {
     currentPage,
     pageSize,
     onPageChange: setCurrentPage,
+    onPageSizeChange: setPageSize,
     onSearchChange: (s: string) => { setSearchQuery(s); setCurrentPage(1); },
     onFilterChange: (f: any) => { setActiveFilters(f); setCurrentPage(1); }
   }), [totalRecords, currentPage, pageSize]);
 
   return (
-    <div className="billing-container animate-fade-in" style={{ padding: '2rem 2.5rem' }}>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3.5rem' }}>
+    <div className="billing-container animate-fade-in">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3.5rem', paddingTop: '2rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--primary)' }} />
@@ -442,7 +443,7 @@ export default function BillingPage() {
       {quickPayInvoice && typeof document !== 'undefined' && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.30)', backdropFilter: 'blur(4px)', zIndex: 1000, overflowY: 'auto', display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.3s ease-out' }}>
           <div className="card-premium animate-scale-up" style={{ width: '100%', maxWidth: '580px', margin: '4rem auto', padding: '0', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.3)', boxShadow: '0 40px 80px -20px rgba(0,0,0,0.5)', borderRadius: '24px', background: '#ffffff', flexShrink: 0 }}>
-            
+
             {/* Glossy Header */}
             <div style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', padding: '2rem 2.5rem', borderBottom: '1px solid var(--border-subtle)', position: 'relative' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'linear-gradient(90deg, #f97316 0%, #fb923c 100%)' }} />
